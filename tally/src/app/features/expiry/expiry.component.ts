@@ -1,0 +1,201 @@
+import { Component, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ExpiryService, ExpiryStatus } from '../../core/services/expiry.service';
+
+@Component({
+  selector: 'tally-expiry',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+    <div class="page-content">
+      <div class="section-eyebrow">Points Expiry Tracker</div>
+      <h2 class="section-title">Don't let your <em>points die</em></h2>
+
+      <!-- Summary banner if warnings exist -->
+      <div class="alert-banner critical" *ngIf="expiry.criticalCount() > 0">
+        <span class="alert-icon">⚠️</span>
+        <div>
+          <div class="alert-title">{{ expiry.criticalCount() }} program{{ expiry.criticalCount() > 1 ? 's' : '' }} need immediate attention</div>
+          <div class="alert-sub">Points may expire within 30 days. Act now.</div>
+        </div>
+      </div>
+
+      <!-- Status cards -->
+      <div class="expiry-list">
+        <div
+          class="expiry-card"
+          *ngFor="let status of expiry.statuses()"
+          [class.never]="status.urgency === 'never'"
+          [class.safe]="status.urgency === 'safe'"
+          [class.warning]="status.urgency === 'warning'"
+          [class.critical]="status.urgency === 'critical'"
+          [class.expired]="status.urgency === 'expired'"
+        >
+          <div class="ec-header">
+            <div class="ec-left">
+              <div class="ec-program">{{ status.programName }}</div>
+              <div class="ec-urgency-label">
+                <span class="urgency-dot" [class]="status.urgency"></span>
+                {{ urgencyLabel(status) }}
+              </div>
+            </div>
+            <div class="ec-days" *ngIf="status.daysRemaining !== null">
+              <span class="days-val" [class]="status.urgency">{{ status.daysRemaining }}</span>
+              <span class="days-label">days left</span>
+            </div>
+            <div class="ec-days never-icon" *ngIf="status.urgency === 'never'">
+              <span>∞</span>
+            </div>
+          </div>
+
+          <div class="ec-action">{{ status.actionNeeded }}</div>
+
+          <div class="ec-note" *ngIf="status.urgency !== 'never'">{{ status.note }}</div>
+
+          <!-- Date setter for activity-based programs -->
+          <div class="date-setter" *ngIf="status.urgency !== 'never'">
+            <label class="field-label">Last activity date</label>
+            <div class="date-row">
+              <input
+                type="date"
+                class="date-input"
+                [value]="getActivityDate(status.cardId)"
+                (change)="onDateChange(status.cardId, $event)"
+                [max]="todayStr"
+              >
+              <button class="clear-btn" *ngIf="getActivityDate(status.cardId)"
+                (click)="expiry.clearActivity(status.cardId)">
+                Clear
+              </button>
+            </div>
+            <div class="expiry-date-label" *ngIf="status.expiryDate">
+              Expires {{ status.expiryDate | date:'MMM d, yyyy' }}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="expiry-footer">
+        <p>Expiry rules are sourced from each program's terms. Rules can change — verify directly with the program before points expire.</p>
+      </div>
+    </div>
+  `,
+  styles: [`
+    .alert-banner {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px 16px; border-radius: 12px; margin-bottom: 20px;
+    }
+    .alert-banner.critical { background: var(--tally-red-light); border: 1px solid rgba(220,38,38,0.2); }
+    .alert-icon { font-size: 20px; flex-shrink: 0; }
+    .alert-title { font-size: 14px; font-weight: 600; color: var(--tally-red); margin-bottom: 2px; }
+    .alert-sub { font-size: 12px; color: var(--tally-red); opacity: 0.8; }
+
+    .expiry-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .expiry-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 14px; padding: 16px; border-left: 3px solid var(--border2);
+      animation: fadeUp 0.3s ease both;
+    }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+    .expiry-card.never  { border-left-color: var(--border2); }
+    .expiry-card.safe   { border-left-color: var(--tally-green); }
+    .expiry-card.warning { border-left-color: var(--tally-amber); }
+    .expiry-card.critical { border-left-color: var(--tally-red); background: var(--tally-red-light); }
+    .expiry-card.expired  { border-left-color: var(--tally-red); background: var(--tally-red-light); opacity: 0.9; }
+
+    .ec-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+    .ec-left { flex: 1; }
+    .ec-program { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .ec-urgency-label {
+      display: flex; align-items: center; gap: 6px;
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3);
+    }
+    .urgency-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    }
+    .urgency-dot.never    { background: var(--border2); }
+    .urgency-dot.safe     { background: var(--tally-green); }
+    .urgency-dot.warning  { background: var(--tally-amber); }
+    .urgency-dot.critical { background: var(--tally-red); }
+    .urgency-dot.expired  { background: var(--tally-red); }
+
+    .ec-days { text-align: right; flex-shrink: 0; }
+    .days-val {
+      font-family: 'Geist Mono', monospace; font-size: 24px;
+      display: block; line-height: 1;
+    }
+    .days-val.safe     { color: var(--tally-green); }
+    .days-val.warning  { color: var(--tally-amber); }
+    .days-val.critical { color: var(--tally-red); }
+    .days-val.expired  { color: var(--tally-red); }
+    .days-label { font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--text3); letter-spacing: 0.1em; }
+
+    .never-icon { font-size: 24px; color: var(--text3); line-height: 1; }
+
+    .ec-action { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 8px; }
+    .ec-note { font-size: 11px; color: var(--text3); line-height: 1.5; font-style: italic; margin-bottom: 12px; }
+
+    .date-setter { border-top: 1px solid var(--border); padding-top: 12px; }
+    .field-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 9px; letter-spacing: 0.15em; color: var(--text3);
+      text-transform: uppercase; display: block; margin-bottom: 6px;
+    }
+    .date-row { display: flex; gap: 8px; align-items: center; }
+    .date-input {
+      background: var(--surface); border: 1.5px solid var(--border2);
+      border-radius: 9px; color: var(--text);
+      font-family: 'Geist', sans-serif; font-size: 13px;
+      padding: 8px 12px; outline: none; flex: 1;
+      transition: border-color 0.15s;
+    }
+    .date-input:focus { border-color: var(--tally-green); }
+    .clear-btn {
+      background: none; border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--text3); font-family: 'Geist', sans-serif; font-size: 12px;
+      padding: 8px 12px; cursor: pointer; white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .clear-btn:hover { border-color: var(--tally-red); color: var(--tally-red); }
+
+    .expiry-date-label {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--text3); letter-spacing: 0.06em; margin-top: 6px;
+    }
+
+    .expiry-footer {
+      margin-top: 20px; padding: 14px 16px;
+      background: var(--surface); border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .expiry-footer p { font-size: 11px; color: var(--text3); line-height: 1.6; }
+  `]
+})
+export class ExpiryComponent {
+  expiry = inject(ExpiryService);
+  todayStr = new Date().toISOString().split('T')[0];
+
+  urgencyLabel(status: ExpiryStatus): string {
+    switch (status.urgency) {
+      case 'never':    return 'Never expires';
+      case 'safe':     return 'Safe';
+      case 'warning':  return 'Expiring soon';
+      case 'critical': return 'Urgent — act now';
+      case 'expired':  return 'Possibly expired';
+    }
+  }
+
+  getActivityDate(cardId: string): string {
+    return this.expiry.records()[cardId]?.lastActivityDate ?? '';
+  }
+
+  onDateChange(cardId: string, event: Event): void {
+    const val = (event.target as HTMLInputElement).value;
+    if (val) this.expiry.setLastActivity(cardId, val);
+  }
+}

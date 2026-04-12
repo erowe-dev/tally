@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" ry="96" fill="#1a7a4a"/>
+
+  <!-- Tally mark: 4 vertical lines + diagonal -->
+  <line x1="113" y1="118" x2="113" y2="394" stroke="white" stroke-width="44" stroke-linecap="round"/>
+  <line x1="195" y1="118" x2="195" y2="394" stroke="white" stroke-width="44" stroke-linecap="round"/>
+  <line x1="317" y1="118" x2="317" y2="394" stroke="white" stroke-width="44" stroke-linecap="round"/>
+  <line x1="399" y1="118" x2="399" y2="394" stroke="white" stroke-width="44" stroke-linecap="round"/>
+
+  <!-- Diagonal cross stroke -->
+  <line x1="62"  y1="368" x2="450" y2="144" stroke="white" stroke-width="44" stroke-linecap="round"/>
+</svg>

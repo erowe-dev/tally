@@ -1,0 +1,136 @@
+{
+  "name": "Tally — Waitlist Signup",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tally-waitlist",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "name": "Webhook — Waitlist Signup",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "tally-waitlist",
+      "notes": "POST endpoint called from landing page form. URL: https://your-n8n.com/webhook/tally-waitlist"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst email = body.email || '';\nconst source = body.source || 'landing-page';\n\nif (!email || !email.includes('@')) {\n  return [{ json: { valid: false, error: 'Invalid email' } }];\n}\n\nreturn [{\n  json: {\n    valid: true,\n    email: email.toLowerCase().trim(),\n    source,\n    signedUpAt: new Date().toISOString(),\n    ip: $input.first().json.headers?.['x-forwarded-for'] || 'unknown'\n  }\n}];"
+      },
+      "name": "Validate & Sanitize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{ $json.valid }}", "value2": true }]
+        }
+      },
+      "name": "Valid Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": { "value": "YOUR_GOOGLE_SHEET_ID" },
+        "sheetName": "Waitlist",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $json.email }}",
+            "Source": "={{ $json.source }}",
+            "Signed Up": "={{ $json.signedUpAt }}",
+            "IP": "={{ $json.ip }}"
+          }
+        },
+        "options": {}
+      },
+      "name": "Add to Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [900, 200],
+      "notes": "Simple Google Sheet as lightweight CRM. Replace with Airtable, Notion, or DB if preferred."
+    },
+    {
+      "parameters": {
+        "fromEmail": "eric@tallypoints.app",
+        "toEmail": "={{ $json.email }}",
+        "subject": "You're on the Tally waitlist ✦",
+        "emailType": "html",
+        "message": "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:-apple-system,sans-serif;background:#f7f6f3;margin:0;padding:32px}a{color:#1a7a4a;text-decoration:none}.card{background:#fff;border:1px solid #e4e2db;border-radius:16px;padding:36px;max-width:520px;margin:0 auto}.eyebrow{font-size:10px;letter-spacing:.18em;color:#1a7a4a;text-transform:uppercase;margin-bottom:16px;font-family:monospace}.headline{font-size:28px;font-family:Georgia,serif;color:#1a1916;margin-bottom:12px;line-height:1.2}.sub{font-size:15px;color:#5c5a54;line-height:1.65;margin-bottom:28px}.divider{height:1px;background:#e4e2db;margin:24px 0}.what-heading{font-size:11px;letter-spacing:.12em;color:#9b9890;text-transform:uppercase;font-family:monospace;margin-bottom:16px}.item{display:flex;gap:12px;margin-bottom:12px;font-size:14px;color:#1a1916}.dot{width:6px;height:6px;background:#1a7a4a;border-radius:50%;margin-top:6px;flex-shrink:0}.footer{margin-top:28px;font-size:12px;color:#9b9890;font-family:monospace;letter-spacing:.06em;line-height:1.6}</style></head><body><div class='card'><div class='eyebrow'>Tally · Points Advisor</div><div class='headline'>You're on the list.</div><div class='sub'>Thanks for joining the Tally alpha waitlist. We're building carefully — when access opens, you'll be among the first to know.</div><div class='divider'></div><div class='what-heading'>What to expect</div><div class='item'><div class='dot'></div><div>Early access invitation — no App Store, just install to your home screen</div></div><div class='item'><div class='dot'></div><div>Pro features free for the first 100 users, permanently</div></div><div class='item'><div class='dot'></div><div>Your feedback will shape what gets built next</div></div><div class='divider'></div><div class='footer'>Tally · tallypoints.app<br>You signed up at {{ $json.signedUpAt }}<br>Reply to this email anytime — it goes straight to the builder.</div></div></body></html>"
+      },
+      "name": "Send Confirmation Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [900, 340]
+    },
+    {
+      "parameters": {
+        "fromEmail": "alerts@tallypoints.app",
+        "toEmail": "={{ $vars.YOUR_EMAIL }}",
+        "subject": "🎉 New Tally waitlist signup: {{ $json.email }}",
+        "text": "New signup!\n\nEmail: {{ $json.email }}\nSource: {{ $json.source }}\nTime: {{ $json.signedUpAt }}\n\nCheck the sheet: https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID"
+      },
+      "name": "Notify You (Builder)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [900, 480],
+      "notes": "Simple ping to your inbox for every new signup. Remove once volume picks up."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true, \"message\": \"You're on the list!\" }"
+      },
+      "name": "Respond — Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 400,
+        "responseBody": "={ \"success\": false, \"message\": \"Invalid email address\" }"
+      },
+      "name": "Respond — Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 600]
+    }
+  ],
+  "connections": {
+    "Webhook — Waitlist Signup": {
+      "main": [[{ "node": "Validate & Sanitize", "type": "main", "index": 0 }]]
+    },
+    "Validate & Sanitize": {
+      "main": [[{ "node": "Valid Email?", "type": "main", "index": 0 }]]
+    },
+    "Valid Email?": {
+      "main": [
+        [
+          { "node": "Add to Google Sheet", "type": "main", "index": 0 },
+          { "node": "Send Confirmation Email", "type": "main", "index": 0 },
+          { "node": "Notify You (Builder)", "type": "main", "index": 0 }
+        ],
+        [{ "node": "Respond — Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Confirmation Email": {
+      "main": [[{ "node": "Respond — Success", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": ["tally", "waitlist"]
+}

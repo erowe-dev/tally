@@ -1,0 +1,161 @@
+{
+  "name": "Tally — Flying Blue Promo Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 8 1-7 * *" }]
+        }
+      },
+      "name": "Schedule — First 7 days of month at 8am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "notes": "Runs daily during first 7 days of each month. Flying Blue typically drops promos in this window."
+    },
+    {
+      "parameters": {
+        "url": "https://www.flyingblue.com/en/earn/promo-awards",
+        "options": {
+          "timeout": 15000,
+          "headers": {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+          }
+        }
+      },
+      "name": "Fetch Flying Blue Promo Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the HTML response and check for promo indicators\nconst html = $input.first().json.data || '';\n\n// Detect if promos are currently active\nconst promoIndicators = [\n  'promo award',\n  'promotion',\n  'discounted',\n  'flash sale',\n  'limited time'\n];\n\nconst lowerHtml = html.toLowerCase();\nconst hasPromos = promoIndicators.some(indicator => lowerHtml.includes(indicator));\n\n// Extract any route mentions (rough heuristic)\nconst routePattern = /([A-Z]{3})\\s*[→\\-–]\\s*([A-Z]{3})/g;\nconst routes = [];\nlet match;\nwhile ((match = routePattern.exec(html)) !== null && routes.length < 10) {\n  routes.push(`${match[1]} → ${match[2]}`);\n}\n\n// Check if we already sent an alert this month\nconst thisMonth = new Date().toISOString().slice(0, 7); // YYYY-MM\n\nreturn [{\n  json: {\n    hasPromos,\n    routes: [...new Set(routes)], // deduplicate\n    month: thisMonth,\n    checkedAt: new Date().toISOString(),\n    url: 'https://www.flyingblue.com/en/earn/promo-awards'\n  }\n}];"
+      },
+      "name": "Parse Promo Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hasPromos }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Promos Live?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "tally_fb_alert_{{ $json.month }}",
+        "options": {}
+      },
+      "name": "Check Already Sent This Month",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [1120, 200],
+      "notes": "Prevents duplicate alerts. Replace with any KV store — Airtable, file, DB, etc."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.value }}",
+              "value2": "sent",
+              "operation": "notEqual"
+            }
+          ]
+        }
+      },
+      "name": "Not Yet Sent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "fromEmail": "alerts@tallypoints.app",
+        "toEmail": "={{ $vars.ALERT_EMAIL }}",
+        "subject": "✈ Flying Blue Promo Awards are live — {{ new Date().toLocaleString('default', { month: 'long' }) }}",
+        "emailType": "html",
+        "message": "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:-apple-system,sans-serif;background:#f7f6f3;margin:0;padding:32px}a{color:#1a7a4a}.card{background:#fff;border:1px solid #e4e2db;border-radius:16px;padding:32px;max-width:520px;margin:0 auto}.logo{display:flex;align-items:center;gap:8px;margin-bottom:24px;text-decoration:none}.logo-icon{background:#1a7a4a;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center}.wordmark{font-size:20px;font-family:Georgia,serif}.eyebrow{font-size:11px;letter-spacing:.14em;color:#1a7a4a;text-transform:uppercase;margin-bottom:8px;font-family:monospace}.headline{font-size:26px;font-family:Georgia,serif;color:#1a1916;margin-bottom:12px;line-height:1.2}.body-text{font-size:14px;color:#5c5a54;line-height:1.65;margin-bottom:24px}.cta{display:inline-block;background:#1a7a4a;color:#fff;text-decoration:none;border-radius:10px;padding:13px 24px;font-size:14px;font-weight:600}.footer{margin-top:24px;font-size:12px;color:#9b9890;font-family:monospace;letter-spacing:.06em}</style></head><body><div class='card'><div class='eyebrow'>Tally Alert</div><div class='headline'>Flying Blue Promo Awards are live</div><div class='body-text'>Air France/KLM's monthly promo awards have dropped. These sell out fast — typically within 24–72 hours of posting.<br><br>{{ $json.routes && $json.routes.length > 0 ? 'Routes detected: <strong>' + $json.routes.join(', ') + '</strong><br><br>' : '' }}Now is the time to transfer Amex MR, Chase UR, or Citi TY points to Flying Blue if you have a France or KLM route coming up.</div><a href='{{ $json.url }}' class='cta'>View promos on Flying Blue →</a><div class='footer'>Sent by Tally · {{ new Date().toLocaleDateString() }}</div></div></body></html>"
+      },
+      "name": "Send Alert Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1560, 100],
+      "notes": "Configure SMTP credentials in n8n. Use Resend, Postmark, or AWS SES."
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "tally_fb_alert_{{ $json.month }}",
+        "value": "sent",
+        "keyType": "string",
+        "expire": true,
+        "ttl": 2678400
+      },
+      "name": "Mark Sent for This Month",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [1780, 100],
+      "notes": "TTL = 31 days. Prevents duplicate sends."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log the check for debugging\nconsole.log('Flying Blue check — no promos found or already sent', {\n  month: $input.first().json.month,\n  checkedAt: $input.first().json.checkedAt\n});\nreturn $input.all();"
+      },
+      "name": "Log — No Action Needed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 420]
+    }
+  ],
+  "connections": {
+    "Schedule — First 7 days of month at 8am": {
+      "main": [[{ "node": "Fetch Flying Blue Promo Page", "type": "main", "index": 0 }]]
+    },
+    "Fetch Flying Blue Promo Page": {
+      "main": [[{ "node": "Parse Promo Page", "type": "main", "index": 0 }]]
+    },
+    "Parse Promo Page": {
+      "main": [[{ "node": "Promos Live?", "type": "main", "index": 0 }]]
+    },
+    "Promos Live?": {
+      "main": [
+        [{ "node": "Check Already Sent This Month", "type": "main", "index": 0 }],
+        [{ "node": "Log — No Action Needed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Already Sent This Month": {
+      "main": [[{ "node": "Not Yet Sent?", "type": "main", "index": 0 }]]
+    },
+    "Not Yet Sent?": {
+      "main": [
+        [{ "node": "Send Alert Email", "type": "main", "index": 0 }],
+        [{ "node": "Log — No Action Needed", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Alert Email": {
+      "main": [[{ "node": "Mark Sent for This Month", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": ["tally", "alerts", "flying-blue"]
+}

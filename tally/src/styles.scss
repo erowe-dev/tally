@@ -1,0 +1,38 @@
+
+
+:root {
+  --white:             #ffffff;
+  --off:               #f7f6f3;
+  --surface:           #f0efe9;
+  --border:            #e4e2db;
+  --border2:           #d0cec5;
+  --text:              #1a1916;
+  --text2:             #5c5a54;
+  --text3:             #9b9890;
+  --tally-green:       #1a7a4a;
+  --tally-green-light: #e8f5ee;
+  --tally-green-mid:   #2d9e62;
+  --tally-amber:       #b45309;
+  --tally-amber-light: #fef3c7;
+  --tally-red:         #dc2626;
+  --tally-red-light:   #fef2f2;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
+body { font-family: 'Geist', system-ui, sans-serif; background: var(--off); color: var(--text); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+.page-content { padding: 24px 20px 0; }
+
+.section-eyebrow {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px; letter-spacing: 0.18em;
+  color: var(--tally-green); text-transform: uppercase;
+  display: block; margin-bottom: 6px;
+}
+.section-title {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: clamp(26px, 7vw, 32px); font-weight: 400;
+  line-height: 1.15; color: var(--text); margin-bottom: 24px;
+}
+.section-title em { font-style: italic; color: var(--tally-green); }

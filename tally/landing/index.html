@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tally — Know what to do with your points</title>
+<meta name="description" content="Tally tells you exactly which points to transfer, which programs to use, and when to wait. The points advisor for people with 3–5 cards who want to stop leaving value on the table.">
+<meta property="og:title" content="Tally — Points Advisor">
+<meta property="og:description" content="Know exactly what to do with your points.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#f7f6f3">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@300;400&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --white: #ffffff;
+  --off: #f7f6f3;
+  --surface: #f0efe9;
+  --border: #e4e2db;
+  --border2: #d0cec5;
+  --text: #1a1916;
+  --text2: #5c5a54;
+  --text3: #9b9890;
+  --green: #1a7a4a;
+  --green-light: #e8f5ee;
+  --green-mid: #2d9e62;
+  --amber: #b45309;
+  --serif: 'Instrument Serif', Georgia, serif;
+  --sans: 'Geist', system-ui, sans-serif;
+  --mono: 'Geist Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--off);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 18px 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(247,246,243,0.88);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.3s;
+}
+nav.scrolled { border-bottom-color: var(--border); }
+
+.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.nav-icon {
+  width: 32px; height: 32px; background: var(--green); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.nav-icon svg { width: 18px; height: 18px; }
+.nav-wordmark { font-family: var(--serif); font-size: 22px; color: var(--text); }
+
+.nav-right { display: flex; align-items: center; gap: 16px; }
+.nav-link {
+  font-size: 13px; font-weight: 500; color: var(--text2);
+  text-decoration: none; transition: color 0.15s;
+}
+.nav-link:hover { color: var(--text); }
+.nav-cta {
+  background: var(--green); color: white; border: none; border-radius: 8px;
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  padding: 9px 18px; cursor: pointer; text-decoration: none;
+  transition: opacity 0.15s;
+  display: inline-block;
+}
+.nav-cta:hover { opacity: 0.88; }
+
+/* ── HERO ── */
+.hero {
+  min-height: 100dvh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 100px 24px 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle grid texture */
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.35;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 100%);
+}
+
+/* Tally marks decoration — large, background */
+.hero-tally-bg {
+  position: absolute;
+  font-size: 200px; line-height: 1;
+  color: var(--green); opacity: 0.04;
+  user-select: none; pointer-events: none;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-family: var(--serif);
+  letter-spacing: -0.05em;
+}
+
+.hero-content { position: relative; z-index: 1; max-width: 680px; }
+
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
+  color: var(--green); text-transform: uppercase;
+  background: var(--green-light); border: 1px solid rgba(26,122,74,0.2);
+  border-radius: 20px; padding: 5px 14px; margin-bottom: 28px;
+}
+.eyebrow-dot {
+  width: 6px; height: 6px; background: var(--green); border-radius: 50%;
+  animation: pulse 2s ease infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.hero-headline {
+  font-family: var(--serif);
+  font-size: clamp(42px, 8vw, 80px);
+  font-weight: 400; line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 24px;
+}
+.hero-headline em { font-style: italic; color: var(--green); }
+
+.hero-sub {
+  font-size: clamp(16px, 2.5vw, 19px);
+  color: var(--text2); line-height: 1.65;
+  font-weight: 300; max-width: 500px;
+  margin: 0 auto 40px;
+}
+
+/* ── WAITLIST FORM ── */
+.waitlist-form {
+  display: flex; gap: 10px;
+  max-width: 420px; margin: 0 auto 16px;
+}
+.email-input {
+  flex: 1; border: 1.5px solid var(--border2);
+  border-radius: 12px; background: var(--white);
+  font-family: var(--sans); font-size: 15px;
+  padding: 14px 18px; outline: none; color: var(--text);
+  transition: border-color 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.email-input:focus { border-color: var(--green); }
+.email-input::placeholder { color: var(--text3); }
+
+.submit-btn {
+  background: var(--green); color: white; border: none;
+  border-radius: 12px; font-family: var(--sans);
+  font-size: 14px; font-weight: 600;
+  padding: 14px 24px; cursor: pointer; white-space: nowrap;
+  transition: opacity 0.15s, transform 0.1s;
+  box-shadow: 0 1px 3px rgba(26,122,74,0.3);
+}
+.submit-btn:hover { opacity: 0.9; }
+.submit-btn:active { transform: scale(0.97); }
+
+.form-note {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--text3); letter-spacing: 0.06em;
+}
+
+/* Success state */
+.success-msg {
+  display: none; align-items: center; gap: 10px;
+  background: var(--green-light); border: 1px solid rgba(26,122,74,0.25);
+  border-radius: 12px; padding: 14px 20px;
+  font-size: 14px; color: var(--green); font-weight: 500;
+  max-width: 420px; margin: 0 auto 16px;
+}
+.success-msg.show { display: flex; }
+.success-icon { font-size: 18px; }
+
+/* ── SOCIAL PROOF ── */
+.social-proof {
+  margin-top: 48px; display: flex; align-items: center; gap: 16px;
+  justify-content: center; flex-wrap: wrap;
+}
+.sp-avatars { display: flex; }
+.sp-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 2px solid var(--off); margin-left: -8px;
+  background: var(--green); display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: white; font-weight: 600;
+}
+.sp-avatar:first-child { margin-left: 0; }
+.sp-avatar:nth-child(2) { background: #2d6fa0; }
+.sp-avatar:nth-child(3) { background: #7c3aed; }
+.sp-text { font-size: 13px; color: var(--text2); }
+.sp-text strong { color: var(--text); }
+
+/* ── DEMO MOCKUP ── */
+.demo-section {
+  padding: 0 24px 80px;
+  display: flex; justify-content: center;
+}
+
+.mockup-wrap {
+  position: relative; max-width: 340px; width: 100%;
+}
+.mockup-glow {
+  position: absolute; inset: -40px;
+  background: radial-gradient(ellipse at 50% 50%, rgba(26,122,74,0.12), transparent 70%);
+  pointer-events: none;
+}
+.phone-frame {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 36px; overflow: hidden;
+  box-shadow: 0 32px 80px rgba(26,30,22,0.12), 0 2px 8px rgba(0,0,0,0.06);
+  position: relative;
+}
+.phone-notch {
+  width: 90px; height: 28px; background: var(--off);
+  border-radius: 0 0 18px 18px; margin: 0 auto;
+  border: 1px solid var(--border); border-top: none;
+}
+
+/* mini app UI inside phone */
+.mini-header {
+  padding: 16px 20px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.mini-logo { display: flex; align-items: center; gap: 8px; }
+.mini-icon {
+  width: 24px; height: 24px; background: var(--green);
+  border-radius: 6px; display: flex; align-items: center; justify-content: center;
+}
+.mini-icon svg { width: 13px; height: 13px; }
+.mini-wordmark { font-family: var(--serif); font-size: 16px; color: var(--text); }
+.mini-pts { font-family: var(--mono); font-size: 13px; color: var(--green); }
+
+.mini-body { padding: 16px 20px; background: var(--off); }
+.mini-eyebrow {
+  font-family: var(--mono); font-size: 8px; letter-spacing: 0.16em;
+  color: var(--green); text-transform: uppercase; margin-bottom: 4px;
+}
+.mini-title {
+  font-family: var(--serif); font-size: 18px; color: var(--text);
+  margin-bottom: 14px; line-height: 1.2;
+}
+.mini-title em { font-style: italic; color: var(--green); }
+
+.mini-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px; margin-bottom: 8px;
+  position: relative; overflow: hidden;
+}
+.mini-card.best { border-color: var(--green); background: var(--green-light); }
+.mini-card-top { display: flex; gap: 8px; margin-bottom: 8px; }
+.mini-card-left { flex: 1; }
+.mini-card-prog { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 1px; }
+.mini-card-partner { font-size: 9px; color: var(--text3); }
+.mini-card-pts { font-family: var(--mono); font-size: 14px; color: var(--green); text-align: right; }
+.mini-card-pts small { display: block; font-size: 7px; color: var(--text3); }
+.mini-bar-row { display: flex; align-items: center; gap: 6px; }
+.mini-bar-wrap { flex: 1; height: 2px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.mini-bar { height: 100%; background: var(--green); border-radius: 99px; }
+.mini-cpp { font-family: var(--mono); font-size: 8px; color: var(--green-mid); }
+.best-pill {
+  position: absolute; top: 8px; right: 8px;
+  background: var(--green); color: white;
+  font-family: var(--mono); font-size: 6px; letter-spacing: 0.1em;
+  padding: 2px 5px; border-radius: 3px;
+}
+.mini-chips { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.mini-chip {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 5px;
+  font-family: var(--mono); font-size: 7px; color: var(--text3);
+}
+
+.mini-nav {
+  display: flex; justify-content: space-around;
+  padding: 10px 0 14px; border-top: 1px solid var(--border);
+  background: rgba(247,246,243,0.95);
+}
+.mini-nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.mini-nav-icon { font-size: 14px; }
+.mini-nav-label { font-family: var(--mono); font-size: 6px; color: var(--text3); letter-spacing: 0.08em; }
+.mini-nav-btn.active .mini-nav-label { color: var(--green); }
+
+/* ── FEATURES ── */
+.features {
+  max-width: 960px; margin: 0 auto;
+  padding: 80px 40px;
+}
+.features-header { text-align: center; margin-bottom: 56px; }
+.features-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  color: var(--green); text-transform: uppercase; margin-bottom: 12px;
+}
+.features-title {
+  font-family: var(--serif); font-size: clamp(28px, 5vw, 44px);
+  font-weight: 400; color: var(--text); line-height: 1.15;
+}
+.features-title em { font-style: italic; color: var(--green); }
+
+.features-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+}
+@media (max-width: 680px) { .features-grid { grid-template-columns: 1fr; } }
+@media (min-width: 681px) and (max-width: 900px) { .features-grid { grid-template-columns: 1fr 1fr; } }
+
+.feature-card {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 16px; padding: 28px 24px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.feature-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.feature-icon { font-size: 28px; margin-bottom: 16px; }
+.feature-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.feature-desc { font-size: 13px; color: var(--text2); line-height: 1.6; }
+.feature-tag {
+  display: inline-block; margin-top: 14px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
+  color: var(--green); background: var(--green-light);
+  padding: 3px 8px; border-radius: 5px; text-transform: uppercase;
+}
+.feature-tag.pro {
+  color: var(--amber); background: #fef3c7;
+}
+
+/* ── HOW IT WORKS ── */
+.how {
+  background: var(--text); color: white;
+  padding: 80px 40px;
+}
+.how-inner { max-width: 800px; margin: 0 auto; }
+.how-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  color: rgba(255,255,255,0.4); text-transform: uppercase; margin-bottom: 12px;
+}
+.how-title {
+  font-family: var(--serif); font-size: clamp(28px, 5vw, 44px);
+  font-weight: 400; line-height: 1.15; margin-bottom: 56px;
+}
+.how-title em { font-style: italic; color: var(--green-mid); }
+
+.steps { display: flex; flex-direction: column; gap: 0; }
+.step { display: flex; gap: 28px; padding: 32px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+.step:last-child { border-bottom: 1px solid rgba(255,255,255,0.08); }
+.step-num {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+  color: var(--green-mid); width: 28px; flex-shrink: 0; padding-top: 3px;
+}
+.step-content { flex: 1; }
+.step-title { font-family: var(--serif); font-size: 22px; margin-bottom: 8px; color: white; }
+.step-desc { font-size: 14px; color: rgba(255,255,255,0.55); line-height: 1.65; }
+.step-example {
+  margin-top: 16px; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+  padding: 14px 16px;
+  font-family: var(--mono); font-size: 12px;
+  color: rgba(255,255,255,0.7); line-height: 1.6;
+}
+.step-example .highlight { color: var(--green-mid); }
+
+/* ── DIFFERENTIATION ── */
+.diff {
+  max-width: 960px; margin: 0 auto; padding: 80px 40px;
+}
+.diff-header { text-align: center; margin-bottom: 40px; }
+.diff-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  color: var(--green); text-transform: uppercase; margin-bottom: 12px;
+}
+.diff-title {
+  font-family: var(--serif); font-size: clamp(28px, 5vw, 40px);
+  color: var(--text); line-height: 1.15;
+}
+.diff-title em { font-style: italic; color: var(--green); }
+
+.compare-table {
+  width: 100%; border: 1px solid var(--border); border-radius: 16px;
+  overflow: hidden; background: var(--white);
+}
+.compare-header {
+  display: grid; grid-template-columns: 2fr 1fr 1fr;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.compare-col-header {
+  padding: 14px 20px; font-size: 12px; font-weight: 600; color: var(--text2);
+  font-family: var(--mono); letter-spacing: 0.06em;
+}
+.compare-col-header.tally {
+  color: var(--green); background: var(--green-light);
+  display: flex; align-items: center; gap: 6px;
+}
+.compare-row {
+  display: grid; grid-template-columns: 2fr 1fr 1fr;
+  border-bottom: 1px solid var(--border);
+}
+.compare-row:last-child { border-bottom: none; }
+.compare-cell {
+  padding: 14px 20px; font-size: 13px; color: var(--text2);
+  display: flex; align-items: center;
+}
+.compare-cell.feature { color: var(--text); font-weight: 500; }
+.compare-cell.tally { background: rgba(232,245,238,0.4); font-weight: 500; color: var(--green); }
+.compare-cell.others { color: var(--text3); }
+.check { color: var(--green); font-weight: 700; margin-right: 4px; }
+.cross { color: var(--text3); margin-right: 4px; }
+.partial { color: var(--amber); margin-right: 4px; }
+
+/* ── BOTTOM CTA ── */
+.bottom-cta {
+  padding: 100px 40px;
+  text-align: center; background: var(--off);
+  border-top: 1px solid var(--border);
+}
+.bottom-cta-eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  color: var(--green); text-transform: uppercase; margin-bottom: 16px;
+}
+.bottom-cta-title {
+  font-family: var(--serif); font-size: clamp(32px, 6vw, 56px);
+  font-weight: 400; color: var(--text); line-height: 1.1;
+  margin-bottom: 20px;
+}
+.bottom-cta-title em { font-style: italic; color: var(--green); }
+.bottom-cta-sub {
+  font-size: 16px; color: var(--text2); margin-bottom: 40px;
+  font-weight: 300; max-width: 420px; margin-left: auto; margin-right: auto;
+  line-height: 1.6;
+}
+
+/* ── FOOTER ── */
+footer {
+  padding: 32px 40px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 16px;
+}
+.footer-logo { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+.footer-wordmark { font-family: var(--serif); font-size: 18px; color: var(--text); }
+.footer-copy { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+.footer-links { display: flex; gap: 20px; }
+.footer-link { font-size: 12px; color: var(--text3); text-decoration: none; transition: color 0.15s; }
+.footer-link:hover { color: var(--text); }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-content > * {
+  animation: fadeUp 0.6s ease both;
+}
+.hero-eyebrow    { animation-delay: 0s; }
+.hero-headline   { animation-delay: 0.08s; }
+.hero-sub        { animation-delay: 0.16s; }
+.waitlist-form   { animation-delay: 0.22s; }
+.success-msg     { animation-delay: 0.22s; }
+.form-note       { animation-delay: 0.26s; }
+.social-proof    { animation-delay: 0.32s; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 640px) {
+  nav { padding: 16px 20px; }
+  .nav-link { display: none; }
+  .features { padding: 60px 20px; }
+  .how { padding: 60px 20px; }
+  .diff { padding: 60px 20px; }
+  .bottom-cta { padding: 60px 20px; }
+  footer { padding: 24px 20px; flex-direction: column; align-items: flex-start; }
+  .waitlist-form { flex-direction: column; }
+  .compare-table { font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav id="nav">
+  <a href="/" class="nav-logo">
+    <div class="nav-icon">
+      <svg viewBox="0 0 26 26" fill="none">
+        <line x1="5" y1="6" x2="5" y2="20" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+        <line x1="10" y1="6" x2="10" y2="20" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+        <line x1="15" y1="6" x2="15" y2="20" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+        <line x1="20" y1="6" x2="20" y2="20" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+        <line x1="3" y1="18" x2="22" y2="8" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="nav-wordmark">Tally</span>
+  </a>
+  <div class="nav-right">
+    <a href="#features" class="nav-link">Features</a>
+    <a href="#how" class="nav-link">How it works</a>
+    <a href="#waitlist" class="nav-cta">Get early access</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-tally-bg">||||</div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <span class="eyebrow-dot"></span>
+      Alpha — Limited early access
+    </div>
+    <h1 class="hero-headline">
+      Know exactly what<br>to do with your <em>points</em>
+    </h1>
+    <p class="hero-sub">
+      Tally is the points advisor for people with 3–5 cards who want to stop leaving value on the table. Not another comparison tool — a specific recommendation engine.
+    </p>
+
+    <div class="success-msg" id="successMsg">
+      <span class="success-icon">✓</span>
+      You're on the list. We'll be in touch soon.
+    </div>
+
+    <form class="waitlist-form" id="waitlistForm" onsubmit="handleSubmit(event)">
+      <input
+        class="email-input"
+        type="email"
+        id="emailInput"
+        placeholder="your@email.com"
+        required
+        autocomplete="email">
+      <button class="submit-btn" type="submit">Join waitlist →</button>
+    </form>
+    <p class="form-note">Free during alpha · No credit card · First 100 users get Pro free forever</p>
+
+    <div class="social-proof">
+      <div class="sp-avatars">
+        <div class="sp-avatar">E</div>
+        <div class="sp-avatar">M</div>
+        <div class="sp-avatar">R</div>
+      </div>
+      <span class="sp-text">Join <strong>early testers</strong> already on the list</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── DEMO MOCKUP ── -->
+<section class="demo-section">
+  <div class="mockup-wrap">
+    <div class="mockup-glow"></div>
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="mini-header">
+        <div class="mini-logo">
+          <div class="mini-icon">
+            <svg viewBox="0 0 26 26" fill="none">
+              <line x1="5" y1="6" x2="5" y2="20" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+              <line x1="10" y1="6" x2="10" y2="20" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+              <line x1="15" y1="6" x2="15" y2="20" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+              <line x1="20" y1="6" x2="20" y2="20" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+              <line x1="3" y1="18" x2="22" y2="8" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="mini-wordmark">Tally</span>
+        </div>
+        <span class="mini-pts">127,500</span>
+      </div>
+      <div class="mini-body">
+        <div class="mini-eyebrow">Transfer Optimizer</div>
+        <div class="mini-title">Best use of<br>your <em>points</em></div>
+
+        <div class="mini-card best">
+          <div class="best-pill">BEST VALUE</div>
+          <div class="mini-card-top">
+            <div class="mini-card-left">
+              <div class="mini-card-prog">Virgin Atlantic Flying Club ✓</div>
+              <div class="mini-card-partner">via ANA · Upper class from 60K</div>
+            </div>
+            <div class="mini-card-pts">60,000<small>PTS NEEDED</small></div>
+          </div>
+          <div class="mini-bar-row">
+            <div class="mini-bar-wrap"><div class="mini-bar" style="width:100%"></div></div>
+            <span class="mini-cpp">~2.5¢/pt</span>
+          </div>
+          <div class="mini-chips">
+            <span class="mini-chip">Amex MR</span>
+            <span class="mini-chip">Chase UR</span>
+            <span class="mini-chip">Citi TY</span>
+          </div>
+        </div>
+
+        <div class="mini-card">
+          <div class="mini-card-top">
+            <div class="mini-card-left">
+              <div class="mini-card-prog">ANA Mileage Club</div>
+              <div class="mini-card-partner">on ANA/United · Best for Japan</div>
+            </div>
+            <div class="mini-card-pts">88,000<small>PTS NEEDED</small></div>
+          </div>
+          <div class="mini-bar-row">
+            <div class="mini-bar-wrap"><div class="mini-bar" style="width:88%"></div></div>
+            <span class="mini-cpp">~2.4¢/pt</span>
+          </div>
+          <div class="mini-chips">
+            <span class="mini-chip">Amex MR</span>
+          </div>
+        </div>
+
+        <div class="mini-card">
+          <div class="mini-card-top">
+            <div class="mini-card-left">
+              <div class="mini-card-prog">Singapore KrisFlyer</div>
+              <div class="mini-card-partner">Suites class · unmatched exp.</div>
+            </div>
+            <div class="mini-card-pts">89,000<small>PTS NEEDED</small></div>
+          </div>
+          <div class="mini-bar-row">
+            <div class="mini-bar-wrap"><div class="mini-bar" style="width:82%"></div></div>
+            <span class="mini-cpp">~2.2¢/pt</span>
+          </div>
+          <div class="mini-chips">
+            <span class="mini-chip">Amex MR</span>
+            <span class="mini-chip">Chase UR</span>
+          </div>
+        </div>
+
+      </div>
+      <div class="mini-nav">
+        <div class="mini-nav-btn active">
+          <span class="mini-nav-icon">⚡</span>
+          <span class="mini-nav-label">Optimize</span>
+        </div>
+        <div class="mini-nav-btn">
+          <span class="mini-nav-icon">💳</span>
+          <span class="mini-nav-label">Wallet</span>
+        </div>
+        <div class="mini-nav-btn">
+          <span class="mini-nav-icon">🗂</span>
+          <span class="mini-nav-label">Cards</span>
+        </div>
+        <div class="mini-nav-btn">
+          <span class="mini-nav-icon">⭐</span>
+          <span class="mini-nav-label">Spots</span>
+        </div>
+        <div class="mini-nav-btn">
+          <span class="mini-nav-icon">🔔</span>
+          <span class="mini-nav-label">Expiry</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section class="features" id="features">
+  <div class="features-header">
+    <div class="features-eyebrow">What's inside</div>
+    <h2 class="features-title">Everything you need,<br><em>nothing you don't</em></h2>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">Transfer Optimizer</div>
+      <div class="feature-desc">Enter your route and cabin. Tally ranks every transfer option by cents-per-point, detects transatlantic vs transpacific vs domestic, and shows you exactly which card to transfer from.</div>
+      <span class="feature-tag">Free</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">💳</div>
+      <div class="feature-title">Points Wallet</div>
+      <div class="feature-desc">Track balances across Amex MR, Chase UR, Citi TY, Capital One, and Bilt. See your combined estimated value and get a coverage indicator on every recommendation.</div>
+      <span class="feature-tag">Free</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⭐</div>
+      <div class="feature-title">Sweet Spots Library</div>
+      <div class="feature-desc">Curated high-value redemptions — ANA First via Virgin, Park Hyatt Tokyo, Turkish Business — with exact point costs, estimated cash value, and the cards that get you there.</div>
+      <span class="feature-tag">Free</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔔</div>
+      <div class="feature-title">Expiry Tracker</div>
+      <div class="feature-desc">Never lose points to inactivity. Tally tracks expiry rules for every program, gives you a days-remaining countdown, and tells you exactly what action will reset the clock.</div>
+      <span class="feature-tag">Free</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">☁️</div>
+      <div class="feature-title">Cloud Sync</div>
+      <div class="feature-desc">Sign in with Google or Apple. Your wallet balances, saved trips, and expiry dates follow you across every device — phone, tablet, desktop.</div>
+      <span class="feature-tag pro">Pro</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📬</div>
+      <div class="feature-title">Promo Alerts</div>
+      <div class="feature-desc">Flying Blue drops promo awards the first week of every month. Tally monitors and pushes you a notification the moment they go live — before they're gone.</div>
+      <span class="feature-tag pro">Pro — Coming Soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section class="how" id="how">
+  <div class="how-inner">
+    <div class="how-eyebrow">How it works</div>
+    <h2 class="how-title">Three steps to <em>stop<br>leaving value on the table</em></h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <div class="step-title">Add your balances</div>
+          <div class="step-desc">Enter your current point totals for each program. Tally stores them locally — no account needed to get started.</div>
+          <div class="step-example">
+            Amex MR: <span class="highlight">75,000</span> · Chase UR: <span class="highlight">52,500</span> · Bilt: <span class="highlight">18,000</span>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <div class="step-title">Tell Tally where you're going</div>
+          <div class="step-desc">Enter your origin, destination, cabin class, and passenger count. Or choose hotel and pick your category. Tally detects the route region automatically.</div>
+          <div class="step-example">
+            <span class="highlight">ORD → NRT</span> · Business · 2 passengers
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <div class="step-title">Get a specific recommendation</div>
+          <div class="step-desc">Tally ranks every applicable transfer option by real cents-per-point value, marks which programs you can already cover with your balance, and tells you what to do next.</div>
+          <div class="step-example">
+            <span class="highlight">Transfer 60K Amex MR → Virgin Atlantic.</span> Fly ANA Business to Tokyo. That's worth ~$3,500 in cash — a 5.8¢/pt return.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── COMPARISON ── -->
+<section class="diff">
+  <div class="diff-header">
+    <div class="diff-eyebrow">Why Tally</div>
+    <h2 class="diff-title">Built different<br><em>on purpose</em></h2>
+  </div>
+  <div class="compare-table">
+    <div class="compare-header">
+      <div class="compare-col-header">Feature</div>
+      <div class="compare-col-header tally">
+        <svg width="14" height="14" viewBox="0 0 26 26" fill="none" style="flex-shrink:0">
+          <line x1="5" y1="6" x2="5" y2="20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="10" y1="6" x2="10" y2="20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="15" y1="6" x2="15" y2="20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="20" y1="6" x2="20" y2="20" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="3" y1="18" x2="22" y2="8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        Tally
+      </div>
+      <div class="compare-col-header">Others</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-cell feature">Specific recommendation, not a list</div>
+      <div class="compare-cell tally"><span class="check">✓</span> Always</div>
+      <div class="compare-cell others"><span class="cross">✗</span> Rarely</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-cell feature">Works from your actual balances</div>
+      <div class="compare-cell tally"><span class="check">✓</span> Yes</div>
+      <div class="compare-cell others"><span class="partial">~</span> Some</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-cell feature">Points expiry tracking</div>
+      <div class="compare-cell tally"><span class="check">✓</span> Built in</div>
+      <div class="compare-cell others"><span class="cross">✗</span> Missing</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-cell feature">Mobile-first, installable PWA</div>
+      <div class="compare-cell tally"><span class="check">✓</span> iOS + Android</div>
+      <div class="compare-cell others"><span class="cross">✗</span> Desktop-first</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-cell feature">No ads or affiliate bias</div>
+      <div class="compare-cell tally"><span class="check">✓</span> Never</div>
+      <div class="compare-cell others"><span class="cross">✗</span> Ad-supported</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-cell feature">Flying Blue promo alerts</div>
+      <div class="compare-cell tally"><span class="check">✓</span> Pro</div>
+      <div class="compare-cell others"><span class="partial">~</span> Manual only</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-cell feature">Tells you when NOT to transfer</div>
+      <div class="compare-cell tally"><span class="check">✓</span> Yes</div>
+      <div class="compare-cell others"><span class="cross">✗</span> No</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── BOTTOM CTA ── -->
+<section class="bottom-cta" id="waitlist">
+  <div class="bottom-cta-eyebrow">Join the alpha</div>
+  <h2 class="bottom-cta-title">Stop guessing.<br><em>Start knowing.</em></h2>
+  <p class="bottom-cta-sub">Free during alpha. First 100 users get Pro free, forever.</p>
+
+  <div class="success-msg" id="successMsg2" style="max-width:420px;margin:0 auto 16px;">
+    <span class="success-icon">✓</span>
+    You're on the list. We'll email you when access opens.
+  </div>
+
+  <form class="waitlist-form" id="waitlistForm2" onsubmit="handleSubmit2(event)" style="justify-content:center;">
+    <input class="email-input" type="email" id="emailInput2" placeholder="your@email.com" required autocomplete="email">
+    <button class="submit-btn" type="submit">Join waitlist →</button>
+  </form>
+  <p class="form-note" style="margin-top:12px;">No spam. One email when access opens.</p>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <a href="/" class="footer-logo">
+    <div class="nav-icon" style="width:24px;height:24px;border-radius:6px;">
+      <svg width="13" height="13" viewBox="0 0 26 26" fill="none">
+        <line x1="5" y1="6" x2="5" y2="20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="10" y1="6" x2="10" y2="20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="15" y1="6" x2="15" y2="20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="20" y1="6" x2="20" y2="20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="3" y1="18" x2="22" y2="8" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="footer-wordmark">Tally</span>
+  </a>
+  <div class="footer-links">
+    <a href="#features" class="footer-link">Features</a>
+    <a href="#how" class="footer-link">How it works</a>
+    <a href="mailto:hello@tallypoints.app" class="footer-link">Contact</a>
+  </div>
+  <span class="footer-copy">© 2025 Tally. Free during alpha.</span>
+</footer>
+
+<script>
+// Nav scroll effect
+window.addEventListener('scroll', () => {
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 20);
+});
+
+// Waitlist submit (hero form)
+// Replace this with your actual email service (Loops, Mailchimp, Resend, etc.)
+function handleSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById('emailInput').value;
+  submitEmail(email, 'waitlistForm', 'successMsg');
+}
+
+function handleSubmit2(e) {
+  e.preventDefault();
+  const email = document.getElementById('emailInput2').value;
+  submitEmail(email, 'waitlistForm2', 'successMsg2');
+}
+
+function submitEmail(email, formId, successId) {
+  // ── CONFIGURE THIS ──────────────────────────────────────────
+  // Option A: Loops.so
+  // fetch('https://app.loops.so/api/newsletter-form/YOUR_FORM_ID', {
+  //   method: 'POST', headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ email })
+  // });
+
+  // Option B: Mailchimp (via serverless function)
+  // fetch('/api/subscribe', { method: 'POST', body: JSON.stringify({ email }) });
+
+  // Option C: n8n webhook (matches your existing stack)
+  // fetch('https://your-n8n.com/webhook/tally-waitlist', {
+  //   method: 'POST', headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ email, timestamp: new Date().toISOString(), source: 'landing-page' })
+  // });
+  // ─────────────────────────────────────────────────────────────
+
+  console.log('Waitlist signup:', email); // Replace with real submission
+
+  document.getElementById(formId).style.display = 'none';
+  document.getElementById(successId).classList.add('show');
+}
+</script>
+
+</body>
+</html>
