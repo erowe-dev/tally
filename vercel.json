@@ -1,0 +1,8 @@
+{
+  "buildCommand": "cd tally && npm run build",
+  "outputDirectory": "tally/dist/tally/browser",
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
