@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  auth0Id   String   @unique
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  balances      Balance[]
+  expiryRecords ExpiryRecord[]
+
+  @@map("users")
+}
+
+model Balance {
+  id        String   @id @default(cuid())
+  userId    String
+  cardId    String   // 'amex_mr', 'chase_ur', etc. — matches DataService card IDs
+  amount    Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cardId])
+  @@map("balances")
+}
+
+model ExpiryRecord {
+  id               String   @id @default(cuid())
+  userId           String
+  cardId           String
+  lastActivityDate String   // 'YYYY-MM-DD' — matches existing ExpiryService format exactly
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cardId])
+  @@map("expiry_records")
+}

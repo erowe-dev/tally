@@ -40,12 +40,13 @@ export class OptimizerService {
   private detectRoute(from: string, to: string): string {
     const fromUS = US_AIRPORTS.has(from);
     const fromEU = EU_AIRPORTS.has(from);
+    const fromAsia = ASIA_AIRPORTS.has(from);
     const toEU   = EU_AIRPORTS.has(to);
     const toAsia = ASIA_AIRPORTS.has(to);
     const toUS   = US_AIRPORTS.has(to);
 
     if ((fromUS && toEU) || (fromEU && toUS)) return 'transatlantic';
-    if (fromUS && toAsia) return 'transpacific';
+    if ((fromUS && toAsia) || (fromAsia && toUS)) return 'transpacific';
     if (fromUS && toUS)   return 'domestic';
     return 'default';
   }

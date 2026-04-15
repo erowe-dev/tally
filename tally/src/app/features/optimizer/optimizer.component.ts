@@ -1,10 +1,10 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { OptimizerService } from '../../core/services/optimizer.service';
 import { WalletService } from '../../core/services/wallet.service';
 import { DataService } from '../../core/services/data.service';
-import { Recommendation, TripType, CabinClass, HotelCategory } from '../../core/models';
+import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
 
 @Component({
   selector: 'tally-optimizer',
@@ -67,9 +67,17 @@ import { Recommendation, TripType, CabinClass, HotelCategory } from '../../core/
         <div class="field-row">
           <div class="field full">
             <label class="field-label">Destination</label>
-            <input class="field-input" [(ngModel)]="hotelDest" placeholder="Paris, Tokyo, Maldives…">
+            <input
+              class="field-input is-disabled"
+              [value]="hotelDest"
+              placeholder="Destination-aware hotel search coming soon"
+              disabled
+              aria-describedby="hotel-destination-note">
           </div>
         </div>
+        <p class="field-note" id="hotel-destination-note">
+          Hotel recommendations currently use category and nights only.
+        </p>
         <div class="field-row">
           <div class="field">
             <label class="field-label">Category</label>
@@ -183,6 +191,19 @@ import { Recommendation, TripType, CabinClass, HotelCategory } from '../../core/
     .field-input:focus { border-color: var(--tally-green); }
     .field-input::placeholder { color: var(--text3); font-weight: 400; }
     select.field-input option { background: var(--white); color: var(--text); }
+    .field-input.is-disabled {
+      background: var(--surface);
+      color: var(--text3);
+      cursor: not-allowed;
+      opacity: 1;
+    }
+    .field-note {
+      margin: -2px 0 12px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      color: var(--text3);
+      line-height: 1.45;
+    }
 
     .btn-analyze {
       width: 100%; background: var(--tally-green); color: white;
