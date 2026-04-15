@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ExpiryService, ExpiryStatus } from '../../core/services/expiry.service';
@@ -178,7 +178,7 @@ import { ExpiryService, ExpiryStatus } from '../../core/services/expiry.service'
 })
 export class ExpiryComponent {
   expiry = inject(ExpiryService);
-  todayStr = new Date().toISOString().split('T')[0];
+  todayStr = this.formatLocalDate(new Date());
 
   urgencyLabel(status: ExpiryStatus): string {
     switch (status.urgency) {
@@ -197,5 +197,12 @@ export class ExpiryComponent {
   onDateChange(cardId: string, event: Event): void {
     const val = (event.target as HTMLInputElement).value;
     if (val) this.expiry.setLastActivity(cardId, val);
+  }
+
+  private formatLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }
