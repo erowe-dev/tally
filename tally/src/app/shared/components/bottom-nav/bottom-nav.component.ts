@@ -1,7 +1,8 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavTab } from '../../../core/models';
 import { ExpiryService } from '../../../core/services/expiry.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 interface NavItem { id: NavTab; label: string; icon: string; }
 
@@ -15,13 +16,17 @@ interface NavItem { id: NavTab; label: string; icon: string; }
         *ngFor="let item of items"
         class="nav-btn"
         [class.active]="activeTab === item.id"
+        [class.locked]="isLocked(item.id)"
         (click)="tabChange.emit(item.id)"
       >
         <span class="nav-icon-wrap">
           <span class="nav-icon">{{ item.icon }}</span>
-          <span class="badge" *ngIf="item.id === 'expiry' && expiry.criticalCount() > 0">
+          <!-- Expiry critical count badge -->
+          <span class="badge" *ngIf="item.id === 'expiry' && expiry.criticalCount() > 0 && auth.isAuthenticated()">
             {{ expiry.criticalCount() }}
           </span>
+          <!-- Lock indicator for protected tabs when unauthenticated -->
+          <span class="lock-dot" *ngIf="isLocked(item.id)"></span>
         </span>
         <span class="nav-label">{{ item.label }}</span>
       </button>
@@ -45,6 +50,8 @@ interface NavItem { id: NavTab; label: string; icon: string; }
     }
     .nav-icon-wrap { position: relative; display: flex; justify-content: center; }
     .nav-icon { font-size: 20px; line-height: 1; }
+
+    /* Expiry critical count badge */
     .badge {
       position: absolute; top: -4px; right: -8px;
       background: var(--tally-red); color: white;
@@ -52,18 +59,35 @@ interface NavItem { id: NavTab; label: string; icon: string; }
       width: 15px; height: 15px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
     }
+
+    /* Small dot on protected tabs when not signed in */
+    .lock-dot {
+      position: absolute; top: -2px; right: -6px;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--border); border: 1.5px solid var(--off);
+    }
+
     .nav-label {
       font-size: 9px; font-family: 'Geist Mono', monospace;
       letter-spacing: 0.08em; color: var(--text3); text-transform: uppercase;
     }
     .nav-btn.active .nav-label { color: var(--tally-green); }
-  `]
+    .nav-btn.locked .nav-icon { opacity: 0.5; }
+    .nav-btn.locked .nav-label { opacity: 0.5; }
+  `],
 })
 export class BottomNavComponent {
-  @Input() activeTab: NavTab = 'optimizer';
+  @Input() activeTab: NavTab = 'cards';
   @Output() tabChange = new EventEmitter<NavTab>();
 
-  constructor(public expiry: ExpiryService) {}
+  expiry = inject(ExpiryService);
+  auth = inject(AuthService);
+
+  private readonly PROTECTED: Set<NavTab> = new Set(['optimizer', 'wallet', 'expiry']);
+
+  isLocked(tab: NavTab): boolean {
+    return this.PROTECTED.has(tab) && !this.auth.isAuthenticated();
+  }
 
   items: NavItem[] = [
     { id: 'optimizer',  label: 'Optimize', icon: '⚡' },

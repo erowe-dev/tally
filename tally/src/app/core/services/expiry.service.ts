@@ -1,4 +1,6 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject, effect } from '@angular/core';
+import { AuthService } from './auth.service';
+import { ApiService } from './api.service';
 
 export interface ExpiryRule {
   cardId: string;
@@ -27,6 +29,7 @@ export interface ExpiryStatus {
 }
 
 const STORAGE_KEY = 'tally_expiry_v1';
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 const EXPIRY_RULES: ExpiryRule[] = [
   {
@@ -71,7 +74,10 @@ const SAFE_CARDS = new Set(['amex_mr', 'chase_ur', 'cap1_miles']);
 
 @Injectable({ providedIn: 'root' })
 export class ExpiryService {
-  private _records = signal<Record<string, ExpiryRecord>>(this.load());
+  private auth = inject(AuthService);
+  private api = inject(ApiService);
+
+  private _records = signal<Record<string, ExpiryRecord>>(this.loadLocal());
 
   readonly records = this._records.asReadonly();
 
@@ -81,27 +87,58 @@ export class ExpiryService {
   });
 
   readonly hasWarnings = computed(() =>
-    this.statuses().some(s => s.urgency === 'warning' || s.urgency === 'critical' || s.urgency === 'expired')
+    this.statuses().some(
+      s => s.urgency === 'warning' || s.urgency === 'critical' || s.urgency === 'expired',
+    ),
   );
 
   readonly criticalCount = computed(() =>
-    this.statuses().filter(s => s.urgency === 'critical' || s.urgency === 'expired').length
+    this.statuses().filter(s => s.urgency === 'critical' || s.urgency === 'expired').length,
   );
+
+  constructor() {
+    // When Auth0 finishes its session check and the user is logged in,
+    // fetch from the API (source of truth) and overwrite the local cache.
+    effect(() => {
+      if (this.auth.isResolved() && this.auth.isAuthenticated()) {
+        this.api.getExpiryRecords().subscribe({
+          next: records => {
+            this._records.set(records);
+            this.saveLocal(records);
+          },
+          error: err =>
+            console.error('[ExpiryService] API load failed, using localStorage cache:', err),
+        });
+      }
+    });
+  }
 
   setLastActivity(cardId: string, date: string): void {
     const updated = {
       ...this._records(),
-      [cardId]: { cardId, lastActivityDate: date }
+      [cardId]: { cardId, lastActivityDate: date },
     };
     this._records.set(updated);
-    this.save(updated);
+    this.saveLocal(updated);
+
+    if (this.auth.isAuthenticated()) {
+      this.api.setExpiryRecord(cardId, date).subscribe({
+        error: err => console.error('[ExpiryService] API sync failed:', err),
+      });
+    }
   }
 
   clearActivity(cardId: string): void {
     const updated = { ...this._records() };
     delete updated[cardId];
     this._records.set(updated);
-    this.save(updated);
+    this.saveLocal(updated);
+
+    if (this.auth.isAuthenticated()) {
+      this.api.deleteExpiryRecord(cardId).subscribe({
+        error: err => console.error('[ExpiryService] API delete failed:', err),
+      });
+    }
   }
 
   private computeStatus(rule: ExpiryRule, record: ExpiryRecord | undefined): ExpiryStatus {
@@ -122,7 +159,6 @@ export class ExpiryService {
     }
 
     if (!record) {
-      // No activity date set — prompt user
       return {
         ...base,
         daysRemaining: null,
@@ -132,13 +168,13 @@ export class ExpiryService {
       };
     }
 
-    const lastActivity = new Date(record.lastActivityDate);
+    const lastActivity = this.parseLocalDate(record.lastActivityDate);
     const expiryDate = new Date(lastActivity);
     expiryDate.setMonth(expiryDate.getMonth() + (rule.inactivityMonths ?? 18));
+    expiryDate.setHours(0, 0, 0, 0);
 
-    const now = new Date();
-    const msRemaining = expiryDate.getTime() - now.getTime();
-    const daysRemaining = Math.floor(msRemaining / (1000 * 60 * 60 * 24));
+    const today = this.startOfLocalDay(new Date());
+    const daysRemaining = Math.round((expiryDate.getTime() - today.getTime()) / MS_PER_DAY);
 
     let urgency: ExpiryStatus['urgency'];
     let actionNeeded: string;
@@ -154,20 +190,33 @@ export class ExpiryService {
       actionNeeded = `Make a purchase or transfer within ${daysRemaining} days to keep points active.`;
     } else {
       urgency = 'safe';
-      actionNeeded = 'You\'re in good shape. Check back in a few months.';
+      actionNeeded = "You're in good shape. Check back in a few months.";
     }
 
     return { ...base, daysRemaining, urgency, expiryDate, actionNeeded };
   }
 
-  private load(): Record<string, ExpiryRecord> {
+  private loadLocal(): Record<string, ExpiryRecord> {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       return raw ? JSON.parse(raw) : {};
-    } catch { return {}; }
+    } catch {
+      return {};
+    }
   }
 
-  private save(data: Record<string, ExpiryRecord>): void {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+  private saveLocal(data: Record<string, ExpiryRecord>): void {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch {}
+  }
+
+  private parseLocalDate(value: string): Date {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, (month ?? 1) - 1, day ?? 1);
+  }
+
+  private startOfLocalDay(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
   }
 }
