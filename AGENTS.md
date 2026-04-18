@@ -14,8 +14,9 @@ Tally is a mobile-first PWA that helps intermediate credit card points earners o
 - **API:** Express + TypeScript in `api/` — deployed on Render
 - **Database:** Supabase (PostgreSQL) + Prisma ORM
 - **Persistence:** `localStorage` write-through cache; API is source of truth on load
-- **PWA:** `@angular/service-worker` + `ngsw-config.json`
+- **PWA:** `manifest.webmanifest` in `src/`, wired to `angular.json` assets
 - **Styling:** Component-scoped SCSS + global CSS custom properties in `src/styles.scss`
+- **Dark mode:** Automatic via `@media (prefers-color-scheme: dark)` in `styles.scss`
 - **Angular deploy:** Vercel (auto-deploy on push to `main`, root dir = `tally/`)
 - **API deploy:** Render (web service, root dir = `api/`)
 
@@ -24,29 +25,34 @@ Tally is a mobile-first PWA that helps intermediate credit card points earners o
 ## Repository Structure
 ```
 tally/                                   ← Angular app (Vercel root dir)
-├── src/app/
-│   ├── core/
-│   │   ├── models/index.ts              # All TypeScript interfaces + NavTab type
-│   │   └── services/
-│   │       ├── auth.service.ts          # Auth0 wrapper: signals + provisioning + retry
-│   │       ├── api.service.ts           # Authenticated HTTP client (getBalances, setBalance, etc.)
-│   │       ├── network.service.ts       # Online/offline signal (window events)
-│   │       ├── data.service.ts          # Static card/partner/recommendation data
-│   │       ├── wallet.service.ts        # Balance tracking — signals + localStorage + API sync
-│   │       ├── optimizer.service.ts     # Route detection + transfer recommendations
-│   │       └── expiry.service.ts        # Per-program expiry rules engine + API sync
-│   ├── features/
-│   │   ├── optimizer/                   # Transfer optimizer tab (protected)
-│   │   ├── wallet/                      # Points wallet tab (protected)
-│   │   ├── cards/                       # Cards & partners reference tab (public)
-│   │   ├── sweetspots/                  # Curated sweet spots tab (public)
-│   │   └── expiry/                      # Points expiry tracker tab (protected)
-│   └── shared/components/
-│       ├── tally-logo/                  # Logo component (size + showText inputs)
-│       └── bottom-nav/                  # Bottom nav with expiry badge + lock dots
-├── src/environments/
-│   ├── environment.ts                   # Dev: localhost API + Auth0 dev app
-│   └── environment.production.ts        # Prod: Render API URL + same Auth0 app
+├── src/
+│   ├── app/
+│   │   ├── core/
+│   │   │   ├── models/index.ts              # All TypeScript interfaces + NavTab type
+│   │   │   └── services/
+│   │   │       ├── auth.service.ts          # Auth0 wrapper: signals + provisioning + retry
+│   │   │       ├── api.service.ts           # Authenticated HTTP client (balances, expiry, trips)
+│   │   │       ├── network.service.ts       # Online/offline signal (window events)
+│   │   │       ├── data.service.ts          # Static card/partner/recommendation/bonus data
+│   │   │       ├── wallet.service.ts        # Balance tracking — signals + localStorage + API sync
+│   │   │       ├── optimizer.service.ts     # Route detection + transfer recommendations
+│   │   │       ├── expiry.service.ts        # Per-program expiry rules engine + API sync
+│   │   │       └── trips.service.ts         # Saved trips — optimistic UI + API sync
+│   │   ├── features/
+│   │   │   ├── optimizer/                   # Transfer optimizer tab (protected)
+│   │   │   ├── wallet/                      # Points wallet tab (protected)
+│   │   │   ├── cards/                       # Cards & partners reference tab (public)
+│   │   │   ├── sweetspots/                  # Curated sweet spots + transfer bonuses (public)
+│   │   │   └── expiry/                      # Points expiry tracker tab (protected)
+│   │   └── shared/components/
+│   │       ├── tally-logo/                  # Logo component (size + showText inputs)
+│   │       └── bottom-nav/                  # Bottom nav with expiry badge + lock dots
+│   ├── environments/
+│   │   ├── environment.ts                   # Dev: localhost API + Auth0 dev app
+│   │   └── environment.production.ts        # Prod: Render API URL + same Auth0 app
+│   ├── styles.scss                          # Global CSS tokens + dark mode palette
+│   ├── index.html                           # PWA meta tags, fonts, manifest link
+│   └── manifest.webmanifest                 # PWA manifest (icons, shortcuts)
 api/                                     ← Express API (Render root dir)
 ├── src/
 │   ├── index.ts                         # Express entry: CORS, routes, env validation
@@ -58,8 +64,9 @@ api/                                     ← Express API (Render root dir)
 │   └── routes/
 │       ├── users.ts                     # POST /api/users/me (upsert on auth0Id)
 │       ├── balances.ts                  # GET/PUT /api/balances/:cardId
-│       └── expiry.ts                    # GET/PUT/DELETE /api/expiry/:cardId
-└── prisma/schema.prisma                 # User, Balance, ExpiryRecord models
+│       ├── expiry.ts                    # GET/PUT/DELETE /api/expiry/:cardId
+│       └── trips.ts                     # GET/POST/DELETE /api/trips
+└── prisma/schema.prisma                 # User, Balance, ExpiryRecord, Trip models
 ```
 
 ---
@@ -79,12 +86,13 @@ api/                                     ← Express API (Render root dir)
 - Auth state: `auth.isAuthenticated()`, `auth.isResolved()`, `auth.isProvisioned()`
 - **Always gate API calls on `auth.isProvisioned()`** not just `isAuthenticated()` — prevents 404 race with POST /api/users/me
 
-### API sync pattern (wallet + expiry)
+### API sync pattern (wallet / expiry / trips)
 ```
 1. On login: effect() fires when isResolved() && isAuthenticated() && isProvisioned() && isOnline()
 2. GET /api/{resource} → if API empty + local has data → push local up; else API overwrites local
 3. Writes: update signal + localStorage immediately, then fire-and-forget API call
-4. Error: reset _apiLoaded=false so retry happens when network comes back
+4. Error: reset _apiLoaded=false so retry happens when network comes back (isOnline() re-fires effect)
+5. Optimistic trips: insert local with temp id, replace with real id on API success
 ```
 
 ### File conventions
@@ -92,10 +100,35 @@ api/                                     ← Express API (Render root dir)
 - Services are `providedIn: 'root'`
 - All interfaces in `src/app/core/models/index.ts`
 
-### Data
-- Static data (cards, partners, recommendations, sweet spots) lives in `data.service.ts`
-- `localStorage` keys: `tally_wallet_v1`, `tally_expiry_v1`
+### Data (all static, lives in `data.service.ts`)
+- `cards: CreditCard[]` — 14 programs (5 transferable, 5 airline, 4 hotel)
+- `flightRecs: Record<string, Recommendation[]>` — 9 route categories (transatlantic, transpacific, domestic, latin_america, caribbean, middle_east, africa, eurasia, default)
+- `hotelRecs: Record<string, Recommendation[]>` — 5 hotel tiers (budget, mid, luxury, top, default)
+- `sweetSpots: SweetSpot[]` — 16 curated sweet spots with category filter
+- `transferBonuses: TransferBonus[]` — active time-limited transfer bonus promos (manually updated)
+- `localStorage` keys: `tally_wallet_v1`, `tally_expiry_v1`, `tally_trips_v1`
 - Always wrap `localStorage` in try/catch
+
+---
+
+## Feature Summary (implemented)
+
+### Tabs
+| Tab | Auth | Description |
+|---|---|---|
+| Optimizer | Protected | Flight/hotel transfer optimizer with 9 route categories, wallet coverage bars, estimated $ value, saved trips |
+| Wallet | Protected | Balance entry grouped by category (Transferable/Airline/Hotel), quick-add buttons, per-row $ value, goal tracker |
+| Cards | Public | Partner programs with full-text search, category filter, "Great only" toggle |
+| Spots | Public | 16 curated sweet spots with category filter + active transfer bonus strip |
+| Expiry | Protected | Per-program expiry rules engine, urgency sorting, Mark Today button, warning/critical/safe banners |
+
+### Cross-app features
+- Offline banner + sync-on-reconnect
+- Expiry critical ribbon (all tabs, navigates to Expiry)
+- Auth loading spinner
+- User avatar + sign out
+- Dark mode (automatic, `prefers-color-scheme`)
+- Expiry badge on bottom nav
 
 ---
 
@@ -113,6 +146,8 @@ api/                                     ← Express API (Render root dir)
 --text2:             #5c5a54   → Secondary text
 --text3:             #9b9890   → Labels, placeholders, tertiary
 ```
+Dark mode overrides these automatically via `@media (prefers-color-scheme: dark)` — never hard-code light colors in components.
+
 Fonts:
 - Display: `'Instrument Serif'` — headlines, section titles, logo wordmark
 - UI/Body: `'Geist'` — all interactive elements, body copy
@@ -123,13 +158,20 @@ Fonts:
 ## Adding Data
 
 ### New credit card program
-Add to `cards` array in `data.service.ts`, also add to `EXPIRY_RULES` in `expiry.service.ts`.
+1. Add to `cards` array in `data.service.ts` with `category: 'transferable' | 'airline' | 'hotel'`
+2. Add to `EXPIRY_RULES` in `expiry.service.ts`
 
 ### New expiry rule
 Add to `EXPIRY_RULES` in `expiry.service.ts`. Types: `'activity'`, `'fixed'`, `'never'`.
 
 ### New flight/hotel recommendation set
-Add to `flightRecs` or `hotelRecs` in `data.service.ts`.
+Add a new route key to `flightRecs` or `hotelRecs` in `data.service.ts`, then add the airport codes to the corresponding Set in `optimizer.service.ts` and add a case to `detectRoute()`.
+
+### New sweet spot
+Add to `sweetSpots` array in `data.service.ts` with `category: 'flight' | 'hotel' | 'promo'`.
+
+### New transfer bonus
+Add to `transferBonuses` array in `data.service.ts`. The Sweet Spots tab auto-hides expired bonuses (`expires` date compared to today).
 
 ---
 
@@ -183,19 +225,19 @@ After creating the Render service, replace with the actual URL (e.g. `https://ta
 ---
 
 ## Known Build Notes
-- `@angular/service-worker` must stay at version 18.x to match Angular core
 - Google Fonts loaded via `<link>` in `index.html`, NOT `@import` in SCSS (causes build-time 403)
 - Font inlining disabled in `angular.json` (`optimization.fonts: false`)
-- Component style budget warnings for `optimizer` and `expiry` are expected — ignore them
+- Component style budget: `anyComponentStyle` warning at 8 kB, error at 12 kB
 - Auth0 SDK adds ~208 kB to the bundle; initial bundle budget raised to 700 kB warn / 1 MB error
+- PWA icons (`public/icons/icon-192.png`, `public/icons/icon-512.png`) not yet generated — add them to complete PWA install experience
 
 ---
 
 ## Not Implemented Yet (next priorities)
 1. **Render deploy** — create Render service, fill `TODO_YOUR_RENDER_API_URL` in `environment.production.ts`
 2. Wire `landing/index.html` waitlist form to n8n webhook (`submitEmail()` currently logs)
-3. Generate PWA icons: `npm install --save-dev canvas && npm run icons`
-4. Saved trips feature
-5. Stripe billing (`$6.99/mo` or `$49/yr`)
-6. Seats.aero API for live award availability
-7. Web push notifications for expiry alerts + Flying Blue promos
+3. Generate PWA icons (`public/icons/icon-192.png`, `public/icons/icon-512.png`)
+4. Stripe billing (`$6.99/mo` or `$49/yr`)
+5. Seats.aero API for live award availability
+6. Web push notifications for expiry alerts + Flying Blue promos
+7. Trip notes editing in Saved Trips panel
