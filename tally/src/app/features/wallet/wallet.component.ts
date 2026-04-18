@@ -5,6 +5,7 @@ import { WalletService, HistoryEntry } from '../../core/services/wallet.service'
 import { DataService } from '../../core/services/data.service';
 import { OptimizerService } from '../../core/services/optimizer.service';
 import { ExpiryService } from '../../core/services/expiry.service';
+import { NavigationService } from '../../core/services/navigation.service';
 import { CreditCard } from '../../core/models';
 
 @Component({
@@ -28,6 +29,16 @@ import { CreditCard } from '../../core/models';
           <div class="shimmer-row" *ngFor="let n of [1,2,3,4,5]"></div>
         </div>
       </ng-container>
+
+      <!-- Points at Risk banner -->
+      <div class="at-risk-banner" *ngIf="wallet.syncState() !== 'loading' && atRiskSummary() as r">
+        <div class="arb-icon">⚠️</div>
+        <div class="arb-body">
+          <div class="arb-title">{{ r.pts | number }} points at risk</div>
+          <div class="arb-sub">{{ r.programs }} program{{ r.programs !== 1 ? 's' : '' }} expiring within 90 days</div>
+        </div>
+        <button class="arb-action" (click)="nav.navigateTo({ tab: 'expiry' })">Review →</button>
+      </div>
 
       <!-- Program groups -->
       <ng-container *ngIf="wallet.syncState() !== 'loading'">
@@ -283,6 +294,33 @@ import { CreditCard } from '../../core/models';
     .card-info { flex: 1; min-width: 0; }
     .card-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-sub { font-size: 10px; color: var(--text3); font-family: 'Geist Mono', monospace; margin-top: 1px; }
+    /* Points at risk banner */
+    .at-risk-banner {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--tally-red-light, #fef2f2);
+      border: 1px solid rgba(220,38,38,0.2); border-radius: 12px;
+      padding: 12px 14px; margin-bottom: 16px;
+    }
+    .arb-icon { font-size: 18px; flex-shrink: 0; }
+    .arb-body { flex: 1; min-width: 0; }
+    .arb-title {
+      font-family: 'Geist Mono', monospace; font-size: 13px;
+      font-weight: 600; color: var(--tally-red, #dc2626);
+    }
+    .arb-sub {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--tally-red, #dc2626); opacity: 0.8; margin-top: 2px;
+      letter-spacing: 0.04em;
+    }
+    .arb-action {
+      background: var(--tally-red, #dc2626); color: white;
+      border: none; border-radius: 8px; padding: 6px 12px;
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.06em; cursor: pointer; flex-shrink: 0;
+      transition: opacity 0.15s;
+    }
+    .arb-action:hover { opacity: 0.85; }
+
     .expiry-badge {
       display: inline-block; margin-top: 3px;
       font-family: 'Geist Mono', monospace; font-size: 9px;
@@ -521,6 +559,7 @@ export class WalletComponent {
   data = inject(DataService);
   private optimizer = inject(OptimizerService);
   private expiry = inject(ExpiryService);
+  nav = inject(NavigationService);
   private _allRecs = this.optimizer.getAllRecs();
 
   expandedCard = signal<string | null>(null);
@@ -707,6 +746,20 @@ export class WalletComponent {
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  /** Aggregates all at-risk balances across warning/critical/expired programs */
+  readonly atRiskSummary = computed((): { pts: number; programs: number } | null => {
+    let totalPts = 0;
+    let count = 0;
+    for (const s of this.expiry.statuses()) {
+      if (s.urgency === 'safe' || s.urgency === 'never') continue;
+      const bal = this.wallet.getBalance(s.cardId);
+      if (bal <= 0) continue;
+      totalPts += bal;
+      count++;
+    }
+    return count > 0 ? { pts: totalPts, programs: count } : null;
+  });
 
   /** Returns a colored badge object for programs with at-risk points, or null. */
   getExpiryBadge(cardId: string): { label: string; level: 'critical' | 'warning' } | null {
