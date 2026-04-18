@@ -430,6 +430,46 @@ export class DataService {
       note: 'Lesser-known in Asia/Europe: Category 3–4 Marriotts in Japan, Prague, Barcelona cash out at 1.8–2¢+ on 5-night stays.'
     },
 
+    // More flight sweet spots
+    {
+      route: 'US → Middle East (Business)', detail: 'Emirates Business via partner programs',
+      ptsNeeded: '72,000', estCash: '$5,000+', cpp: '6.9¢',
+      cards: ['Amex MR', 'Chase UR', 'Cap1'], programs: ['Air Canada Aeroplan'], category: 'flight',
+      note: 'Aeroplan books Emirates Business without astronomical fuel surcharges. Open-jaw DXB/AUH works too.'
+    },
+    {
+      route: 'US → Singapore (Suites)', detail: 'Singapore Airlines First Class via KrisFlyer',
+      ptsNeeded: '75,000', estCash: '$25,000+', cpp: '33¢',
+      cards: ['Amex MR', 'Chase UR', 'Citi TY', 'Cap1'], programs: ['Singapore KrisFlyer'], category: 'flight',
+      note: 'The pinnacle of luxury travel. SQ Suites one-way. Transfer on demand; availability opens 3.5 days before departure (last-minute game).'
+    },
+    {
+      route: 'US → Europe (Economy)', detail: 'Iberia Avios on Iberia / British Airways',
+      ptsNeeded: '17,000–34,000', estCash: '$500–800', cpp: '2.5¢',
+      cards: ['Amex MR', 'Chase UR'], programs: ['British Airways Avios'], category: 'flight',
+      note: 'Iberia uses a zone-based chart — transatlantic economy from just 17K Avios off-peak. Best for MAD/BCN routes. Avoid fuel surcharges by routing through Iberia.com.'
+    },
+    {
+      route: 'US → Asia / Pacific (Business)', detail: 'Cathay Pacific via Alaska MileagePlan',
+      ptsNeeded: '70,000', estCash: '$8,000+', cpp: '11.4¢',
+      cards: ['Bilt'], programs: ['Alaska MileagePlan'], category: 'flight',
+      note: 'Alaska MileagePlan prices Cathay Pacific Business at 70K one-way. Only Bilt transfers to Alaska. Extraordinary value — Cathay is a top-5 airline globally.'
+    },
+
+    // More hotel sweet spots
+    {
+      route: 'Andaz in Mexico / Caribbean', detail: 'World of Hyatt Cat 1–4 boutique properties',
+      ptsNeeded: '8,000–15,000/night', estCash: '$300–600/night', cpp: '2.7¢',
+      cards: ['Chase UR', 'Bilt'], programs: ['World of Hyatt'], category: 'hotel',
+      note: 'Andaz Mayakoba (Cat 4) and Andaz Papagayo deliver resort value at hotel-point rates. Book with Chase UR transferred at 1:1.'
+    },
+    {
+      route: 'Alila / Ventana Villas', detail: 'Hyatt all-inclusive and boutique properties',
+      ptsNeeded: '20,000–30,000/night', estCash: '$600–1,200/night', cpp: '3.5¢',
+      cards: ['Chase UR', 'Bilt'], programs: ['World of Hyatt'], category: 'hotel',
+      note: 'Alila Ventana Big Sur and similar Hyatt Unbound properties offer incredible CPP. Limited award availability — book 13 months out.'
+    },
+
     // Promos
     {
       route: 'Flying Blue Promo Awards', detail: 'Monthly flash sales — Air France / KLM routes',
@@ -490,6 +530,18 @@ export class DataService {
       to: 'Turkish Miles&Smiles', toIcon: '🌙',
       bonus: '30% bonus', expires: '2026-05-15',
       note: 'Turkish Miles&Smiles offers incredible Star Alliance business class redemptions. This bonus makes them even better value.',
+    },
+    {
+      from: 'Capital One', fromId: 'cap1_miles',
+      to: 'Turkish Miles&Smiles', toIcon: '🌙',
+      bonus: '20% bonus', expires: '2026-06-01',
+      note: 'Capital One → Turkish bonus pairs perfectly with Star Alliance Business Class sweet spots.',
+    },
+    {
+      from: 'Amex MR', fromId: 'amex_mr',
+      to: 'Air Canada Aeroplan', toIcon: '🍁',
+      bonus: '25% bonus', expires: '2026-08-31',
+      note: 'Aeroplan is the most flexible Star Alliance program. This bonus gives extra leverage on every redemption.',
     },
   ];
 }
