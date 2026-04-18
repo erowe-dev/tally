@@ -152,6 +152,8 @@ export class ExpiryService {
           error: err => {
             console.error('[ExpiryService] API load failed, using localStorage cache:', err);
             this._syncState.set('error');
+            // Reset so the effect can retry when network comes back online
+            this._apiLoaded = false;
           },
         });
       }

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { DataService } from './data.service';
 import { Recommendation, CabinClass, HotelCategory } from '../models';
 
@@ -15,7 +15,7 @@ const CABIN_MULT: Record<CabinClass, number> = {
 
 @Injectable({ providedIn: 'root' })
 export class OptimizerService {
-  constructor(private data: DataService) {}
+  private data = inject(DataService);
 
   getFlightRecs(from: string, to: string, cabin: CabinClass, passengers: number): Recommendation[] {
     const category = this.detectRoute(from.toUpperCase(), to.toUpperCase());

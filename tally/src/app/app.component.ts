@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavTab } from './core/models';
 import { WalletService } from './core/services/wallet.service';
@@ -48,9 +48,20 @@ import { ExpiryComponent } from './features/expiry/expiry.component';
         <div class="header-right" *ngIf="auth.isAuthenticated() && !wallet.hasAnyPoints()">
           <div class="pts-label">Points Advisor</div>
         </div>
-        <button class="sign-out-btn" *ngIf="auth.isAuthenticated()" (click)="auth.logout()">
-          Sign out
-        </button>
+        <div class="user-menu" *ngIf="auth.isAuthenticated()">
+          <img
+            *ngIf="auth.user()?.picture"
+            [src]="auth.user()!.picture!"
+            class="user-avatar"
+            [title]="auth.user()?.email || ''"
+            alt="Profile"
+            referrerpolicy="no-referrer"
+          />
+          <div *ngIf="!auth.user()?.picture" class="user-avatar-fallback">
+            {{ userInitial() }}
+          </div>
+          <button class="sign-out-btn" (click)="auth.logout()">Sign out</button>
+        </div>
       </header>
 
       <main class="app-main">
@@ -133,10 +144,23 @@ import { ExpiryComponent } from './features/expiry/expiry.component';
     .pts-value {
       font-family: 'Geist Mono', monospace; font-size: 16px; color: var(--tally-green);
     }
+    .user-menu { display: flex; align-items: center; gap: 8px; margin-left: 10px; }
+    .user-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      object-fit: cover; border: 1.5px solid var(--border);
+      flex-shrink: 0;
+    }
+    .user-avatar-fallback {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--tally-green); color: white;
+      font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; border: 1.5px solid var(--border);
+    }
     .sign-out-btn {
       background: none; border: 1px solid var(--border); border-radius: 7px;
       color: var(--text3); font-family: 'Geist', sans-serif; font-size: 11px;
-      padding: 5px 10px; cursor: pointer; white-space: nowrap; margin-left: 10px;
+      padding: 5px 10px; cursor: pointer; white-space: nowrap;
       transition: all 0.15s;
     }
     .sign-out-btn:hover { border-color: var(--text2); color: var(--text2); }
@@ -191,6 +215,13 @@ export class AppComponent {
   network = inject(NetworkService);
 
   activeTab = signal<NavTab>('cards'); // default to public tab
+
+  readonly userInitial = computed(() => {
+    const u = this.auth.user();
+    if (!u) return '?';
+    const name = u.name ?? u.email ?? '';
+    return name.charAt(0).toUpperCase() || '?';
+  });
 
   private readonly PROTECTED_TABS = new Set<NavTab>(['optimizer', 'wallet', 'expiry']);
 

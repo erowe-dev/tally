@@ -80,6 +80,9 @@ export class WalletService {
           error: err => {
             console.error('[WalletService] API load failed, using localStorage cache:', err);
             this._syncState.set('error');
+            // Reset so the effect can retry — it will re-fire when network
+            // comes back online (isOnline() signal changes true→false→true)
+            this._apiLoaded = false;
           },
         });
       }

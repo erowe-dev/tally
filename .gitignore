@@ -1,0 +1,5 @@
+# Claude Code local settings (may contain tokens/credentials)
+.claude/
+
+# Environment files with real secrets
+api/.env
