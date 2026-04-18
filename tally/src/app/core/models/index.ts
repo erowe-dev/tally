@@ -44,6 +44,17 @@ export interface SweetSpot {
   category: 'flight' | 'hotel' | 'promo';
 }
 
+/** A time-limited transfer bonus promotion */
+export interface TransferBonus {
+  from: string;     // e.g. "Amex MR"
+  fromId: string;   // card id, e.g. "amex_mr"
+  to: string;       // e.g. "Air France Flying Blue"
+  toIcon: string;
+  bonus: string;    // e.g. "30% bonus"
+  expires: string;  // "YYYY-MM-DD"
+  note: string;
+}
+
 export interface SavedTrip {
   id: string;
   tripType: 'flight' | 'hotel';

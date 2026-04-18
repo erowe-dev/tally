@@ -1,4 +1,4 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WalletService } from '../../core/services/wallet.service';
@@ -44,14 +44,22 @@ import { CreditCard } from '../../core/models';
               <div class="card-info">
                 <div class="card-name">{{ card.name }}</div>
                 <div class="card-sub">{{ card.cards[0] }}<span *ngIf="card.cards.length > 1"> & more</span></div>
+                <!-- Quick-add buttons — only show when expanded -->
+                <div class="quick-add" *ngIf="expandedCard() === card.id">
+                  <button *ngFor="let inc of quickIncrements"
+                    class="qa-btn" (click)="quickAdd(card.id, inc)">
+                    +{{ formatInc(inc) }}
+                  </button>
+                </div>
               </div>
-              <div class="input-wrap">
+              <div class="input-wrap" (click)="toggleExpand(card.id)">
                 <input
                   class="balance-input"
                   type="number"
                   inputmode="numeric"
                   placeholder="0"
                   [value]="wallet.getBalance(card.id) || null"
+                  (click)="$event.stopPropagation(); toggleExpand(card.id)"
                   (input)="onInput(card.id, $event)"
                   min="0" step="1000">
                 <div class="row-value" *ngIf="wallet.getBalance(card.id) > 0">
@@ -161,6 +169,20 @@ import { CreditCard } from '../../core/models';
       color: var(--tally-green-mid, #2d8a5a); letter-spacing: 0.04em;
     }
 
+    /* Quick-add increments */
+    .quick-add {
+      display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px;
+      animation: fadeIn 0.15s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .qa-btn {
+      background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2);
+      border-radius: 6px; color: var(--tally-green);
+      font-family: 'Geist Mono', monospace; font-size: 9px; letter-spacing: 0.06em;
+      padding: 3px 7px; cursor: pointer; transition: background 0.12s;
+    }
+    .qa-btn:hover { background: rgba(26,122,74,0.15); }
+
     .divider { height: 1px; background: var(--border); margin: 24px 0; }
 
     .summary { text-align: center; padding: 8px 0 16px; }
@@ -193,6 +215,9 @@ import { CreditCard } from '../../core/models';
 export class WalletComponent {
   wallet = inject(WalletService);
   data = inject(DataService);
+
+  expandedCard = signal<string | null>(null);
+  readonly quickIncrements = [5_000, 10_000, 25_000, 50_000, 100_000];
 
   readonly programGroups = [
     {
@@ -230,6 +255,18 @@ export class WalletComponent {
     const balance = this.wallet.getBalance(card.id);
     const bestCpp = Math.max(...card.partners.map(p => p.cpp));
     return Math.round(balance * bestCpp / 100);
+  }
+
+  toggleExpand(cardId: string): void {
+    this.expandedCard.update(cur => (cur === cardId ? null : cardId));
+  }
+
+  quickAdd(cardId: string, amount: number): void {
+    this.wallet.setBalance(cardId, this.wallet.getBalance(cardId) + amount);
+  }
+
+  formatInc(n: number): string {
+    return n >= 1_000 ? `${n / 1_000}k` : `${n}`;
   }
 
   onInput(cardId: string, event: Event): void {

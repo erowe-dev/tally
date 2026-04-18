@@ -2,7 +2,7 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../core/services/data.service';
-import { SweetSpot } from '../../core/models';
+import { SweetSpot, TransferBonus } from '../../core/models';
 
 type Filter = 'all' | 'flight' | 'hotel' | 'promo';
 
@@ -14,6 +14,24 @@ type Filter = 'all' | 'flight' | 'hotel' | 'promo';
     <div class="page-content">
       <div class="section-eyebrow">Known Sweet Spots</div>
       <h2 class="section-title"><em>Hidden</em> value<br>redemptions</h2>
+
+      <!-- Transfer Bonuses strip -->
+      <div class="bonuses-section" *ngIf="activeTransferBonuses().length > 0">
+        <div class="bonuses-label">⚡ Active Transfer Bonuses</div>
+        <div class="bonuses-strip">
+          <div class="bonus-card" *ngFor="let b of activeTransferBonuses()">
+            <div class="bonus-header">
+              <span class="bonus-from">{{ b.from }}</span>
+              <span class="bonus-arrow">→</span>
+              <span class="bonus-to-icon">{{ b.toIcon }}</span>
+              <span class="bonus-pct">{{ b.bonus }}</span>
+            </div>
+            <div class="bonus-to">{{ b.to }}</div>
+            <div class="bonus-expires">Expires {{ formatExpiry(b.expires) }}</div>
+            <p class="bonus-note">{{ b.note }}</p>
+          </div>
+        </div>
+      </div>
 
       <!-- Filter tabs -->
       <div class="filter-row">
@@ -59,6 +77,40 @@ type Filter = 'all' | 'flight' | 'hotel' | 'promo';
     </div>
   `,
   styles: [`
+    /* Transfer bonuses strip */
+    .bonuses-section { margin-bottom: 20px; }
+    .bonuses-label {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.12em; color: var(--tally-amber, #d97706);
+      text-transform: uppercase; margin-bottom: 10px;
+    }
+    .bonuses-strip {
+      display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .bonuses-strip::-webkit-scrollbar { display: none; }
+    .bonus-card {
+      background: var(--white); border: 1px solid rgba(217,119,6,0.25);
+      border-radius: 12px; padding: 12px 14px; min-width: 220px; flex-shrink: 0;
+      border-top: 2px solid var(--tally-amber, #d97706);
+    }
+    .bonus-header {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 3px;
+    }
+    .bonus-from { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text3); }
+    .bonus-arrow { color: var(--tally-amber, #d97706); font-size: 11px; }
+    .bonus-to-icon { font-size: 14px; }
+    .bonus-pct {
+      font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 700;
+      color: var(--tally-amber, #d97706); margin-left: auto;
+    }
+    .bonus-to { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .bonus-expires {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--tally-red, #dc2626); letter-spacing: 0.06em; margin-bottom: 6px;
+    }
+    .bonus-note { font-size: 11px; color: var(--text3); line-height: 1.5; }
+
     .filter-row {
       display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
     }
@@ -156,6 +208,12 @@ export class SweetspotsComponent {
     return this.data.sweetSpots.filter(s => s.category === f);
   });
 
+  /** Only show bonuses that haven't expired yet */
+  readonly activeTransferBonuses = computed<TransferBonus[]>(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return this.data.transferBonuses.filter(b => b.expires >= today);
+  });
+
   formatRoute(route: string): string {
     return route.replace('→', '<span class="arrow"> → </span>');
   }
@@ -166,5 +224,10 @@ export class SweetspotsComponent {
       case 'hotel':  return '🏨 Hotel';
       case 'promo':  return '⚡ Promo';
     }
+  }
+
+  formatExpiry(dateStr: string): string {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 }

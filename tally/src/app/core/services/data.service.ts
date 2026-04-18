@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { CreditCard, Recommendation, SweetSpot } from '../models';
+import { CreditCard, Recommendation, SweetSpot, TransferBonus } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class DataService {
@@ -360,6 +360,36 @@ export class DataService {
       ptsNeeded: 'Varies', estCash: 'Varies', cpp: '3.0¢+',
       cards: ['Amex MR'], programs: ['Various'], category: 'promo',
       note: 'Amex periodically offers 20–40% transfer bonuses to specific partners (often Aeroplan, Virgin, BA). Never transfer MR without checking current bonuses first.'
+    },
+  ];
+
+  // ── Transfer bonuses ─────────────────────────────────────────────────────
+  // Manually updated when major promos are announced.
+  // Dates are approximate — verify with program before transferring.
+  readonly transferBonuses: TransferBonus[] = [
+    {
+      from: 'Amex MR', fromId: 'amex_mr',
+      to: 'Air France/KLM Flying Blue', toIcon: '🇫🇷',
+      bonus: '30% bonus', expires: '2026-06-30',
+      note: 'Transfer Amex MR → Flying Blue and receive 30% extra miles. Cap: 100K bonus miles.',
+    },
+    {
+      from: 'Amex MR', fromId: 'amex_mr',
+      to: 'Virgin Atlantic Flying Club', toIcon: '✈',
+      bonus: '25% bonus', expires: '2026-05-31',
+      note: 'Rare Virgin Atlantic bonus. Great for ANA and Delta redemptions via VS miles.',
+    },
+    {
+      from: 'Chase UR', fromId: 'chase_ur',
+      to: 'Air Canada Aeroplan', toIcon: '🍁',
+      bonus: '20% bonus', expires: '2026-07-15',
+      note: 'Chase → Aeroplan bonus gives extra leverage on open-jaw and Star Alliance awards.',
+    },
+    {
+      from: 'Citi TY', fromId: 'citi_ty',
+      to: 'Turkish Miles&Smiles', toIcon: '🌙',
+      bonus: '30% bonus', expires: '2026-05-15',
+      note: 'Turkish Miles&Smiles offers incredible Star Alliance business class redemptions. This bonus makes them even better value.',
     },
   ];
 }
