@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { DataService } from '../../core/services/data.service';
 import { SweetSpot, TransferBonus } from '../../core/models';
 
-type Filter = 'all' | 'flight' | 'hotel' | 'promo';
+type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'saved';
+const FAV_KEY = 'tally_sweetspot_favs_v1';
 
 @Component({
   selector: 'tally-sweetspots',
@@ -39,6 +40,7 @@ type Filter = 'all' | 'flight' | 'hotel' | 'promo';
           [class.active]="activeFilter() === f.id"
           (click)="activeFilter.set(f.id)">
           {{ f.label }}
+          <span class="fav-count" *ngIf="f.id === 'saved' && favCount() > 0">{{ favCount() }}</span>
         </button>
       </div>
 
@@ -46,6 +48,11 @@ type Filter = 'all' | 'flight' | 'hotel' | 'promo';
 
       <div class="spots-list">
         <div class="spot-card" *ngFor="let s of filtered()" [class]="'cat-' + s.category">
+          <button class="fav-btn" (click)="toggleFav(spotKey(s))"
+            [class.active]="isFav(spotKey(s))"
+            [title]="isFav(spotKey(s)) ? 'Remove from saved' : 'Save this spot'">
+            {{ isFav(spotKey(s)) ? '★' : '☆' }}
+          </button>
           <div class="category-badge">{{ categoryLabel(s.category) }}</div>
           <div class="spot-route" [innerHTML]="formatRoute(s.route)"></div>
           <div class="spot-detail">{{ s.detail.toUpperCase() }}</div>
@@ -72,7 +79,7 @@ type Filter = 'all' | 'flight' | 'hotel' | 'promo';
       </div>
 
       <div class="empty-filter" *ngIf="filtered().length === 0">
-        <p>No spots match this filter.</p>
+        <p>{{ activeFilter() === 'saved' ? 'No saved spots yet — star a spot to save it.' : 'No spots match this filter.' }}</p>
       </div>
     </div>
   `,
@@ -188,25 +195,84 @@ type Filter = 'all' | 'flight' | 'hotel' | 'promo';
     .prog-chip { background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2); color: var(--tally-green); }
 
     .empty-filter { text-align: center; padding: 32px 16px; color: var(--text3); font-size: 14px; }
+
+    /* Favorites button on each card */
+    .fav-btn {
+      position: absolute; top: 12px; left: 14px;
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; color: var(--border2); line-height: 1;
+      padding: 4px; transition: color 0.15s, transform 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fav-btn:hover { color: var(--tally-amber, #d97706); transform: scale(1.15); }
+    .fav-btn.active { color: var(--tally-amber, #d97706); }
+
+    /* Reposition route/badge to account for fav button */
+    .spot-route { padding-right: 70px; padding-left: 24px; }
+    .category-badge { right: 14px; }
+
+    /* Saved filter count badge */
+    .fav-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--tally-amber, #d97706); color: white;
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      width: 14px; height: 14px; border-radius: 50%; margin-left: 4px;
+    }
   `]
 })
 export class SweetspotsComponent {
   data = inject(DataService);
 
   activeFilter = signal<Filter>('all');
+  private _favs = signal<Set<string>>(this.loadFavs());
+
+  readonly favCount = computed(() => this._favs().size);
 
   readonly filters: { id: Filter; label: string }[] = [
     { id: 'all',    label: 'All' },
     { id: 'flight', label: '✈ Flights' },
     { id: 'hotel',  label: '🏨 Hotels' },
     { id: 'promo',  label: '⚡ Promos' },
+    { id: 'saved',  label: '★ Saved' },
   ];
 
   readonly filtered = computed<SweetSpot[]>(() => {
     const f = this.activeFilter();
+    const favs = this._favs();
+    if (f === 'saved') return this.data.sweetSpots.filter(s => favs.has(this.spotKey(s)));
     if (f === 'all') return this.data.sweetSpots;
     return this.data.sweetSpots.filter(s => s.category === f);
   });
+
+  spotKey(s: SweetSpot): string {
+    return `${s.category}|${s.route}`;
+  }
+
+  isFav(key: string): boolean {
+    return this._favs().has(key);
+  }
+
+  toggleFav(key: string): void {
+    this._favs.update(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      this.saveFavs(next);
+      return next;
+    });
+  }
+
+  private loadFavs(): Set<string> {
+    try {
+      const raw = localStorage.getItem(FAV_KEY);
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch { return new Set(); }
+  }
+
+  private saveFavs(favs: Set<string>): void {
+    try {
+      localStorage.setItem(FAV_KEY, JSON.stringify([...favs]));
+    } catch {}
+  }
 
   /** Only show bonuses that haven't expired yet */
   readonly activeTransferBonuses = computed<TransferBonus[]>(() => {
