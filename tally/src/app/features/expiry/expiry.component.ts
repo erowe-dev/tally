@@ -92,6 +92,14 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
 
           <div class="ec-note" *ngIf="status.urgency !== 'never'">{{ status.note }}</div>
 
+          <!-- Quick actions for warning/critical/expired cards -->
+          <div class="quick-actions" *ngIf="status.quickActions.length > 0 && (status.urgency === 'warning' || status.urgency === 'critical' || status.urgency === 'expired')">
+            <div class="qa-label">Easy ways to reset the clock:</div>
+            <ul class="qa-list">
+              <li *ngFor="let qa of status.quickActions">{{ qa }}</li>
+            </ul>
+          </div>
+
           <!-- Date setter for activity-based programs -->
           <div class="date-setter" *ngIf="status.urgency !== 'never'">
             <div class="date-setter-top">
@@ -229,6 +237,21 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
 
     .ec-action { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 8px; }
     .ec-note { font-size: 11px; color: var(--text3); line-height: 1.5; font-style: italic; margin-bottom: 12px; }
+
+    /* Quick action suggestions */
+    .quick-actions {
+      background: var(--surface); border-radius: 9px;
+      padding: 10px 12px; margin-bottom: 12px;
+    }
+    .qa-label {
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text3); margin-bottom: 6px;
+    }
+    .qa-list {
+      margin: 0; padding-left: 14px; display: flex; flex-direction: column; gap: 3px;
+    }
+    .qa-list li { font-size: 12px; color: var(--text2); line-height: 1.4; }
 
     .date-setter { border-top: 1px solid var(--border); padding-top: 12px; }
     .date-setter-top {

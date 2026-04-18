@@ -12,6 +12,8 @@ export interface ExpiryRule {
   /** fixed expiry in months from earn date (for 'fixed' type) */
   fixedMonths?: number;
   note: string;
+  /** Concrete low-effort actions that reset the expiry clock */
+  quickActions?: string[];
 }
 
 export interface ExpiryRecord {
@@ -27,6 +29,7 @@ export interface ExpiryStatus {
   expiryDate: Date | null;
   note: string;
   actionNeeded: string;
+  quickActions: string[];
 }
 
 export type SyncState = 'idle' | 'loading' | 'synced' | 'error';
@@ -68,6 +71,11 @@ const EXPIRY_RULES: ExpiryRule[] = [
     expiryType: 'activity',
     inactivityMonths: 18,
     note: 'Points expire after 18 months of account inactivity. A single purchase resets the clock.',
+    quickActions: [
+      'Make any purchase on your Citi card',
+      'Transfer points to a travel partner',
+      'Redeem points for a gift card or statement credit',
+    ],
   },
   {
     cardId: 'cap1_miles',
@@ -81,6 +89,11 @@ const EXPIRY_RULES: ExpiryRule[] = [
     expiryType: 'activity',
     inactivityMonths: 24,
     note: 'Points expire after 24 months of inactivity. Pay rent each month to keep them active.',
+    quickActions: [
+      'Pay rent via the Bilt app (also earns points)',
+      'Make any purchase with your Bilt Mastercard',
+      'Transfer points to a travel partner',
+    ],
   },
 
   // ── Airline programs ──────────────────────────────────────────────────────
@@ -96,6 +109,11 @@ const EXPIRY_RULES: ExpiryRule[] = [
     expiryType: 'activity',
     inactivityMonths: 18,
     note: 'Miles expire after 18 months of account inactivity. Any earning or redemption resets the clock.',
+    quickActions: [
+      'Make a purchase on the United MileagePlus card',
+      'Shop via the MileagePlus Shopping portal',
+      'Book a hotel or car rental via United',
+    ],
   },
   {
     cardId: 'aa_aadvantage',
@@ -103,6 +121,11 @@ const EXPIRY_RULES: ExpiryRule[] = [
     expiryType: 'activity',
     inactivityMonths: 24,
     note: 'Miles expire after 24 months of inactivity. Any flight, purchase, or partner earn resets the clock.',
+    quickActions: [
+      'Shop via AAdvantage eShopping portal (even $1 works)',
+      'Use your AAdvantage credit card for any purchase',
+      'Dine with an AAdvantage dining partner',
+    ],
   },
   {
     cardId: 'southwest_rr',
@@ -110,6 +133,11 @@ const EXPIRY_RULES: ExpiryRule[] = [
     expiryType: 'activity',
     inactivityMonths: 24,
     note: 'Points expire after 24 months of inactivity. Any purchase on the Southwest card resets the clock.',
+    quickActions: [
+      'Make any purchase on the Southwest Rapid Rewards card',
+      'Shop via the Southwest Rapid Rewards Shopping portal',
+      'Book a hotel or car rental through Southwest',
+    ],
   },
   {
     cardId: 'alaska_mp',
@@ -117,6 +145,11 @@ const EXPIRY_RULES: ExpiryRule[] = [
     expiryType: 'activity',
     inactivityMonths: 24,
     note: 'Miles expire after 24 months of inactivity. Flying, earning via partners, or shopping portal activity resets the clock.',
+    quickActions: [
+      'Shop via Alaska Airlines Shopping portal',
+      'Dine via Alaska MileagePlan Dining',
+      'Book a car rental or hotel via Alaska',
+    ],
   },
 
   // ── Hotel programs ────────────────────────────────────────────────────────
@@ -126,6 +159,11 @@ const EXPIRY_RULES: ExpiryRule[] = [
     expiryType: 'activity',
     inactivityMonths: 24,
     note: 'Points expire after 24 months of inactivity. Any stay, purchase, or transfer resets the clock.',
+    quickActions: [
+      'Stay at any Marriott property (even one night)',
+      'Redeem points for an experience or gift card',
+      'Transfer Amex MR or Chase UR points into Bonvoy',
+    ],
   },
   {
     cardId: 'hyatt',
@@ -133,6 +171,11 @@ const EXPIRY_RULES: ExpiryRule[] = [
     expiryType: 'activity',
     inactivityMonths: 24,
     note: 'Points expire after 24 months of inactivity. Any stay or qualifying activity resets the clock.',
+    quickActions: [
+      'Stay at any Hyatt property',
+      'Make a purchase with the World of Hyatt card',
+      'Transfer Chase Ultimate Rewards to Hyatt (1:1)',
+    ],
   },
   {
     cardId: 'hilton_honors',
@@ -140,6 +183,11 @@ const EXPIRY_RULES: ExpiryRule[] = [
     expiryType: 'activity',
     inactivityMonths: 24,
     note: 'Points expire after 24 months of inactivity. A single stay, purchase, or partner activity resets the clock.',
+    quickActions: [
+      'Stay at any Hilton property',
+      'Use your Hilton Honors Amex card for any purchase',
+      'Transfer Amex MR points into Hilton Honors',
+    ],
   },
   {
     cardId: 'ihg_rewards',
@@ -147,6 +195,11 @@ const EXPIRY_RULES: ExpiryRule[] = [
     expiryType: 'activity',
     inactivityMonths: 12,
     note: 'Points expire after just 12 months of inactivity — shortest window of any major hotel program. Any stay or purchase resets.',
+    quickActions: [
+      'Stay at any IHG property (Holiday Inn, InterContinental, etc.)',
+      'Make a purchase on the IHG One Rewards card',
+      'Purchase points directly from IHG ($10 minimum)',
+    ],
   },
 ];
 
@@ -286,6 +339,7 @@ export class ExpiryService {
       cardId: rule.cardId,
       programName: rule.programName,
       note: rule.note,
+      quickActions: rule.quickActions ?? [],
     };
 
     if (rule.expiryType === 'never' || SAFE_CARDS.has(rule.cardId)) {
