@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../core/services/data.service';
 import { SweetSpot, TransferBonus } from '../../core/models';
+import { NavigationService } from '../../core/services/navigation.service';
 
 type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'saved';
 type SortMode = 'default' | 'cpp' | 'pts';
@@ -90,6 +91,10 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
             </div>
           </div>
           <p class="spot-note">{{ s.note }}</p>
+          <button class="spot-optimizer-btn" *ngIf="s.category === 'flight'"
+            (click)="openInOptimizer(s)">
+            Find availability in Optimizer →
+          </button>
           <div class="spot-chips">
             <span class="chip card-chip" *ngFor="let c of s.cards">{{ c }}</span>
             <span class="chip prog-chip" *ngFor="let p of s.programs">{{ p }}</span>
@@ -251,6 +256,16 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
     .card-chip { background: var(--surface); border: 1px solid var(--border); color: var(--text2); }
     .prog-chip { background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2); color: var(--tally-green); }
 
+    .spot-optimizer-btn {
+      display: inline-block; margin-bottom: 10px;
+      background: none; border: 1px solid var(--tally-green);
+      border-radius: 8px; color: var(--tally-green);
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.06em; padding: 5px 12px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .spot-optimizer-btn:hover { background: var(--tally-green); color: white; }
+
     .empty-filter { text-align: center; padding: 32px 16px; color: var(--text3); font-size: 14px; }
     .spot-clear-btn {
       background: none; border: none; color: var(--tally-green); font-size: 13px;
@@ -283,6 +298,7 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
 })
 export class SweetspotsComponent {
   data = inject(DataService);
+  private nav = inject(NavigationService);
 
   searchRaw = '';
   activeFilter = signal<Filter>('all');
@@ -386,6 +402,23 @@ export class SweetspotsComponent {
       case 'hotel':  return '🏨 Hotel';
       case 'promo':  return '⚡ Promo';
     }
+  }
+
+  /** Parse a sweet spot and navigate to the Optimizer tab pre-filled */
+  openInOptimizer(s: SweetSpot): void {
+    // Try to extract airport codes from route like "JFK → SIN" or "US → Europe"
+    const parts = s.route.split('→').map(p => p.trim());
+    const fromCity = parts[0]?.match(/\b([A-Z]{3})\b/)?.[1] ?? '';
+    const toCity   = parts[1]?.match(/\b([A-Z]{3})\b/)?.[1] ?? '';
+
+    // Infer cabin from detail field (e.g. "BUSINESS CLASS" / "FIRST CLASS")
+    const detail = s.detail.toUpperCase();
+    let cabin: 'economy' | 'premium' | 'business' | 'first' = 'business';
+    if (detail.includes('FIRST'))   cabin = 'first';
+    else if (detail.includes('ECONOMY')) cabin = 'economy';
+    else if (detail.includes('PREMIUM')) cabin = 'premium';
+
+    this.nav.navigateTo({ tab: 'optimizer', optimizerPrefill: { fromCity, toCity, cabin } });
   }
 
   formatExpiry(dateStr: string): string {

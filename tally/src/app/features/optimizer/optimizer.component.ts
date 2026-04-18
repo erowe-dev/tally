@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, signal, computed, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { OptimizerService } from '../../core/services/optimizer.service';
@@ -612,7 +612,8 @@ const MAX_ROUTE_HISTORY = 5;
     }
   `]
 })
-export class OptimizerComponent {
+export class OptimizerComponent implements OnChanges {
+  @Input() prefill: { fromCity?: string; toCity?: string; cabin?: string } | null = null;
   private optimizer = inject(OptimizerService);
   private data = inject(DataService);
   wallet = inject(WalletService);
@@ -768,6 +769,19 @@ export class OptimizerComponent {
   commitNote(tripId: string): void {
     this.trips.updateNotes(tripId, this.pendingNote);
     this.editingNoteId.set(null);
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    const p = changes['prefill']?.currentValue as { fromCity?: string; toCity?: string; cabin?: string } | null;
+    if (!p) return;
+    this.tripType.set('flight');
+    if (p.fromCity) this.fromCity = p.fromCity;
+    if (p.toCity)   this.toCity   = p.toCity;
+    if (p.cabin && ['economy','premium','business','first'].includes(p.cabin)) {
+      this.cabin = p.cabin as CabinClass;
+    }
+    this.showQuickWins.set(false);
+    this.analyze();
   }
 
   // ── Route history ──────────────────────────────────────────────────────────

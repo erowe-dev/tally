@@ -1,10 +1,11 @@
-import { Component, signal, computed, inject, HostListener } from '@angular/core';
+import { Component, signal, computed, inject, HostListener, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavTab } from './core/models';
 import { WalletService } from './core/services/wallet.service';
 import { ExpiryService } from './core/services/expiry.service';
 import { AuthService } from './core/services/auth.service';
 import { NetworkService } from './core/services/network.service';
+import { NavigationService } from './core/services/navigation.service';
 import { TallyLogoComponent } from './shared/components/tally-logo/tally-logo.component';
 import { BottomNavComponent } from './shared/components/bottom-nav/bottom-nav.component';
 import { OptimizerComponent } from './features/optimizer/optimizer.component';
@@ -79,7 +80,8 @@ import { ExpiryComponent } from './features/expiry/expiry.component';
       <main class="app-main">
 
         <!-- Protected tabs — only rendered when authenticated -->
-        <tally-optimizer  *ngIf="activeTab() === 'optimizer'  && auth.isAuthenticated()" />
+        <tally-optimizer  *ngIf="activeTab() === 'optimizer'  && auth.isAuthenticated()"
+                          [prefill]="optimizerPrefill()" />
         <tally-wallet     *ngIf="activeTab() === 'wallet'     && auth.isAuthenticated()" />
         <tally-expiry     *ngIf="activeTab() === 'expiry'     && auth.isAuthenticated()" />
 
@@ -244,8 +246,23 @@ export class AppComponent {
   expiry = inject(ExpiryService);
   auth = inject(AuthService);
   network = inject(NetworkService);
+  private nav = inject(NavigationService);
 
   activeTab = signal<NavTab>('cards'); // default to public tab
+  optimizerPrefill = signal<{ fromCity?: string; toCity?: string; cabin?: string } | null>(null);
+
+  constructor() {
+    // Watch for cross-component navigation requests (e.g. "Open in Optimizer" from Sweet Spots)
+    effect(() => {
+      const req = this.nav.pending();
+      if (!req) return;
+      this.handleTabChange(req.tab);
+      if (req.optimizerPrefill) {
+        this.optimizerPrefill.set(req.optimizerPrefill);
+      }
+      this.nav.clear();
+    });
+  }
 
   readonly userInitial = computed(() => {
     const u = this.auth.user();
