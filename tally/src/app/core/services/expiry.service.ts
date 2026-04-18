@@ -1,6 +1,7 @@
 import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { AuthService } from './auth.service';
 import { ApiService } from './api.service';
+import { NetworkService } from './network.service';
 
 export interface ExpiryRule {
   cardId: string;
@@ -89,6 +90,7 @@ const SAFE_CARDS = new Set(['amex_mr', 'chase_ur', 'cap1_miles']);
 export class ExpiryService {
   private auth = inject(AuthService);
   private api = inject(ApiService);
+  private network = inject(NetworkService);
 
   private _records = signal<Record<string, ExpiryRecord>>(this.loadLocal());
   private _syncState = signal<SyncState>('idle');
@@ -122,7 +124,8 @@ export class ExpiryService {
         !this._apiLoaded &&
         this.auth.isResolved() &&
         this.auth.isAuthenticated() &&
-        this.auth.isProvisioned()
+        this.auth.isProvisioned() &&
+        this.network.isOnline()
       ) {
         this._apiLoaded = true;
         this._syncState.set('loading');
@@ -168,7 +171,7 @@ export class ExpiryService {
     this._records.set(updated);
     this.saveLocal(updated);
 
-    if (this.auth.isProvisioned()) {
+    if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.setExpiryRecord(cardId, date).subscribe({
         error: err => console.error('[ExpiryService] API sync failed:', err),
       });
@@ -181,7 +184,7 @@ export class ExpiryService {
     this._records.set(updated);
     this.saveLocal(updated);
 
-    if (this.auth.isProvisioned()) {
+    if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.deleteExpiryRecord(cardId).subscribe({
         error: err => console.error('[ExpiryService] API delete failed:', err),
       });

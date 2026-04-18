@@ -4,6 +4,7 @@ import { NavTab } from './core/models';
 import { WalletService } from './core/services/wallet.service';
 import { ExpiryService } from './core/services/expiry.service';
 import { AuthService } from './core/services/auth.service';
+import { NetworkService } from './core/services/network.service';
 import { TallyLogoComponent } from './shared/components/tally-logo/tally-logo.component';
 import { BottomNavComponent } from './shared/components/bottom-nav/bottom-nav.component';
 import { OptimizerComponent } from './features/optimizer/optimizer.component';
@@ -27,6 +28,11 @@ import { ExpiryComponent } from './features/expiry/expiry.component';
   ],
   template: `
     <div class="app-shell">
+
+      <!-- Offline banner -->
+      <div class="offline-banner" *ngIf="!network.isOnline()">
+        <span>⚡</span> You're offline — changes save locally and sync when you reconnect.
+      </div>
 
       <!-- Auth loading overlay — shown while Auth0 checks session on startup -->
       <div class="auth-loading" *ngIf="auth.isLoading()">
@@ -87,6 +93,15 @@ import { ExpiryComponent } from './features/expiry/expiry.component';
       max-width: 430px; margin: 0 auto;
       min-height: 100dvh; display: flex; flex-direction: column;
       background: var(--off);
+    }
+
+    /* Offline banner */
+    .offline-banner {
+      background: var(--tally-amber, #d97706); color: #fff;
+      font-family: 'Geist', sans-serif; font-size: 12px;
+      text-align: center; padding: 8px 16px;
+      position: sticky; top: 0; z-index: 200;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
     }
 
     /* Auth loading overlay */
@@ -173,6 +188,7 @@ export class AppComponent {
   wallet = inject(WalletService);
   expiry = inject(ExpiryService);
   auth = inject(AuthService);
+  network = inject(NetworkService);
 
   activeTab = signal<NavTab>('cards'); // default to public tab
 

@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { DataService } from './data.service';
 import { AuthService } from './auth.service';
 import { ApiService } from './api.service';
+import { NetworkService } from './network.service';
 
 const STORAGE_KEY = 'tally_wallet_v1';
 
@@ -18,6 +19,7 @@ export type SyncState = 'idle' | 'loading' | 'synced' | 'error';
 export class WalletService {
   private auth = inject(AuthService);
   private api = inject(ApiService);
+  private network = inject(NetworkService);
   // DataService kept to preserve existing canCover() usage in optimizer
   private data = inject(DataService);
 
@@ -50,7 +52,8 @@ export class WalletService {
         !this._apiLoaded &&
         this.auth.isResolved() &&
         this.auth.isAuthenticated() &&
-        this.auth.isProvisioned()
+        this.auth.isProvisioned() &&
+        this.network.isOnline()
       ) {
         this._apiLoaded = true;
         this._syncState.set('loading');
@@ -91,8 +94,8 @@ export class WalletService {
     this._balances.set(updated);
     this.saveLocal(updated);
 
-    // Fire-and-forget sync to API only after provisioning is confirmed
-    if (this.auth.isProvisioned()) {
+    // Fire-and-forget sync to API only after provisioning is confirmed and online
+    if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.setBalance(cardId, amount).subscribe({
         error: err => console.error('[WalletService] API sync failed:', err),
       });
