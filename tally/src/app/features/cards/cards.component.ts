@@ -46,19 +46,23 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
       </div>
 
       <div class="cards-list">
-        <div class="cc-card" *ngFor="let card of filteredCards()">
-          <div class="cc-header">
+        <div class="cc-card" *ngFor="let card of filteredCards()"
+          [class.expanded]="isExpanded(card.id)">
+          <button class="cc-header" (click)="toggleCard(card.id)">
             <div class="cc-badge" [style.background]="card.color">{{ card.icon }}</div>
             <div class="cc-meta">
               <div class="cc-name">{{ card.name }}</div>
               <div class="cc-cards">{{ card.cards.join(' · ') }}</div>
             </div>
-            <div class="cc-best">
-              <div class="cc-best-val">{{ getBestCpp(card) }}¢</div>
-              <div class="cc-best-label">best cpp</div>
+            <div class="cc-right">
+              <div class="cc-best">
+                <div class="cc-best-val">{{ getBestCpp(card) }}¢</div>
+                <div class="cc-best-label">best cpp</div>
+              </div>
+              <span class="cc-chevron">{{ isExpanded(card.id) ? '▲' : '▼' }}</span>
             </div>
-          </div>
-          <div class="partners">
+          </button>
+          <div class="partners" *ngIf="isExpanded(card.id)">
             <div class="partner-row"
               *ngFor="let p of visiblePartners(card)"
               [class.dimmed]="greatOnly() && p.quality !== 'great'"
@@ -132,10 +136,17 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
     /* Cards */
     .cards-list { display: flex; flex-direction: column; gap: 14px; }
     .cc-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+    .cc-card.expanded { border-color: var(--tally-green); }
 
     .cc-header {
+      width: 100%; background: none; border: none; cursor: pointer;
       padding: 16px 18px; display: flex; align-items: center; gap: 14px;
-      border-bottom: 1px solid var(--border);
+      -webkit-tap-highlight-color: transparent; text-align: left;
+    }
+    .cc-header:hover { background: var(--surface); }
+    .cc-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .cc-chevron {
+      font-size: 8px; color: var(--text3); transition: transform 0.2s; line-height: 1;
     }
     .cc-badge {
       width: 46px; height: 30px; border-radius: 8px;
@@ -149,7 +160,7 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
       font-family: 'Geist Mono', monospace; letter-spacing: 0.04em;
       margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .cc-best { text-align: right; flex-shrink: 0; }
+    .cc-best { text-align: right; }
     .cc-best-val { font-family: 'Geist Mono', monospace; font-size: 16px; color: var(--tally-green); }
     .cc-best-label {
       font-family: 'Geist Mono', monospace; font-size: 9px;
@@ -186,6 +197,9 @@ export class CardsComponent {
 
   activeCat = signal<CatFilter>('all');
   greatOnly = signal(false);
+
+  // Accordion: set of expanded card ids
+  expandedCards = signal<Set<string>>(new Set());
 
   readonly catFilters: { id: CatFilter; label: string }[] = [
     { id: 'all',          label: 'All' },
@@ -237,6 +251,22 @@ export class CardsComponent {
 
   getBestCpp(card: CreditCard): number {
     return Math.max(...card.partners.map(p => p.cpp));
+  }
+
+  isExpanded(cardId: string): boolean {
+    return this.expandedCards().has(cardId);
+  }
+
+  toggleCard(cardId: string): void {
+    this.expandedCards.update(prev => {
+      const next = new Set(prev);
+      if (next.has(cardId)) {
+        next.delete(cardId);
+      } else {
+        next.add(cardId);
+      }
+      return next;
+    });
   }
 
   clearAll(): void {
