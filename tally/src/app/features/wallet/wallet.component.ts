@@ -121,6 +121,7 @@ import { CreditCard } from '../../core/models';
           This is a conservative blended estimate. Optimal transfers can yield 2–3× more.
           Use the Optimizer to find your best redemption.
         </div>
+        <button class="export-btn" (click)="exportCsv()">↓ Export CSV</button>
       </div>
 
       <ng-template #noPoints>
@@ -297,6 +298,15 @@ import { CreditCard } from '../../core/models';
       font-family: 'Geist', sans-serif; font-size: 13px; color: var(--tally-green); font-weight: 600;
     }
 
+    .export-btn {
+      display: block; margin: 14px auto 0;
+      background: none; border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.1em; padding: 6px 14px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .export-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
+
     .empty-state { text-align: center; padding: 40px 16px; }
     .empty-icon { font-size: 36px; margin-bottom: 12px; }
     .empty-state p {
@@ -375,5 +385,27 @@ export class WalletComponent {
   onInput(cardId: string, event: Event): void {
     const val = parseInt((event.target as HTMLInputElement).value) || 0;
     this.wallet.setBalance(cardId, val);
+  }
+
+  exportCsv(): void {
+    const rows: string[] = ['Program,Category,Balance,Estimated Value ($)'];
+    for (const card of this.data.cards) {
+      const balance = this.wallet.getBalance(card.id);
+      if (balance <= 0) continue;
+      const value = this.rowValue(card);
+      const category = card.category.charAt(0).toUpperCase() + card.category.slice(1);
+      rows.push(`"${card.name}","${category}",${balance},${value}`);
+    }
+    // Totals row
+    rows.push(`"TOTAL","",${this.wallet.totalPoints()},${this.wallet.estimatedValue()}`);
+
+    const csv = rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tally-wallet-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 }
