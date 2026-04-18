@@ -68,7 +68,10 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
 
           <!-- Date setter for activity-based programs -->
           <div class="date-setter" *ngIf="status.urgency !== 'never'">
-            <label class="field-label">Last activity date</label>
+            <div class="date-setter-top">
+              <label class="field-label">Last activity date</label>
+              <button class="today-btn" (click)="markToday(status.cardId)">✓ Mark Today</button>
+            </div>
             <div class="date-row">
               <input
                 type="date"
@@ -182,11 +185,21 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
     .ec-note { font-size: 11px; color: var(--text3); line-height: 1.5; font-style: italic; margin-bottom: 12px; }
 
     .date-setter { border-top: 1px solid var(--border); padding-top: 12px; }
+    .date-setter-top {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+    }
     .field-label {
       font-family: 'Geist Mono', monospace;
       font-size: 9px; letter-spacing: 0.15em; color: var(--text3);
-      text-transform: uppercase; display: block; margin-bottom: 6px;
+      text-transform: uppercase; display: block;
     }
+    .today-btn {
+      background: var(--tally-green); border: none; border-radius: 7px;
+      color: white; font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.08em; padding: 4px 10px; cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .today-btn:hover { opacity: 0.85; }
     .date-row { display: flex; gap: 8px; align-items: center; }
     .date-input {
       background: var(--surface); border: 1.5px solid var(--border2);
@@ -247,6 +260,10 @@ export class ExpiryComponent {
   onDateChange(cardId: string, event: Event): void {
     const val = (event.target as HTMLInputElement).value;
     if (val) this.expiry.setLastActivity(cardId, val);
+  }
+
+  markToday(cardId: string): void {
+    this.expiry.setLastActivity(cardId, this.todayStr);
   }
 
   private formatLocalDate(date: Date): string {

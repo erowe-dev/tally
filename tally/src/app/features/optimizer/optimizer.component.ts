@@ -140,6 +140,23 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
             </div>
             <span class="rc-cpp">~{{ rec.cpp }}¢/pt</span>
           </div>
+
+          <!-- Wallet coverage row (only when user has a balance in a matching card) -->
+          <div class="rc-coverage" *ngIf="wallet.hasAnyPoints()">
+            <div class="rc-cov-bar-wrap">
+              <div class="rc-cov-bar"
+                [style.width]="getCovPct(rec) + '%'"
+                [class.full]="getCovPct(rec) >= 100">
+              </div>
+            </div>
+            <span class="rc-cov-label"
+              [class.covered]="wallet.canCover(rec.cards, rec.ptsRequired ?? 0)">
+              {{ getBestBalance(rec) | number }}
+              <span class="rc-cov-sep">/</span>
+              {{ (rec.ptsRequired ?? rec.ptsBase) | number }} pts
+            </span>
+          </div>
+
           <div class="rc-chips">
             <span class="chip" *ngFor="let cid of rec.cards">{{ getShort(cid) }}</span>
           </div>
@@ -154,6 +171,13 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
           ¢/pt values are estimates. Actual value varies by route and availability.
           Add balances in Wallet for coverage indicators.
         </p>
+      </div>
+
+      <!-- No results state -->
+      <div class="no-results" *ngIf="analyzed() && !results().length">
+        <div class="no-results-icon">🔍</div>
+        <div class="no-results-title">No matches found</div>
+        <p>Try a different route or relax your cabin preference. Our data covers major international routes.</p>
       </div>
 
       <!-- Saved Trips -->
@@ -292,6 +316,33 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
     .rc-bar { height: 100%; background: var(--tally-green); border-radius: 99px; transition: width 0.5s cubic-bezier(0.34,1.56,0.64,1); }
     .rc-cpp { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--tally-green-mid); white-space: nowrap; }
 
+    /* Wallet coverage bar */
+    .rc-coverage {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 6px; margin-bottom: 8px;
+    }
+    .rc-cov-bar-wrap { flex: 1; height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .rc-cov-bar {
+      height: 100%; background: var(--border2); border-radius: 99px;
+      transition: width 0.5s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .rc-cov-bar.full { background: var(--tally-green); }
+    .rc-cov-label {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--text3); white-space: nowrap; flex-shrink: 0;
+    }
+    .rc-cov-label.covered { color: var(--tally-green); }
+    .rc-cov-sep { margin: 0 2px; opacity: 0.5; }
+
+    /* No results */
+    .no-results { text-align: center; padding: 32px 16px; }
+    .no-results-icon { font-size: 32px; margin-bottom: 10px; }
+    .no-results-title {
+      font-family: 'Instrument Serif', serif; font-size: 20px;
+      color: var(--text); margin-bottom: 8px;
+    }
+    .no-results p { font-size: 13px; color: var(--text3); line-height: 1.55; }
+
     .rc-chips { display: flex; gap: 5px; flex-wrap: wrap; }
     .chip {
       background: var(--surface); border: 1px solid var(--border);
@@ -405,6 +456,18 @@ export class OptimizerComponent {
 
   getBarPct(rec: Recommendation): number {
     return Math.round((rec.cpp / this.maxCpp()) * 100);
+  }
+
+  /** Best balance the user holds across the recommendation's eligible cards */
+  getBestBalance(rec: Recommendation): number {
+    return Math.max(0, ...rec.cards.map(id => this.wallet.getBalance(id)));
+  }
+
+  /** Percentage of required points the user already has (0–100, capped at 100) */
+  getCovPct(rec: Recommendation): number {
+    const required = rec.ptsRequired ?? rec.ptsBase;
+    if (!required) return 0;
+    return Math.min(100, Math.round((this.getBestBalance(rec) / required) * 100));
   }
 
   getShort(cardId: string): string {

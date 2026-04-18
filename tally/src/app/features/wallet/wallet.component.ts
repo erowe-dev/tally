@@ -45,14 +45,19 @@ import { CreditCard } from '../../core/models';
                 <div class="card-name">{{ card.name }}</div>
                 <div class="card-sub">{{ card.cards[0] }}<span *ngIf="card.cards.length > 1"> & more</span></div>
               </div>
-              <input
-                class="balance-input"
-                type="number"
-                inputmode="numeric"
-                placeholder="0"
-                [value]="wallet.getBalance(card.id) || null"
-                (input)="onInput(card.id, $event)"
-                min="0" step="1000">
+              <div class="input-wrap">
+                <input
+                  class="balance-input"
+                  type="number"
+                  inputmode="numeric"
+                  placeholder="0"
+                  [value]="wallet.getBalance(card.id) || null"
+                  (input)="onInput(card.id, $event)"
+                  min="0" step="1000">
+                <div class="row-value" *ngIf="wallet.getBalance(card.id) > 0">
+                  ~\${{ rowValue(card) | number }}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -150,6 +155,12 @@ import { CreditCard } from '../../core/models';
     .balance-input:focus { border-color: var(--tally-green); }
     .balance-input::placeholder { color: var(--border2); }
 
+    .input-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .row-value {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--tally-green-mid, #2d8a5a); letter-spacing: 0.04em;
+    }
+
     .divider { height: 1px; background: var(--border); margin: 24px 0; }
 
     .summary { text-align: center; padding: 8px 0 16px; }
@@ -212,6 +223,13 @@ export class WalletComponent {
       case 'synced':  return 'Synced';
       case 'error':   return 'Offline — local only';
     }
+  }
+
+  /** Estimated dollar value of a single card's balance (using best partner CPP) */
+  rowValue(card: CreditCard): number {
+    const balance = this.wallet.getBalance(card.id);
+    const bestCpp = Math.max(...card.partners.map(p => p.cpp));
+    return Math.round(balance * bestCpp / 100);
   }
 
   onInput(cardId: string, event: Event): void {

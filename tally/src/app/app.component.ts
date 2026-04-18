@@ -64,6 +64,18 @@ import { ExpiryComponent } from './features/expiry/expiry.component';
         </div>
       </header>
 
+      <!-- Expiry critical ribbon — shown when authenticated and any program needs urgent action -->
+      <button class="expiry-ribbon"
+        *ngIf="auth.isAuthenticated() && expiry.criticalCount() > 0 && activeTab() !== 'expiry'"
+        (click)="activeTab.set('expiry')">
+        <span class="expiry-ribbon-icon">⚠️</span>
+        <span class="expiry-ribbon-text">
+          {{ expiry.criticalCount() }} program{{ expiry.criticalCount() > 1 ? 's' : '' }}
+          expiring soon — tap to review
+        </span>
+        <span class="expiry-ribbon-arrow">→</span>
+      </button>
+
       <main class="app-main">
 
         <!-- Protected tabs — only rendered when authenticated -->
@@ -164,6 +176,25 @@ import { ExpiryComponent } from './features/expiry/expiry.component';
       transition: all 0.15s;
     }
     .sign-out-btn:hover { border-color: var(--text2); color: var(--text2); }
+
+    /* Expiry critical ribbon */
+    .expiry-ribbon {
+      width: 100%; background: var(--tally-red-light, #fef2f2);
+      border: none; border-bottom: 1px solid rgba(220,38,38,0.15);
+      padding: 9px 16px; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+    }
+    .expiry-ribbon:hover { background: rgba(254,226,226,0.9); }
+    .expiry-ribbon-icon { font-size: 13px; flex-shrink: 0; }
+    .expiry-ribbon-text {
+      flex: 1; font-family: 'Geist', sans-serif; font-size: 12px;
+      color: var(--tally-red, #dc2626); font-weight: 500; text-align: left;
+    }
+    .expiry-ribbon-arrow {
+      font-size: 14px; color: var(--tally-red, #dc2626); flex-shrink: 0;
+    }
 
     /* Main scroll area */
     .app-main {
