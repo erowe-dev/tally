@@ -133,8 +133,13 @@ import { WalletService } from '../../core/services/wallet.service';
                 Clear
               </button>
             </div>
-            <div class="expiry-date-label" *ngIf="status.expiryDate">
-              Expires {{ status.expiryDate | date:'MMM d, yyyy' }}
+            <div class="expiry-date-row">
+              <span class="expiry-date-label" *ngIf="status.expiryDate">
+                Expires {{ status.expiryDate | date:'MMM d, yyyy' }}
+              </span>
+              <span class="last-activity-label" *ngIf="getActivityDate(status.cardId)">
+                {{ daysSince(status.cardId) }} days ago
+              </span>
             </div>
           </div>
 
@@ -329,9 +334,17 @@ import { WalletService } from '../../core/services/wallet.service';
     }
     .clear-btn:hover { border-color: var(--tally-red); color: var(--tally-red); }
 
+    .expiry-date-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 6px; flex-wrap: wrap; gap: 4px;
+    }
     .expiry-date-label {
       font-family: 'Geist Mono', monospace; font-size: 10px;
-      color: var(--text3); letter-spacing: 0.06em; margin-top: 6px;
+      color: var(--text3); letter-spacing: 0.06em;
+    }
+    .last-activity-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--border2); letter-spacing: 0.04em;
     }
 
     /* Calendar export */
@@ -426,6 +439,19 @@ export class ExpiryComponent {
     }
     this.bulkDone.set(true);
     setTimeout(() => this.bulkDone.set(false), 3000);
+  }
+
+  /** Number of days elapsed since the last recorded activity date */
+  daysSince(cardId: string): number {
+    const dateStr = this.getActivityDate(cardId);
+    if (!dateStr) return 0;
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const activity = new Date(y, m - 1, d);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return Math.max(0, Math.round((today.getTime() - activity.getTime()) / (1000 * 60 * 60 * 24)));
+    } catch { return 0; }
   }
 
   private formatLocalDate(date: Date): string {
