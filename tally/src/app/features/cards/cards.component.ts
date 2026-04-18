@@ -84,6 +84,36 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
         <p>No programs match your filters.</p>
         <button class="link-btn" (click)="clearAll()">Clear filters</button>
       </div>
+
+      <!-- CPP Calculator -->
+      <div class="calc-section">
+        <button class="calc-toggle" (click)="showCalc.set(!showCalc())">
+          <span>💡 Points Value Calculator</span>
+          <span class="calc-chevron">{{ showCalc() ? '▲' : '▼' }}</span>
+        </button>
+        <div class="calc-body" *ngIf="showCalc()">
+          <div class="calc-input-wrap">
+            <label class="calc-label">How many points?</label>
+            <input class="calc-input" type="number" inputmode="numeric"
+              [(ngModel)]="calcPts" placeholder="50000" min="0" step="1000">
+          </div>
+          <div class="calc-grid" *ngIf="calcPts > 0">
+            <div class="calc-row" *ngFor="let tier of calcTiers"
+              [class.calc-best]="tier === bestTier()">
+              <span class="calc-cpp">{{ tier }}¢</span>
+              <span class="calc-cpp-label">per point</span>
+              <span class="calc-val">\${{ calcValue(tier) | number }}</span>
+              <span class="calc-rating" [class.great]="tier >= 2.5" [class.good]="tier >= 1.5">
+                {{ tierLabel(tier) }}
+              </span>
+            </div>
+          </div>
+          <div class="calc-note" *ngIf="calcPts > 0">
+            Best partners can reach 3¢+ per point. Use the Optimizer to find your specific redemption.
+          </div>
+        </div>
+      </div>
+
     </div>
   `,
   styles: [`
@@ -187,6 +217,68 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
       color: var(--tally-green); font-size: 14px; padding: 8px;
       text-decoration: underline; text-underline-offset: 3px;
     }
+
+    /* CPP Calculator */
+    .calc-section { margin-top: 20px; }
+    .calc-toggle {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 13px 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      font-family: 'Geist', sans-serif; font-size: 13px; color: var(--text2);
+      transition: border-color 0.15s; -webkit-tap-highlight-color: transparent;
+    }
+    .calc-toggle:hover { border-color: var(--tally-green); }
+    .calc-chevron { font-size: 8px; color: var(--text3); }
+    .calc-body {
+      background: var(--white); border: 1px solid var(--border);
+      border-top: none; border-radius: 0 0 12px 12px;
+      padding: 16px;
+    }
+    .calc-input-wrap { margin-bottom: 14px; }
+    .calc-label {
+      display: block; font-family: 'Geist Mono', monospace;
+      font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--text3); margin-bottom: 6px;
+    }
+    .calc-input {
+      width: 100%; background: var(--surface); border: 1.5px solid var(--border2);
+      border-radius: 9px; color: var(--tally-green);
+      font-family: 'Geist Mono', monospace; font-size: 15px;
+      padding: 9px 12px; outline: none; box-sizing: border-box;
+      transition: border-color 0.15s; -moz-appearance: textfield;
+    }
+    .calc-input::-webkit-outer-spin-button,
+    .calc-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .calc-input:focus { border-color: var(--tally-green); }
+    .calc-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .calc-row {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 9px; padding: 9px 12px; transition: border-color 0.15s;
+    }
+    .calc-row.calc-best { border-color: var(--tally-green); background: var(--tally-green-light); }
+    .calc-cpp {
+      font-family: 'Geist Mono', monospace; font-size: 15px;
+      font-weight: 600; color: var(--text); min-width: 32px;
+    }
+    .calc-cpp-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--text3); flex: 1; letter-spacing: 0.06em;
+    }
+    .calc-val {
+      font-family: 'Geist Mono', monospace; font-size: 16px;
+      color: var(--tally-green); font-weight: 600;
+    }
+    .calc-rating {
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text3); min-width: 52px; text-align: right;
+    }
+    .calc-rating.great { color: var(--tally-green); }
+    .calc-rating.good  { color: var(--tally-amber, #d97706); }
+    .calc-note {
+      font-size: 11px; color: var(--text3); line-height: 1.5; font-style: italic;
+    }
   `]
 })
 export class CardsComponent {
@@ -273,5 +365,25 @@ export class CardsComponent {
     this.searchRaw = '';
     this.activeCat.set('all');
     this.greatOnly.set(false);
+  }
+
+  // CPP Calculator
+  showCalc = signal(false);
+  calcPts = 0;
+  readonly calcTiers = [1.0, 1.5, 2.0, 2.5, 3.0];
+
+  calcValue(cpp: number): number {
+    return Math.round(this.calcPts * cpp / 100);
+  }
+
+  readonly bestTier = computed(() => {
+    // Highlight the "great" floor — 2.5¢ is where elite redemptions start
+    return 2.5;
+  });
+
+  tierLabel(cpp: number): string {
+    if (cpp >= 2.5) return 'Great';
+    if (cpp >= 1.5) return 'Good';
+    return 'Basic';
   }
 }
