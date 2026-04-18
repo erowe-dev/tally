@@ -1,7 +1,7 @@
 import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { WalletService } from '../../core/services/wallet.service';
+import { WalletService, HistoryEntry } from '../../core/services/wallet.service';
 import { DataService } from '../../core/services/data.service';
 import { CreditCard } from '../../core/models';
 
@@ -117,11 +117,26 @@ import { CreditCard } from '../../core/models';
         <div class="summary-label">Estimated Total Value</div>
         <div class="summary-value">\${{ wallet.estimatedValue() | number }}</div>
         <div class="summary-sub">{{ wallet.totalPoints() | number }} total points · blended ~1.6¢/pt</div>
+
+        <!-- Sparkline — only shown when there are at least 2 history entries -->
+        <div class="sparkline-wrap" *ngIf="sparklinePoints()">
+          <span class="sparkline-label">30-day trend</span>
+          <svg class="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none">
+            <polyline [attr.points]="sparklinePoints()!" fill="none" stroke="currentColor"
+              stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
         <div class="summary-note">
           This is a conservative blended estimate. Optimal transfers can yield 2–3× more.
           Use the Optimizer to find your best redemption.
         </div>
-        <button class="export-btn" (click)="exportCsv()">↓ Export CSV</button>
+        <div class="action-row">
+          <button class="action-btn" (click)="exportCsv()">↓ Export CSV</button>
+          <button class="action-btn share-btn" (click)="copyShare()" [class.copied]="copied()">
+            {{ copied() ? '✓ Copied!' : '📋 Share' }}
+          </button>
+        </div>
       </div>
 
       <ng-template #noPoints>
@@ -298,14 +313,28 @@ import { CreditCard } from '../../core/models';
       font-family: 'Geist', sans-serif; font-size: 13px; color: var(--tally-green); font-weight: 600;
     }
 
-    .export-btn {
-      display: block; margin: 14px auto 0;
+    /* Sparkline */
+    .sparkline-wrap {
+      display: flex; align-items: center; gap: 8px; margin: 10px 0 14px;
+      color: var(--tally-green);
+    }
+    .sparkline-label {
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
+      white-space: nowrap;
+    }
+    .sparkline { flex: 1; height: 28px; }
+
+    /* Action row */
+    .action-row { display: flex; gap: 8px; margin-top: 14px; justify-content: center; }
+    .action-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.1em; padding: 6px 14px; cursor: pointer;
-      transition: all 0.15s;
+      transition: all 0.15s; flex: 1; max-width: 140px;
     }
-    .export-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
+    .action-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
+    .action-btn.share-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
 
     .empty-state { text-align: center; padding: 40px 16px; }
     .empty-icon { font-size: 36px; margin-bottom: 12px; }
@@ -330,6 +359,25 @@ export class WalletComponent {
   readonly goalPct = computed(() => {
     if (!this.goalPts) return 0;
     return Math.min(100, Math.round((this.wallet.totalPoints() / this.goalPts) * 100));
+  });
+
+  copied = signal(false);
+
+  /** SVG polyline points string for the 30-day sparkline, or null if < 2 entries */
+  readonly sparklinePoints = computed((): string | null => {
+    const h = this.wallet.history();
+    if (h.length < 2) return null;
+    const totals = h.map(e => e.total);
+    const min = Math.min(...totals);
+    const max = Math.max(...totals);
+    const range = max - min || 1;
+    const n = totals.length;
+    const pts = totals.map((t, i) => {
+      const x = Math.round((i / (n - 1)) * 100);
+      const y = Math.round(28 - ((t - min) / range) * 22 - 3); // 3px top padding
+      return `${x},${y}`;
+    });
+    return pts.join(' ');
   });
 
   readonly programGroups = [
@@ -385,6 +433,24 @@ export class WalletComponent {
   onInput(cardId: string, event: Event): void {
     const val = parseInt((event.target as HTMLInputElement).value) || 0;
     this.wallet.setBalance(cardId, val);
+  }
+
+  copyShare(): void {
+    const lines: string[] = ['My Tally Points Wallet:'];
+    for (const card of this.data.cards) {
+      const balance = this.wallet.getBalance(card.id);
+      if (balance <= 0) continue;
+      lines.push(`  ${card.name}: ${balance.toLocaleString()}`);
+    }
+    lines.push('');
+    lines.push(`Total: ${this.wallet.totalPoints().toLocaleString()} pts`);
+    lines.push(`Est. value: ~\$${this.wallet.estimatedValue().toLocaleString()}`);
+    lines.push('via Tally Points Advisor');
+
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      this.copied.set(true);
+      setTimeout(() => this.copied.set(false), 2000);
+    }).catch(() => {/* clipboard unavailable — silent fail */});
   }
 
   exportCsv(): void {

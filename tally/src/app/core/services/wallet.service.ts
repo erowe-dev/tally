@@ -5,6 +5,10 @@ import { ApiService } from './api.service';
 import { NetworkService } from './network.service';
 
 const STORAGE_KEY = 'tally_wallet_v1';
+const HISTORY_KEY = 'tally_wallet_history_v1';
+const MAX_HISTORY = 30; // days
+
+export interface HistoryEntry { date: string; total: number; }
 
 /**
  * Possible states for API sync:
@@ -25,6 +29,7 @@ export class WalletService {
 
   private _balances = signal<Record<string, number>>(this.loadLocal());
   private _syncState = signal<SyncState>('idle');
+  private _history = signal<HistoryEntry[]>(this.loadHistory());
 
   // Prevent the effect from running more than once per session even if
   // signals are re-evaluated (e.g. token refresh re-emits isLoading)
@@ -32,6 +37,7 @@ export class WalletService {
 
   readonly balances = this._balances.asReadonly();
   readonly syncState = this._syncState.asReadonly();
+  readonly history = this._history.asReadonly();
 
   readonly totalPoints = computed(() =>
     Object.values(this._balances()).reduce((a, b) => a + b, 0),
@@ -75,6 +81,7 @@ export class WalletService {
               this._balances.set(apiBalances);
               this.saveLocal(apiBalances);
               this._syncState.set('synced');
+              this.recordSnapshot(Object.values(apiBalances).reduce((a, b) => a + b, 0));
             }
           },
           error: err => {
@@ -96,6 +103,7 @@ export class WalletService {
     // Write locally first — instant UI response, works offline
     this._balances.set(updated);
     this.saveLocal(updated);
+    this.recordSnapshot(Object.values(updated).reduce((a, b) => a + b, 0));
 
     // Fire-and-forget sync to API only after provisioning is confirmed and online
     if (this.auth.isProvisioned() && this.network.isOnline()) {
@@ -124,6 +132,21 @@ export class WalletService {
     }
   }
 
+  /** Upserts today's total into the daily history ring-buffer */
+  private recordSnapshot(total: number): void {
+    const today = new Date().toISOString().slice(0, 10);
+    const history = [...this._history()];
+    const last = history[history.length - 1];
+    if (last?.date === today) {
+      last.total = total;
+    } else {
+      history.push({ date: today, total });
+      if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
+    }
+    this._history.set(history);
+    this.saveHistory(history);
+  }
+
   private loadLocal(): Record<string, number> {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -139,5 +162,20 @@ export class WalletService {
     } catch {
       // Storage unavailable — not a fatal error
     }
+  }
+
+  private loadHistory(): HistoryEntry[] {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private saveHistory(history: HistoryEntry[]): void {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch {}
   }
 }
