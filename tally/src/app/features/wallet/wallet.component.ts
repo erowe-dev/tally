@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { WalletService, HistoryEntry } from '../../core/services/wallet.service';
 import { DataService } from '../../core/services/data.service';
 import { OptimizerService } from '../../core/services/optimizer.service';
+import { ExpiryService } from '../../core/services/expiry.service';
 import { CreditCard } from '../../core/models';
 
 @Component({
@@ -45,6 +46,11 @@ import { CreditCard } from '../../core/models';
               <div class="card-info">
                 <div class="card-name">{{ card.name }}</div>
                 <div class="card-sub">{{ card.cards[0] }}<span *ngIf="card.cards.length > 1"> & more</span></div>
+                <!-- Expiry warning badge — only shown when points at risk -->
+                <div class="expiry-badge" *ngIf="getExpiryBadge(card.id) as badge"
+                  [class]="'expiry-badge expiry-badge-' + badge.level">
+                  {{ badge.label }}
+                </div>
                 <!-- Quick-add buttons — only show when expanded -->
                 <div class="quick-add" *ngIf="expandedCard() === card.id">
                   <button *ngFor="let inc of quickIncrements"
@@ -277,6 +283,19 @@ import { CreditCard } from '../../core/models';
     .card-info { flex: 1; min-width: 0; }
     .card-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-sub { font-size: 10px; color: var(--text3); font-family: 'Geist Mono', monospace; margin-top: 1px; }
+    .expiry-badge {
+      display: inline-block; margin-top: 3px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.05em; padding: 2px 6px; border-radius: 4px;
+    }
+    .expiry-badge-critical {
+      background: var(--tally-red-light, #fef2f2); color: var(--tally-red, #dc2626);
+      border: 1px solid rgba(220,38,38,0.2);
+    }
+    .expiry-badge-warning {
+      background: rgba(217,119,6,0.07); color: var(--tally-amber, #d97706);
+      border: 1px solid rgba(217,119,6,0.2);
+    }
 
     .balance-input {
       background: var(--surface); border: 1.5px solid var(--border2);
@@ -501,6 +520,7 @@ export class WalletComponent {
   wallet = inject(WalletService);
   data = inject(DataService);
   private optimizer = inject(OptimizerService);
+  private expiry = inject(ExpiryService);
   private _allRecs = this.optimizer.getAllRecs();
 
   expandedCard = signal<string | null>(null);
@@ -686,5 +706,18 @@ export class WalletComponent {
     a.download = `tally-wallet-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  /** Returns a colored badge object for programs with at-risk points, or null. */
+  getExpiryBadge(cardId: string): { label: string; level: 'critical' | 'warning' } | null {
+    if (this.wallet.getBalance(cardId) <= 0) return null; // no points → no risk to show
+    const status = this.expiry.statuses().find(s => s.cardId === cardId);
+    if (!status) return null;
+    switch (status.urgency) {
+      case 'expired':  return { label: '⚠ Expired',                          level: 'critical' };
+      case 'critical': return { label: `⚠ ${status.daysRemaining}d left`,   level: 'critical' };
+      case 'warning':  return { label: `⏱ ${status.daysRemaining}d left`,   level: 'warning'  };
+      default:         return null;
+    }
   }
 }
