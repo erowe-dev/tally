@@ -17,6 +17,14 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
       <div class="section-eyebrow">Known Sweet Spots</div>
       <h2 class="section-title"><em>Hidden</em> value<br>redemptions</h2>
 
+      <!-- Search -->
+      <div class="spot-search-wrap">
+        <span class="spot-search-icon">🔍</span>
+        <input class="spot-search-input" type="search" placeholder="Search sweet spots…"
+          [(ngModel)]="searchRaw" autocomplete="off">
+        <button class="spot-search-clear" *ngIf="searchRaw" (click)="searchRaw = ''">✕</button>
+      </div>
+
       <!-- Transfer Bonuses strip -->
       <div class="bonuses-section" *ngIf="activeTransferBonuses().length > 0">
         <div class="bonuses-label">⚡ Active Transfer Bonuses</div>
@@ -90,11 +98,33 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
       </div>
 
       <div class="empty-filter" *ngIf="filtered().length === 0">
-        <p>{{ activeFilter() === 'saved' ? 'No saved spots yet — star a spot to save it.' : 'No spots match this filter.' }}</p>
+        <p>{{ activeFilter() === 'saved' ? 'No saved spots yet — star a spot to save it.' : searchRaw ? 'No spots match your search.' : 'No spots match this filter.' }}</p>
+        <button class="spot-clear-btn" *ngIf="searchRaw" (click)="searchRaw = ''">Clear search</button>
       </div>
     </div>
   `,
   styles: [`
+    /* Search */
+    .spot-search-wrap {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--white); border: 1.5px solid var(--border2);
+      border-radius: 12px; padding: 0 12px; margin-bottom: 16px;
+      transition: border-color 0.15s;
+    }
+    .spot-search-wrap:focus-within { border-color: var(--tally-green); }
+    .spot-search-icon { font-size: 14px; opacity: 0.5; flex-shrink: 0; }
+    .spot-search-input {
+      flex: 1; border: none; background: transparent; outline: none;
+      font-family: 'Geist', sans-serif; font-size: 14px; color: var(--text);
+      padding: 11px 0;
+    }
+    .spot-search-input::placeholder { color: var(--text3); }
+    .spot-search-input::-webkit-search-cancel-button { display: none; }
+    .spot-search-clear {
+      background: none; border: none; cursor: pointer; padding: 4px;
+      font-size: 12px; color: var(--text3); line-height: 1;
+    }
+
     /* Transfer bonuses strip */
     .bonuses-section { margin-bottom: 20px; }
     .bonuses-label {
@@ -222,6 +252,10 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
     .prog-chip { background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2); color: var(--tally-green); }
 
     .empty-filter { text-align: center; padding: 32px 16px; color: var(--text3); font-size: 14px; }
+    .spot-clear-btn {
+      background: none; border: none; color: var(--tally-green); font-size: 13px;
+      cursor: pointer; text-decoration: underline; padding: 8px; margin-top: 4px;
+    }
 
     /* Favorites button on each card */
     .fav-btn {
@@ -250,6 +284,7 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
 export class SweetspotsComponent {
   data = inject(DataService);
 
+  searchRaw = '';
   activeFilter = signal<Filter>('all');
   activeSort = signal<SortMode>('default');
   private _favs = signal<Set<string>>(this.loadFavs());
@@ -274,11 +309,23 @@ export class SweetspotsComponent {
     const f = this.activeFilter();
     const favs = this._favs();
     const sort = this.activeSort();
+    const q = this.searchRaw.toLowerCase().trim();
 
     let spots: SweetSpot[];
     if (f === 'saved') spots = this.data.sweetSpots.filter(s => favs.has(this.spotKey(s)));
     else if (f === 'all') spots = [...this.data.sweetSpots];
     else spots = this.data.sweetSpots.filter(s => s.category === f);
+
+    // Text search across route, detail, note, programs, cards
+    if (q) {
+      spots = spots.filter(s =>
+        s.route.toLowerCase().includes(q) ||
+        s.detail.toLowerCase().includes(q) ||
+        s.note.toLowerCase().includes(q) ||
+        s.programs.some(p => p.toLowerCase().includes(q)) ||
+        s.cards.some(c => c.toLowerCase().includes(q))
+      );
+    }
 
     if (sort === 'cpp') {
       spots = [...spots].sort((a, b) => parseFloat(b.cpp) - parseFloat(a.cpp));
