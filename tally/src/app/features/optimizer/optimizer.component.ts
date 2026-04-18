@@ -307,7 +307,10 @@ const MAX_ROUTE_HISTORY = 5;
             <div class="saved-date">{{ formatTripDate(trip.createdAt) }}</div>
           </div>
           <div class="saved-pts">{{ trip.ptsRequired | number }}<small>pts</small></div>
-          <button class="delete-btn" (click)="trips.deleteTrip(trip.id)" title="Remove">×</button>
+          <div class="saved-actions">
+            <button class="reanalyze-btn" (click)="reanalyzeTrip(trip)" title="Re-run analysis">↺</button>
+            <button class="delete-btn" (click)="trips.deleteTrip(trip.id)" title="Remove">×</button>
+          </div>
         </div>
       </div>
     </div>
@@ -557,6 +560,13 @@ const MAX_ROUTE_HISTORY = 5;
       color: var(--tally-green); text-align: right; flex-shrink: 0;
     }
     .saved-pts small { display: block; font-size: 9px; color: var(--text3); }
+    .saved-actions { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+    .reanalyze-btn {
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text3); font-size: 14px; line-height: 1;
+      cursor: pointer; padding: 3px 6px; transition: all 0.15s;
+    }
+    .reanalyze-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .delete-btn {
       background: none; border: none; color: var(--text3);
       font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 4px;
@@ -759,6 +769,23 @@ export class OptimizerComponent implements OnChanges {
   getQwBarPct(rec: Recommendation): number {
     const maxCpp = Math.max(...this._allRecs.map(r => r.cpp));
     return Math.round((rec.cpp / maxCpp) * 100);
+  }
+
+  reanalyzeTrip(trip: import('../../core/models').SavedTrip): void {
+    this.tripType.set(trip.tripType);
+    if (trip.tripType === 'flight') {
+      this.fromCity = trip.origin ?? '';
+      this.toCity   = trip.destination ?? '';
+      if (trip.cabin) this.cabin = trip.cabin;
+      if (trip.passengers) this.passengers = trip.passengers;
+    } else {
+      if (trip.hotelCat) this.hotelCategory = trip.hotelCat;
+      if (trip.nights) this.hotelNights = trip.nights;
+    }
+    this.showQuickWins.set(false);
+    this.analyze();
+    // Scroll to top of page-content
+    document.querySelector('.page-content')?.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   startEditNote(tripId: string, currentNote: string): void {
