@@ -1,4 +1,5 @@
-import { Component, signal, computed, inject, HostListener, effect } from '@angular/core';
+import { Component, signal, computed, inject, HostListener, effect, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { NavTab } from './core/models';
 import { WalletService } from './core/services/wallet.service';
@@ -13,6 +14,14 @@ import { WalletComponent } from './features/wallet/wallet.component';
 import { CardsComponent } from './features/cards/cards.component';
 import { SweetspotsComponent } from './features/sweetspots/sweetspots.component';
 import { ExpiryComponent } from './features/expiry/expiry.component';
+
+// PWA install prompt event type (not in the standard lib yet)
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
+const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
 
 @Component({
   selector: 'app-root',
@@ -29,6 +38,17 @@ import { ExpiryComponent } from './features/expiry/expiry.component';
   ],
   template: `
     <div class="app-shell">
+
+      <!-- PWA Install banner -->
+      <div class="install-banner" *ngIf="showInstallBanner()">
+        <span class="install-icon">📲</span>
+        <div class="install-body">
+          <div class="install-title">Add Tally to Home Screen</div>
+          <div class="install-sub">Access your wallet offline, instantly</div>
+        </div>
+        <button class="install-btn" (click)="triggerInstall()">Install</button>
+        <button class="install-dismiss" (click)="dismissInstall()" aria-label="Dismiss">✕</button>
+      </div>
 
       <!-- Offline banner -->
       <div class="offline-banner" *ngIf="!network.isOnline()">
@@ -119,6 +139,35 @@ import { ExpiryComponent } from './features/expiry/expiry.component';
       min-height: 100dvh; display: flex; flex-direction: column;
       background: var(--off);
     }
+
+    /* PWA Install banner */
+    .install-banner {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--tally-green-light); border-bottom: 1px solid rgba(26,122,74,0.2);
+      padding: 10px 16px;
+    }
+    .install-icon { font-size: 18px; flex-shrink: 0; }
+    .install-body { flex: 1; min-width: 0; }
+    .install-title {
+      font-family: 'Geist', sans-serif; font-size: 12px;
+      font-weight: 600; color: var(--tally-green);
+    }
+    .install-sub {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--tally-green-mid, #2d8a5a); letter-spacing: 0.06em;
+    }
+    .install-btn {
+      background: var(--tally-green); color: white; border: none; border-radius: 8px;
+      font-family: 'Geist', sans-serif; font-size: 12px; font-weight: 500;
+      padding: 6px 14px; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s;
+    }
+    .install-btn:hover { opacity: 0.85; }
+    .install-dismiss {
+      background: none; border: none; color: var(--tally-green);
+      font-size: 13px; cursor: pointer; padding: 4px; flex-shrink: 0; opacity: 0.6;
+      line-height: 1;
+    }
+    .install-dismiss:hover { opacity: 1; }
 
     /* Offline banner */
     .offline-banner {
@@ -247,9 +296,14 @@ export class AppComponent {
   auth = inject(AuthService);
   network = inject(NetworkService);
   private nav = inject(NavigationService);
+  private platformId = inject(PLATFORM_ID);
 
   activeTab = signal<NavTab>('cards'); // default to public tab
   optimizerPrefill = signal<{ fromCity?: string; toCity?: string; cabin?: string } | null>(null);
+
+  // PWA install prompt
+  showInstallBanner = signal(false);
+  private _deferredPrompt: BeforeInstallPromptEvent | null = null;
 
   constructor() {
     // Watch for cross-component navigation requests (e.g. "Open in Optimizer" from Sweet Spots)
@@ -262,6 +316,26 @@ export class AppComponent {
       }
       this.nav.clear();
     });
+
+    // PWA install prompt — only in browser, not SSR, not already standalone
+    if (isPlatformBrowser(this.platformId) && !window.matchMedia('(display-mode: standalone)').matches) {
+      const dismissed = localStorage.getItem(INSTALL_DISMISS_KEY);
+      const dismissedAt = dismissed ? parseInt(dismissed) : 0;
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+      const canShow = Date.now() - dismissedAt > sevenDays;
+
+      if (canShow) {
+        window.addEventListener('beforeinstallprompt', (e: Event) => {
+          e.preventDefault(); // prevent the mini-infobar on mobile Chrome
+          this._deferredPrompt = e as BeforeInstallPromptEvent;
+          this.showInstallBanner.set(true);
+        });
+        window.addEventListener('appinstalled', () => {
+          this.showInstallBanner.set(false);
+          this._deferredPrompt = null;
+        });
+      }
+    }
   }
 
   readonly userInitial = computed(() => {
@@ -275,6 +349,20 @@ export class AppComponent {
 
   isProtectedTab(tab: NavTab): boolean {
     return this.PROTECTED_TABS.has(tab);
+  }
+
+  triggerInstall(): void {
+    if (!this._deferredPrompt) return;
+    this._deferredPrompt.prompt();
+    this._deferredPrompt.userChoice.then(() => {
+      this._deferredPrompt = null;
+      this.showInstallBanner.set(false);
+    });
+  }
+
+  dismissInstall(): void {
+    this.showInstallBanner.set(false);
+    try { localStorage.setItem(INSTALL_DISMISS_KEY, Date.now().toString()); } catch {}
   }
 
   handleTabChange(tab: NavTab): void {
