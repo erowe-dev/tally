@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NavTab } from '../../../core/models';
+import { NavTab, TransferBonus } from '../../../core/models';
 import { ExpiryService } from '../../../core/services/expiry.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { DataService } from '../../../core/services/data.service';
@@ -96,7 +96,7 @@ export class BottomNavComponent {
 
   readonly activeBonusCount = computed(() => {
     const today = new Date().toISOString().slice(0, 10);
-    return this.data.transferBonuses.filter(b => b.expires >= today).length;
+    return this.data.transferBonuses.filter((b: TransferBonus) => b.expires >= today).length;
   });
 
   private readonly PROTECTED: Set<NavTab> = new Set(['optimizer', 'wallet', 'expiry']);

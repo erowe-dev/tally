@@ -470,6 +470,46 @@ export class DataService {
       note: 'Alila Ventana Big Sur and similar Hyatt Unbound properties offer incredible CPP. Limited award availability — book 13 months out.'
     },
 
+    // Additional flight sweet spots
+    {
+      route: 'US → London (First)', detail: 'JAL First Class via Alaska MileagePlan',
+      ptsNeeded: '70,000', estCash: '$20,000+', cpp: '28¢',
+      cards: ['Bilt'], programs: ['Alaska MileagePlan'], category: 'flight',
+      note: 'JAL First Class "Suites" is world-class. Alaska prices it at 70K one-way — only Bilt transfers to Alaska. Awards open 11 days before departure (last-minute strategy).'
+    },
+    {
+      route: 'US → London (Business)', detail: 'Qatar Qsuites via Air Canada Aeroplan',
+      ptsNeeded: '70,000', estCash: '$5,500+', cpp: '7.9¢',
+      cards: ['Amex MR', 'Chase UR', 'Cap1', 'Bilt'], programs: ['Air Canada Aeroplan'], category: 'flight',
+      note: 'Aeroplan books Qatar Qsuites — the double-bed Business suite — without fuel surcharges. Far better value than booking through Qatar directly.'
+    },
+    {
+      route: 'US → Europe (Economy)', detail: 'Air Canada Aeroplan off-peak economy',
+      ptsNeeded: '22,500', estCash: '$700–1,200', cpp: '3.5¢',
+      cards: ['Amex MR', 'Chase UR', 'Cap1', 'Bilt'], programs: ['Air Canada Aeroplan'], category: 'flight',
+      note: 'Aeroplan off-peak transatlantic economy starts at 22,500 miles. No fuel surcharges on most Star Alliance partners. Best value for economy class.'
+    },
+    {
+      route: 'US → Tokyo (Business)', detail: 'JAL Business Class via Alaska MileagePlan',
+      ptsNeeded: '60,000', estCash: '$7,000+', cpp: '11.7¢',
+      cards: ['Bilt'], programs: ['Alaska MileagePlan'], category: 'flight',
+      note: 'JAL Business (Sky Suite) via Alaska at 60K one-way. Awards open late but the product rivals ANA. Only Bilt transfers to Alaska — a key Bilt advantage.'
+    },
+
+    // Additional hotel sweet spots
+    {
+      route: 'Hyatt Andaz Costa Rica / Cancun', detail: 'World of Hyatt Category 4–5 beach resorts',
+      ptsNeeded: '15,000–20,000/night', estCash: '$350–700/night', cpp: '2.7¢',
+      cards: ['Chase UR', 'Bilt'], programs: ['World of Hyatt'], category: 'hotel',
+      note: 'Andaz Costa Rica and Andaz Mayakoba deliver resort-level experiences at mid-tier points cost. Book 13 months ahead for peak dates.'
+    },
+    {
+      route: 'Thompson Hotels (US Boutique)', detail: 'Hyatt urban boutique brand — Cat 4–5',
+      ptsNeeded: '15,000–20,000/night', estCash: '$350–600/night', cpp: '2.5¢',
+      cards: ['Chase UR', 'Bilt'], programs: ['World of Hyatt'], category: 'hotel',
+      note: 'Thompson properties in NYC, Chicago, Nashville deliver boutique hotel experiences at great CPP. Often less competitive for award space than Park Hyatt.'
+    },
+
     // Promos
     {
       route: 'Flying Blue Promo Awards', detail: 'Monthly flash sales — Air France / KLM routes',
