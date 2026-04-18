@@ -103,8 +103,53 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
 
       <button class="btn-analyze" (click)="analyze()">Analyze Transfers →</button>
 
+      <!-- Quick Wins toggle — only shown when user has wallet data -->
+      <button class="btn-quick-wins" *ngIf="wallet.hasAnyPoints()"
+        (click)="toggleQuickWins()">
+        {{ showQuickWins() ? '✕ Hide' : '⚡ What can I book now?' }}
+      </button>
+
+      <!-- Quick Wins panel -->
+      <div class="quick-wins-panel" *ngIf="showQuickWins()">
+        <div class="qw-header">
+          <span class="section-eyebrow">{{ quickWins().length }} Affordable Options</span>
+          <span class="qw-sub">Based on your current wallet balances</span>
+        </div>
+        <div class="result-card qw-card"
+          *ngFor="let rec of quickWins(); let i = index"
+          [style.animation-delay]="i * 40 + 'ms'">
+          <div class="rc-top">
+            <div class="rc-left">
+              <div class="rc-program">
+                {{ rec.tripType === 'flight' ? '✈' : '🏨' }} {{ rec.program }}
+                <span class="covered-badge">✓</span>
+              </div>
+              <div class="rc-partner">{{ rec.partner }}</div>
+              <div class="rc-note">{{ rec.note }}</div>
+            </div>
+            <div class="rc-pts">
+              {{ (rec.ptsRequired ?? rec.ptsBase) | number }}
+              <small>pts needed</small>
+              <div class="rc-cash">~\${{ getCashValue(rec) | number }}</div>
+            </div>
+          </div>
+          <div class="rc-bar-row">
+            <div class="rc-bar-wrap">
+              <div class="rc-bar" [style.width]="getQwBarPct(rec) + '%'"></div>
+            </div>
+            <span class="rc-cpp">~{{ rec.cpp }}¢/pt</span>
+          </div>
+          <div class="rc-chips">
+            <span class="chip" *ngFor="let cid of rec.cards">{{ getShort(cid) }}</span>
+          </div>
+        </div>
+        <div class="qw-empty" *ngIf="quickWins().length === 0">
+          <p>Your balances don't yet cover any individual redemption. Keep earning!</p>
+        </div>
+      </div>
+
       <!-- Empty state -->
-      <div class="empty-state" *ngIf="!results().length && !analyzed()">
+      <div class="empty-state" *ngIf="!results().length && !analyzed() && !showQuickWins()">
         <div class="empty-icon">⚡</div>
         <p>Enter your trip details<br>to see the best transfers</p>
       </div>
@@ -309,6 +354,28 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
       transition: opacity 0.15s, transform 0.1s;
     }
     .btn-analyze:active { transform: scale(0.98); opacity: 0.9; }
+
+    .btn-quick-wins {
+      width: 100%; background: var(--tally-green-light); color: var(--tally-green);
+      border: 1px solid rgba(26,122,74,0.25); border-radius: 12px;
+      font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 500;
+      padding: 11px; cursor: pointer; margin-bottom: 4px;
+      transition: all 0.15s; letter-spacing: 0.01em;
+    }
+    .btn-quick-wins:hover { background: rgba(26,122,74,0.12); }
+
+    .quick-wins-panel { margin: 12px 0; }
+    .qw-header { margin-bottom: 10px; }
+    .qw-sub {
+      display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--text3); letter-spacing: 0.08em; margin-top: 2px;
+    }
+    .qw-card { border-left: 3px solid var(--tally-green); }
+    .qw-empty {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px; text-align: center;
+      font-size: 13px; color: var(--text2); line-height: 1.5;
+    }
 
     .empty-state {
       text-align: center; padding: 48px 20px; color: var(--text3);
@@ -528,6 +595,15 @@ export class OptimizerComponent {
   // Filters / sorting for results
   canAffordOnly = signal(false);
   sortBy = signal<'cpp' | 'coverage'>('cpp');
+  // Quick Wins panel
+  showQuickWins = signal(false);
+  private _allRecs = this.optimizer.getAllRecs();
+
+  readonly quickWins = computed(() => {
+    return this._allRecs.filter(r =>
+      this.wallet.canCover(r.cards, r.ptsRequired ?? r.ptsBase)
+    );
+  });
 
   readonly filteredResults = computed<Recommendation[]>(() => {
     let recs = this.results();
@@ -621,6 +697,20 @@ export class OptimizerComponent {
 
   getShort(cardId: string): string {
     return this.data.cards.find(c => c.id === cardId)?.short ?? cardId;
+  }
+
+  toggleQuickWins(): void {
+    this.showQuickWins.update(v => !v);
+    // Reset the standard results when entering quick wins mode
+    if (this.showQuickWins()) {
+      this.results.set([]);
+      this.analyzed.set(false);
+    }
+  }
+
+  getQwBarPct(rec: Recommendation): number {
+    const maxCpp = Math.max(...this._allRecs.map(r => r.cpp));
+    return Math.round((rec.cpp / maxCpp) * 100);
   }
 
   startEditNote(tripId: string, currentNote: string): void {

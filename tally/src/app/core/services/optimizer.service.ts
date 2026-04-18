@@ -65,6 +65,39 @@ export class OptimizerService {
       .sort((a, b) => b.cpp - a.cpp);
   }
 
+  /**
+   * Returns a deduplicated list of all flight + hotel recommendations at
+   * base scale (1 passenger, 1 night, business for flights) — used to
+   * power the "What can I book now?" quick-wins view.
+   */
+  getAllRecs(): (Recommendation & { tripType: 'flight' | 'hotel' })[] {
+    const seen = new Set<string>();
+    const out: (Recommendation & { tripType: 'flight' | 'hotel' })[] = [];
+
+    // One representative entry per program per route category (business, 1 pax)
+    for (const recs of Object.values(this.data.flightRecs)) {
+      for (const r of recs) {
+        const key = `flight|${r.program}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push({ ...r, ptsRequired: r.ptsBase, tripType: 'flight' });
+        }
+      }
+    }
+    // Mid-tier hotel, 3 nights
+    for (const recs of Object.values(this.data.hotelRecs)) {
+      for (const r of recs) {
+        const key = `hotel|${r.program}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push({ ...r, ptsRequired: r.ptsBase * 3, tripType: 'hotel' });
+        }
+      }
+    }
+
+    return out.sort((a, b) => b.cpp - a.cpp);
+  }
+
   private detectRoute(from: string, to: string): string {
     const fromUS  = US_AIRPORTS.has(from);
     const fromEU  = EU_AIRPORTS.has(from);
