@@ -137,6 +137,11 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
             </div>
           </button>
           <div class="partners" *ngIf="isExpanded(card.id)">
+            <!-- Program-level strategic tip -->
+            <div class="pro-tip" *ngIf="getProTip(card.id) as tip">
+              <span class="pro-tip-icon">💡</span>
+              <span class="pro-tip-text">{{ tip }}</span>
+            </div>
             <div class="partner-wrap"
               *ngFor="let p of visiblePartners(card)"
               [class.dimmed]="greatOnly() && p.quality !== 'great'">
@@ -396,6 +401,15 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     }
 
     .partners { padding: 12px 18px; display: flex; flex-direction: column; gap: 4px; }
+
+    /* Strategic program tip */
+    .pro-tip {
+      display: flex; align-items: flex-start; gap: 7px;
+      background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.15);
+      border-radius: 9px; padding: 9px 12px; margin-bottom: 6px;
+    }
+    .pro-tip-icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+    .pro-tip-text { font-size: 11px; color: var(--tally-green-mid, #2d8a5a); line-height: 1.5; font-style: italic; }
     .partner-wrap { transition: opacity 0.2s; border-radius: 8px; overflow: hidden; }
     .partner-wrap.dimmed { opacity: 0.28; }
     .partner-row {
@@ -783,6 +797,27 @@ export class CardsComponent {
       }
       return next;
     });
+  }
+
+  private readonly PRO_TIPS: Partial<Record<string, string>> = {
+    amex_mr:         'Never transfer without first checking for active bonuses — Amex runs 20–40% promos 2–4× per year. ANA and Singapore are typically the highest-value partners.',
+    chase_ur:        'World of Hyatt at 1:1 is the best hotel redemption in points — hard to beat. Avoid IHG and Marriott unless you need the specific property.',
+    citi_ty:         'Turkish Miles&Smiles is the crown jewel — Star Alliance Business at 45K pts. Book on Turkish.com only. Always try at midnight Istanbul time for best availability.',
+    cap1_miles:      'Turkish and Avianca are your sweet spots here. Verify ratios before every transfer — some partners do not receive 1:1.',
+    bilt:            'Alaska MileagePlan is your competitive edge — the only transferable program that partners with Alaska. Best for Cathay Pacific Business and JAL awards.',
+    delta_skymiles:  'SkyMiles are best redeemed directly on Delta or transferred to Virgin Atlantic for ANA redemptions. Avoid transferring back to other programs.',
+    united_mp:       'United Saver awards offer the best value. Use the Excursionist perk to add a free one-way segment on multi-city itineraries.',
+    aa_aadvantage:   'AAdvantage shines with British Airways Avios on short-haul. Web Specials on AA.com drop on Tuesdays — set alerts for Mexico and Caribbean.',
+    southwest_rr:    'The Companion Pass is the best deal in domestic travel. Time your big spend in January to unlock the pass for two calendar years.',
+    alaska_mp:       'Alaska has the most diverse partner roster of any US airline — perfect for premium cabin awards on Cathay, JAL, British Airways, and more.',
+    hyatt:           'Hyatt delivers the most consistent CPP of any hotel program. Stacking Chase UR → Hyatt and booking Park Hyatt or Andaz is a reliable 2–3¢/pt strategy.',
+    marriott_bonvoy: 'The 5th night free benefit is Bonvoy\'s best feature — always book in multiples of 5 when using points. Avoid cash + points; it rarely makes sense.',
+    hilton_honors:   'Hilton Honors CPP is low, but the Aspire card free night cert + Diamond status can make it worthwhile. The Conrad Bora Bora is one exception for elite CPP.',
+    ihg_rewards:     'The IHG Premier free night cert is often worth more than the annual fee alone. Use it at an InterContinental for maximum value. Points are otherwise low-CPP.',
+  };
+
+  getProTip(cardId: string): string | null {
+    return this.PRO_TIPS[cardId] ?? null;
   }
 
   clearAll(): void {
