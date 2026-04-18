@@ -30,6 +30,19 @@ export interface ExpiryStatus {
 
 const STORAGE_KEY = 'tally_expiry_v1';
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Validates a YYYY-MM-DD string semantically — e.g. rejects '2026-13-99'
+ * that passes a regex but would produce a garbage Date (month overflow).
+ * Exported-module-local so both setLastActivity and computeStatus use it.
+ */
+function isValidDateString(value: string): boolean {
+  if (typeof value !== 'string' || !DATE_RE.test(value)) return false;
+  const [y, m, d] = value.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+}
 
 const EXPIRY_RULES: ExpiryRule[] = [
   {
@@ -97,10 +110,14 @@ export class ExpiryService {
   );
 
   constructor() {
-    // When Auth0 finishes its session check and the user is logged in,
-    // fetch from the API (source of truth) and overwrite the local cache.
+    // Gate on isProvisioned() to avoid racing ahead of POST /api/users/me.
+    // See WalletService for the same pattern.
     effect(() => {
-      if (this.auth.isResolved() && this.auth.isAuthenticated()) {
+      if (
+        this.auth.isResolved() &&
+        this.auth.isAuthenticated() &&
+        this.auth.isProvisioned()
+      ) {
         this.api.getExpiryRecords().subscribe({
           next: records => {
             this._records.set(records);
@@ -114,6 +131,12 @@ export class ExpiryService {
   }
 
   setLastActivity(cardId: string, date: string): void {
+    // Reject garbage dates at the source so we never persist invalid data
+    if (!isValidDateString(date)) {
+      console.error('[ExpiryService] Rejected invalid date:', date);
+      return;
+    }
+
     const updated = {
       ...this._records(),
       [cardId]: { cardId, lastActivityDate: date },
@@ -121,7 +144,7 @@ export class ExpiryService {
     this._records.set(updated);
     this.saveLocal(updated);
 
-    if (this.auth.isAuthenticated()) {
+    if (this.auth.isProvisioned()) {
       this.api.setExpiryRecord(cardId, date).subscribe({
         error: err => console.error('[ExpiryService] API sync failed:', err),
       });
@@ -134,7 +157,7 @@ export class ExpiryService {
     this._records.set(updated);
     this.saveLocal(updated);
 
-    if (this.auth.isAuthenticated()) {
+    if (this.auth.isProvisioned()) {
       this.api.deleteExpiryRecord(cardId).subscribe({
         error: err => console.error('[ExpiryService] API delete failed:', err),
       });
@@ -158,7 +181,7 @@ export class ExpiryService {
       };
     }
 
-    if (!record) {
+    if (!record || !isValidDateString(record.lastActivityDate)) {
       return {
         ...base,
         daysRemaining: null,

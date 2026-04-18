@@ -27,10 +27,16 @@ export class WalletService {
   readonly hasAnyPoints = computed(() => this.totalPoints() > 0);
 
   constructor() {
-    // When Auth0 finishes its session check and the user is logged in,
-    // fetch from the API (source of truth) and overwrite the local cache.
+    // When Auth0 finishes its session check, the user is logged in, AND the
+    // DB user row has been provisioned, fetch from the API and overwrite the
+    // local cache. Gating on isProvisioned() avoids a 404 race where GET
+    // /api/balances arrives before POST /api/users/me finishes.
     effect(() => {
-      if (this.auth.isResolved() && this.auth.isAuthenticated()) {
+      if (
+        this.auth.isResolved() &&
+        this.auth.isAuthenticated() &&
+        this.auth.isProvisioned()
+      ) {
         this.api.getBalances().subscribe({
           next: balances => {
             this._balances.set(balances);
@@ -44,15 +50,20 @@ export class WalletService {
   }
 
   setBalance(cardId: string, value: number): void {
-    const amount = Math.max(0, value || 0);
+    const amount = Math.max(0, Math.round(value || 0));
     const updated = { ...this._balances(), [cardId]: amount };
 
     // Write locally first — instant UI response, works offline
     this._balances.set(updated);
     this.saveLocal(updated);
 
-    // Fire-and-forget sync to API if logged in
-    if (this.auth.isAuthenticated()) {
+    // Fire-and-forget sync to API only if provisioning has completed.
+    // If not, the value is still in localStorage and will flush on next
+    // successful session (API is source of truth on load, but local writes
+    // made while offline/unprovisioned are preserved because we only read
+    // from API — they'd only be lost if the user sets the same card on
+    // another device before provisioning completes here, which is fine).
+    if (this.auth.isProvisioned()) {
       this.api.setBalance(cardId, amount).subscribe({
         error: err => console.error('[WalletService] API sync failed:', err),
       });
