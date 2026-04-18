@@ -188,6 +188,10 @@ import { CreditCard } from '../../core/models';
         <div class="summary-label">Estimated Total Value</div>
         <div class="summary-value">\${{ wallet.estimatedValue() | number }}</div>
         <div class="summary-sub">{{ wallet.totalPoints() | number }} total points · blended ~1.6¢/pt</div>
+        <div class="weekly-change" *ngIf="weeklyChange() as wc"
+          [class.positive]="wc.delta > 0" [class.negative]="wc.delta < 0">
+          {{ wc.delta > 0 ? '▲' : '▼' }} {{ (wc.delta > 0 ? wc.delta : -wc.delta) | number }} this week
+        </div>
 
         <!-- Portfolio breakdown bar -->
         <div class="breakdown-wrap" *ngIf="portfolioBreakdown() as b">
@@ -383,6 +387,13 @@ import { CreditCard } from '../../core/models';
       font-family: 'Geist Mono', monospace; font-size: 11px;
       color: var(--text3); letter-spacing: 0.08em; margin-bottom: 16px;
     }
+    .weekly-change {
+      font-family: 'Geist Mono', monospace; font-size: 11px;
+      letter-spacing: 0.06em; margin-bottom: 12px;
+    }
+    .weekly-change.positive { color: var(--tally-green); }
+    .weekly-change.negative { color: var(--tally-red, #dc2626); }
+
     .summary-note {
       background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2);
       border-radius: 10px; padding: 12px 16px;
@@ -746,6 +757,23 @@ export class WalletComponent {
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  /** 7-day point change from history (null when insufficient data) */
+  readonly weeklyChange = computed((): { delta: number } | null => {
+    const h = this.wallet.history();
+    if (h.length < 2) return null;
+    const today = h[0].total;
+    // Find entry ~7 days ago
+    const todayDate = new Date(h[0].date);
+    const oldest = h.find(e => {
+      const d = new Date(e.date);
+      return (todayDate.getTime() - d.getTime()) >= 6 * 24 * 60 * 60 * 1000;
+    });
+    if (!oldest) return null;
+    const delta = today - oldest.total;
+    if (delta === 0) return null;
+    return { delta };
+  });
 
   /** Aggregates all at-risk balances across warning/critical/expired programs */
   readonly atRiskSummary = computed((): { pts: number; programs: number } | null => {
