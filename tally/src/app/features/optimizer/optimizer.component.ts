@@ -210,6 +210,7 @@ const MAX_ROUTE_HISTORY = 5;
               <div class="rc-program">
                 {{ rec.program }}
                 <span class="covered-badge" *ngIf="wallet.canCover(rec.cards, rec.ptsRequired ?? 0)">✓</span>
+                <span class="already-saved-badge" *ngIf="isAlreadySaved(rec.program)">★ Saved</span>
               </div>
               <div class="rc-partner">{{ rec.partner }}</div>
               <div class="rc-note">{{ rec.note }}</div>
@@ -457,6 +458,11 @@ const MAX_ROUTE_HISTORY = 5;
     .covered-badge {
       display: inline-block; margin-left: 6px;
       color: var(--tally-green); font-size: 12px; font-weight: 700;
+    }
+    .already-saved-badge {
+      display: inline-block; margin-left: 6px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--tally-amber, #d97706); letter-spacing: 0.06em;
     }
     .rc-partner { font-size: 11px; color: var(--text2); margin-bottom: 2px; }
     .rc-note { font-size: 11px; color: var(--text3); font-style: italic; }
@@ -769,6 +775,10 @@ export class OptimizerComponent implements OnChanges {
   getQwBarPct(rec: Recommendation): number {
     const maxCpp = Math.max(...this._allRecs.map(r => r.cpp));
     return Math.round((rec.cpp / maxCpp) * 100);
+  }
+
+  isAlreadySaved(programName: string): boolean {
+    return this.trips.trips().some(t => t.programName === programName);
   }
 
   reanalyzeTrip(trip: import('../../core/models').SavedTrip): void {
