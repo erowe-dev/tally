@@ -6,6 +6,7 @@ import { WalletService } from '../../core/services/wallet.service';
 import { CreditCard } from '../../core/models';
 
 type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
+type CardSortMode = 'default' | 'cpp' | 'balance';
 type SpendCat = 'travel' | 'dining' | 'groceries' | 'gas' | 'online' | 'general';
 
 const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
@@ -62,6 +63,16 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
           *ngIf="wallet.hasAnyPoints()"
           (click)="showHeldOnly.set(!showHeldOnly())">
           {{ showHeldOnly() ? '★ Mine' : '☆ Mine' }}
+        </button>
+      </div>
+
+      <!-- Sort row -->
+      <div class="sort-row">
+        <span class="sort-label">Sort:</span>
+        <button *ngFor="let s of cardSortModes"
+          class="sort-btn" [class.active]="cardSort() === s.id"
+          (click)="cardSort.set(s.id)">
+          {{ s.label }}
         </button>
       </div>
 
@@ -295,6 +306,21 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       background: none; border: none; cursor: pointer; padding: 4px;
       font-size: 12px; color: var(--text3); line-height: 1;
     }
+
+    /* Sort row */
+    .sort-row {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .sort-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3);
+    }
+    .sort-btn {
+      background: none; border: 1px solid var(--border); border-radius: 16px;
+      padding: 3px 10px; font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.06em; color: var(--text3); cursor: pointer; transition: all 0.15s;
+    }
+    .sort-btn.active { border-color: var(--tally-green); color: var(--tally-green); }
 
     /* Filter row */
     .filter-row {
@@ -592,8 +618,15 @@ export class CardsComponent {
   searchRaw = '';
 
   activeCat = signal<CatFilter>('all');
+  cardSort = signal<CardSortMode>('default');
   greatOnly = signal(false);
   showHeldOnly = signal(false);
+
+  readonly cardSortModes: { id: CardSortMode; label: string }[] = [
+    { id: 'default', label: 'Default' },
+    { id: 'cpp',     label: '↑ Best CPP' },
+    { id: 'balance', label: '↑ My Points' },
+  ];
 
   // Spend category recommender
   showSpendRec = signal(false);
@@ -678,8 +711,9 @@ export class CardsComponent {
     const cat = this.activeCat();
     const great = this.greatOnly();
     const heldOnly = this.showHeldOnly();
+    const sort = this.cardSort();
 
-    return this.data.cards.filter(card => {
+    let cards = this.data.cards.filter(card => {
       if (cat !== 'all' && card.category !== cat) return false;
 
       // Mine filter: only show programs with a balance
@@ -701,6 +735,15 @@ export class CardsComponent {
 
       return true;
     });
+
+    // Apply sort
+    if (sort === 'cpp') {
+      cards = [...cards].sort((a, b) => this.getBestCpp(b) - this.getBestCpp(a));
+    } else if (sort === 'balance') {
+      cards = [...cards].sort((a, b) => this.wallet.getBalance(b.id) - this.wallet.getBalance(a.id));
+    }
+
+    return cards;
   });
 
   /** Partners to display for a card — filtered when search targets partner names */
@@ -745,6 +788,7 @@ export class CardsComponent {
   clearAll(): void {
     this.searchRaw = '';
     this.activeCat.set('all');
+    this.cardSort.set('default');
     this.greatOnly.set(false);
     this.showHeldOnly.set(false);
   }

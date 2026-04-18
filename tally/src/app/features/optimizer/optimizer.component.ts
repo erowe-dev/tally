@@ -283,8 +283,11 @@ const MAX_ROUTE_HISTORY = 5;
 
       <!-- Saved Trips -->
       <div class="saved-section" *ngIf="trips.trips().length > 0">
-        <div class="section-eyebrow" style="margin-top:28px; margin-bottom:12px;">
-          Saved Trips ({{ trips.trips().length }})
+        <div class="saved-section-header">
+          <span class="section-eyebrow">Saved Trips ({{ trips.trips().length }})</span>
+          <button class="clear-all-btn" [class.confirm]="clearConfirm()" (click)="clearAllTrips()">
+            {{ clearConfirm() ? '⚠ Confirm clear?' : 'Clear all' }}
+          </button>
         </div>
         <div class="saved-card" *ngFor="let trip of trips.trips()">
           <div class="trip-type-icon">{{ trip.tripType === 'flight' ? '✈' : '🏨' }}</div>
@@ -591,6 +594,22 @@ const MAX_ROUTE_HISTORY = 5;
     .copy-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .copy-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
 
+    .saved-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 28px; margin-bottom: 12px;
+    }
+    .clear-all-btn {
+      background: none; border: none;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.08em; color: var(--text3); cursor: pointer;
+      padding: 3px 8px; border-radius: 6px; transition: all 0.15s;
+    }
+    .clear-all-btn:hover { color: var(--tally-red); }
+    .clear-all-btn.confirm {
+      color: var(--tally-red); background: rgba(220,38,38,0.08);
+      border: 1px solid rgba(220,38,38,0.25);
+    }
+
     .saved-card {
       background: var(--white); border: 1px solid var(--border);
       border-radius: 12px; padding: 12px 14px;
@@ -702,6 +721,9 @@ export class OptimizerComponent implements OnChanges {
   sortBy = signal<'cpp' | 'coverage'>('cpp');
   // Quick Wins panel
   showQuickWins = signal(false);
+  // Two-step confirm for clearing all saved trips
+  clearConfirm = signal(false);
+  private _clearConfirmTimer: ReturnType<typeof setTimeout> | null = null;
   private _allRecs = this.optimizer.getAllRecs();
   // Route history
   private _routeHistory = signal<RouteHistoryEntry[]>(this.loadRouteHistory());
@@ -987,6 +1009,21 @@ export class OptimizerComponent implements OnChanges {
       this.copiedResult.set(true);
       setTimeout(() => this.copiedResult.set(false), 2000);
     }).catch(() => {/* silent fail */});
+  }
+
+  clearAllTrips(): void {
+    if (!this.clearConfirm()) {
+      // First tap — enter confirm state, auto-reset after 3s
+      this.clearConfirm.set(true);
+      if (this._clearConfirmTimer) clearTimeout(this._clearConfirmTimer);
+      this._clearConfirmTimer = setTimeout(() => this.clearConfirm.set(false), 3000);
+    } else {
+      // Second tap — actually clear
+      if (this._clearConfirmTimer) clearTimeout(this._clearConfirmTimer);
+      this._clearConfirmTimer = null;
+      this.clearConfirm.set(false);
+      this.trips.clearAll();
+    }
   }
 
   formatTripDate(iso: string): string {

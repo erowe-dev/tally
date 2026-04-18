@@ -94,6 +94,22 @@ export class TripsService {
     }
   }
 
+  clearAll(): void {
+    const current = this._trips();
+    this._trips.set([]);
+    this.saveLocal([]);
+
+    if (this.auth.isProvisioned() && this.network.isOnline()) {
+      for (const t of current) {
+        if (!t.id.startsWith('local_')) {
+          this.api.deleteTrip(t.id).subscribe({
+            error: err => console.error('[TripsService] API clear failed:', err),
+          });
+        }
+      }
+    }
+  }
+
   private loadLocal(): SavedTrip[] {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
