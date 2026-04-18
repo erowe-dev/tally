@@ -2,10 +2,11 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../core/services/data.service';
+import { WalletService } from '../../core/services/wallet.service';
 import { SweetSpot, TransferBonus } from '../../core/models';
 import { NavigationService } from '../../core/services/navigation.service';
 
-type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'saved';
+type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'saved' | 'covered';
 type SortMode = 'default' | 'cpp' | 'pts';
 const FAV_KEY = 'tally_sweetspot_favs_v1';
 
@@ -51,6 +52,7 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
           (click)="activeFilter.set(f.id)">
           {{ f.label }}
           <span class="fav-count" *ngIf="f.id === 'saved' && favCount() > 0">{{ favCount() }}</span>
+          <span class="cov-count" *ngIf="f.id === 'covered' && coveredCount() > 0">{{ coveredCount() }}</span>
         </button>
       </div>
 
@@ -90,6 +92,10 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
               <span class="stat-label">Est. CPP</span>
             </div>
           </div>
+          <!-- Wallet coverage badge — shows when user can afford this spot -->
+          <div class="spot-covered-badge" *ngIf="canAfford(s)">
+            ✓ You can book this
+          </div>
           <!-- Active bonus badge — shows when any source card has an active transfer bonus -->
           <div class="spot-bonus-badge" *ngIf="getActiveBonusForSpot(s) as bonus">
             ⚡ {{ bonus.from }} → {{ bonus.to }} — {{ bonus.bonus }}
@@ -107,7 +113,12 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
       </div>
 
       <div class="empty-filter" *ngIf="filtered().length === 0">
-        <p>{{ activeFilter() === 'saved' ? 'No saved spots yet — star a spot to save it.' : searchRaw ? 'No spots match your search.' : 'No spots match this filter.' }}</p>
+        <p>{{
+          activeFilter() === 'saved' ? 'No saved spots yet — star a spot to save it.' :
+          activeFilter() === 'covered' ? 'Add balances in Wallet to see which spots you can afford.' :
+          searchRaw ? 'No spots match your search.' :
+          'No spots match this filter.'
+        }}</p>
         <button class="spot-clear-btn" *ngIf="searchRaw" (click)="searchRaw = ''">Clear search</button>
       </div>
     </div>
@@ -260,12 +271,25 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
     .card-chip { background: var(--surface); border: 1px solid var(--border); color: var(--text2); }
     .prog-chip { background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2); color: var(--tally-green); }
 
+    .spot-covered-badge {
+      display: inline-block; margin-bottom: 6px; margin-right: 6px;
+      background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.25);
+      border-radius: 6px; padding: 3px 10px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.06em; color: var(--tally-green); font-weight: 600;
+    }
     .spot-bonus-badge {
       display: inline-block; margin-bottom: 8px;
       background: rgba(217,119,6,0.1); border: 1px solid rgba(217,119,6,0.3);
       border-radius: 6px; padding: 3px 10px;
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.06em; color: var(--tally-amber, #d97706);
+    }
+    .cov-count {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--tally-green); color: white;
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      width: 14px; height: 14px; border-radius: 50%; margin-left: 4px;
     }
 
     .spot-optimizer-btn {
@@ -310,6 +334,7 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
 })
 export class SweetspotsComponent {
   data = inject(DataService);
+  wallet = inject(WalletService);
   private nav = inject(NavigationService);
 
   searchRaw = '';
@@ -326,11 +351,12 @@ export class SweetspotsComponent {
   readonly favCount = computed(() => this._favs().size);
 
   readonly filters: { id: Filter; label: string }[] = [
-    { id: 'all',    label: 'All' },
-    { id: 'flight', label: '✈ Flights' },
-    { id: 'hotel',  label: '🏨 Hotels' },
-    { id: 'promo',  label: '⚡ Promos' },
-    { id: 'saved',  label: '★ Saved' },
+    { id: 'all',     label: 'All' },
+    { id: 'flight',  label: '✈ Flights' },
+    { id: 'hotel',   label: '🏨 Hotels' },
+    { id: 'promo',   label: '⚡ Promos' },
+    { id: 'covered', label: '✓ Can Afford' },
+    { id: 'saved',   label: '★ Saved' },
   ];
 
   readonly filtered = computed<SweetSpot[]>(() => {
@@ -340,7 +366,8 @@ export class SweetspotsComponent {
     const q = this.searchRaw.toLowerCase().trim();
 
     let spots: SweetSpot[];
-    if (f === 'saved') spots = this.data.sweetSpots.filter(s => favs.has(this.spotKey(s)));
+    if (f === 'saved')   spots = this.data.sweetSpots.filter(s => favs.has(this.spotKey(s)));
+    else if (f === 'covered') spots = this.data.sweetSpots.filter(s => this.canAfford(s));
     else if (f === 'all') spots = [...this.data.sweetSpots];
     else spots = this.data.sweetSpots.filter(s => s.category === f);
 
@@ -440,6 +467,38 @@ export class SweetspotsComponent {
 
     this.nav.navigateTo({ tab: 'optimizer', optimizerPrefill: { fromCity, toCity, cabin } });
   }
+
+  /** Parse a ptsNeeded string like "88,000" or "40,000/night" into a number */
+  private parsePts(ptsNeeded: string): number {
+    const cleaned = ptsNeeded.replace(/[^0-9]/g, '');
+    return parseInt(cleaned) || 0;
+  }
+
+  /**
+   * True when the user's wallet balance in any of the spot's source card programs
+   * meets or exceeds the spot's points requirement.
+   * Spots with "0" pts (like cert promos) are always considered covered.
+   */
+  canAfford(spot: SweetSpot): boolean {
+    if (!this.wallet.hasAnyPoints()) return false;
+    const needed = this.parsePts(spot.ptsNeeded);
+    if (needed === 0) return true; // free cert / promo
+    // Map spot.cards (short names like "Amex MR") to card ids
+    for (const card of this.data.cards) {
+      const shortMatch = spot.cards.some(c =>
+        c.toLowerCase().includes(card.short?.toLowerCase() ?? '') ||
+        card.name.toLowerCase().includes(c.toLowerCase())
+      );
+      if (shortMatch && this.wallet.getBalance(card.id) >= needed) return true;
+    }
+    return false;
+  }
+
+  /** Count of spots the user can currently afford — drives the filter badge */
+  readonly coveredCount = computed(() => {
+    if (!this.wallet.hasAnyPoints()) return 0;
+    return this.data.sweetSpots.filter(s => this.canAfford(s)).length;
+  });
 
   formatExpiry(dateStr: string): string {
     const d = new Date(dateStr + 'T00:00:00');
