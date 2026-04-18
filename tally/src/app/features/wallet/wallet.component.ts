@@ -172,6 +172,24 @@ import { CreditCard } from '../../core/models';
         <div class="summary-value">\${{ wallet.estimatedValue() | number }}</div>
         <div class="summary-sub">{{ wallet.totalPoints() | number }} total points · blended ~1.6¢/pt</div>
 
+        <!-- Portfolio breakdown bar -->
+        <div class="breakdown-wrap" *ngIf="portfolioBreakdown() as b">
+          <div class="breakdown-label">Portfolio mix</div>
+          <div class="breakdown-bar">
+            <div class="breakdown-seg seg-transfer" [style.width]="b.transferPct + '%'"
+              [title]="'Transferable: ' + b.transferPct + '%'"></div>
+            <div class="breakdown-seg seg-airline" [style.width]="b.airlinePct + '%'"
+              [title]="'Airline: ' + b.airlinePct + '%'"></div>
+            <div class="breakdown-seg seg-hotel" [style.width]="b.hotelPct + '%'"
+              [title]="'Hotel: ' + b.hotelPct + '%'"></div>
+          </div>
+          <div class="breakdown-legend">
+            <span class="bd-dot transfer"></span><span>Transfer {{b.transferPct}}%</span>
+            <span class="bd-dot airline" *ngIf="b.airlinePct > 0"></span><span *ngIf="b.airlinePct > 0">Airline {{b.airlinePct}}%</span>
+            <span class="bd-dot hotel" *ngIf="b.hotelPct > 0"></span><span *ngIf="b.hotelPct > 0">Hotel {{b.hotelPct}}%</span>
+          </div>
+        </div>
+
         <!-- Sparkline — only shown when there are at least 2 history entries -->
         <div class="sparkline-wrap" *ngIf="sparklinePoints()">
           <span class="sparkline-label">30-day trend</span>
@@ -367,6 +385,29 @@ import { CreditCard } from '../../core/models';
       font-family: 'Geist', sans-serif; font-size: 13px; color: var(--tally-green); font-weight: 600;
     }
 
+    /* Portfolio breakdown */
+    .breakdown-wrap { margin: 12px 0 14px; }
+    .breakdown-label {
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin-bottom: 5px;
+    }
+    .breakdown-bar {
+      display: flex; height: 6px; border-radius: 99px; overflow: hidden; gap: 1px;
+      background: var(--border); margin-bottom: 5px;
+    }
+    .breakdown-seg { height: 100%; transition: width 0.5s ease; min-width: 2px; }
+    .breakdown-seg.seg-transfer { background: var(--tally-green); }
+    .breakdown-seg.seg-airline  { background: #3b82f6; }
+    .breakdown-seg.seg-hotel    { background: var(--tally-amber, #d97706); }
+    .breakdown-legend {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      font-family: 'Geist Mono', monospace; font-size: 8px; color: var(--text3);
+    }
+    .bd-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .bd-dot.transfer { background: var(--tally-green); }
+    .bd-dot.airline  { background: #3b82f6; }
+    .bd-dot.hotel    { background: var(--tally-amber, #d97706); }
+
     /* Sparkline */
     .sparkline-wrap {
       display: flex; align-items: center; gap: 8px; margin: 10px 0 14px;
@@ -492,6 +533,25 @@ export class WalletComponent {
     if (!monthly) return 0;
     return Math.ceil(gap / monthly);
   }
+
+  /** Breakdown of total points by category (transferable / airline / hotel) */
+  readonly portfolioBreakdown = computed(() => {
+    const total = this.wallet.totalPoints();
+    if (total === 0) return null;
+
+    let transfer = 0, airline = 0, hotel = 0;
+    for (const card of this.data.cards) {
+      const bal = this.wallet.getBalance(card.id);
+      if (card.category === 'transferable') transfer += bal;
+      else if (card.category === 'airline')  airline += bal;
+      else if (card.category === 'hotel')    hotel += bal;
+    }
+    return {
+      transferPct: Math.round((transfer / total) * 100),
+      airlinePct:  Math.round((airline  / total) * 100),
+      hotelPct:    Math.round((hotel    / total) * 100),
+    };
+  });
 
   /** SVG polyline points string for the 30-day sparkline, or null if < 2 entries */
   readonly sparklinePoints = computed((): string | null => {
