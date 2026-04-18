@@ -129,6 +129,20 @@ import { CreditCard } from '../../core/models';
 
       <div class="divider"></div>
 
+      <!-- Personalized Insights -->
+      <div class="insights-strip" *ngIf="insights().length > 0">
+        <div class="insights-label">✦ Insights</div>
+        <div class="insight-card" *ngFor="let ins of insights()">
+          <span class="ins-icon">{{ ins.icon }}</span>
+          <div class="ins-body">
+            <div class="ins-title">{{ ins.title }}</div>
+            <div class="ins-sub">{{ ins.sub }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
       <!-- Point Goal Tracker -->
       <div class="goal-section">
         <div class="goal-header">
@@ -304,6 +318,23 @@ import { CreditCard } from '../../core/models';
     .card-info { flex: 1; min-width: 0; }
     .card-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-sub { font-size: 10px; color: var(--text3); font-family: 'Geist Mono', monospace; margin-top: 1px; }
+    /* Personalized Insights */
+    .insights-strip { padding: 4px 0 8px; }
+    .insights-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.15em; text-transform: uppercase; color: var(--tally-green);
+      margin-bottom: 10px;
+    }
+    .insight-card {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 11px 14px; margin-bottom: 7px;
+    }
+    .ins-icon { font-size: 16px; flex-shrink: 0; }
+    .ins-body { flex: 1; min-width: 0; }
+    .ins-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .ins-sub { font-size: 11px; color: var(--text3); line-height: 1.45; }
+
     /* Points at risk banner */
     .at-risk-banner {
       display: flex; align-items: center; gap: 10px;
@@ -801,6 +832,69 @@ export class WalletComponent {
       count++;
     }
     return count > 0 ? { pts: totalPts, programs: count } : null;
+  });
+
+  /** Personalized insight cards based on user's held balances */
+  readonly insights = computed((): { icon: string; title: string; sub: string }[] => {
+    if (!this.wallet.hasAnyPoints()) return [];
+    const result: { icon: string; title: string; sub: string }[] = [];
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Insight 1: Most valuable single program + best CPP partner
+    let bestCard: { name: string; balance: number; cpp: number; partnerName: string } | null = null;
+    for (const card of this.data.cards) {
+      const bal = this.wallet.getBalance(card.id);
+      if (bal <= 0) continue;
+      const topPartner = card.partners.reduce(
+        (max, p) => p.cpp > max.cpp ? p : max,
+        card.partners[0]
+      );
+      if (!topPartner) continue;
+      const value = bal * topPartner.cpp / 100;
+      if (!bestCard || value > (bestCard.balance * bestCard.cpp / 100)) {
+        bestCard = { name: card.name, balance: bal, cpp: topPartner.cpp, partnerName: topPartner.name };
+      }
+    }
+    if (bestCard) {
+      const estVal = Math.round(bestCard.balance * bestCard.cpp / 100);
+      result.push({
+        icon: '💎',
+        title: `${bestCard.name} — best value`,
+        sub: `${bestCard.balance.toLocaleString()} pts worth ~$${estVal.toLocaleString()} via ${bestCard.partnerName} at ${bestCard.cpp}¢/pt`,
+      });
+    }
+
+    // Insight 2: Active transfer bonus for any held program
+    const activeBonuses = (this.data.transferBonuses ?? []).filter(b => b.expires >= today);
+    for (const bonus of activeBonuses) {
+      const card = this.data.cards.find(c => c.id === bonus.fromId);
+      if (!card || this.wallet.getBalance(card.id) <= 0) continue;
+      const expLabel = bonus.expires.slice(0, 7).replace('-', '/');
+      result.push({
+        icon: '⚡',
+        title: `Bonus active: ${card.name} → ${bonus.to}`,
+        sub: `${bonus.bonus} extra miles until ${expLabel} — transfer now to maximise`,
+      });
+      break; // show at most one bonus insight
+    }
+
+    // Insight 3: Diversification tip — if one program is >70% of portfolio
+    const total = this.wallet.totalPoints();
+    if (total > 0) {
+      for (const card of this.data.cards) {
+        const bal = this.wallet.getBalance(card.id);
+        if (bal / total > 0.7) {
+          result.push({
+            icon: '📊',
+            title: `Heavy concentration in ${card.name}`,
+            sub: `${Math.round((bal / total) * 100)}% of your portfolio — consider diversifying to keep options open`,
+          });
+          break;
+        }
+      }
+    }
+
+    return result.slice(0, 3);
   });
 
   /** Returns a colored badge object for programs with at-risk points, or null. */

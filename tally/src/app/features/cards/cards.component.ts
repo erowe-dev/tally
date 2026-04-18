@@ -47,7 +47,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         <button class="search-clear" *ngIf="searchRaw" (click)="searchRaw = ''">✕</button>
       </div>
 
-      <!-- Category tabs + great toggle -->
+      <!-- Category tabs + great toggle + mine filter -->
       <div class="filter-row">
         <button *ngFor="let f of catFilters" class="filter-btn"
           [class.active]="activeCat() === f.id"
@@ -57,6 +57,11 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         <button class="filter-btn great-toggle" [class.active]="greatOnly()"
           (click)="greatOnly.set(!greatOnly())">
           ✦ Great only
+        </button>
+        <button class="filter-btn mine-toggle" [class.active]="showHeldOnly()"
+          *ngIf="wallet.hasAnyPoints()"
+          (click)="showHeldOnly.set(!showHeldOnly())">
+          {{ showHeldOnly() ? '★ Mine' : '☆ Mine' }}
         </button>
       </div>
 
@@ -308,6 +313,9 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     }
     .great-toggle.active {
       background: var(--tally-amber, #d97706); border-color: var(--tally-amber, #d97706);
+    }
+    .mine-toggle.active {
+      background: #6366f1; border-color: #6366f1;
     }
 
     /* Count */
@@ -585,6 +593,7 @@ export class CardsComponent {
 
   activeCat = signal<CatFilter>('all');
   greatOnly = signal(false);
+  showHeldOnly = signal(false);
 
   // Spend category recommender
   showSpendRec = signal(false);
@@ -652,9 +661,13 @@ export class CardsComponent {
     const q = this.searchRaw.toLowerCase().trim();
     const cat = this.activeCat();
     const great = this.greatOnly();
+    const heldOnly = this.showHeldOnly();
 
     return this.data.cards.filter(card => {
       if (cat !== 'all' && card.category !== cat) return false;
+
+      // Mine filter: only show programs with a balance
+      if (heldOnly && this.wallet.getBalance(card.id) <= 0) return false;
 
       // Search: match program name, card names, or any partner name
       if (q) {
@@ -717,6 +730,7 @@ export class CardsComponent {
     this.searchRaw = '';
     this.activeCat.set('all');
     this.greatOnly.set(false);
+    this.showHeldOnly.set(false);
   }
 
   // Partner detail expand/collapse

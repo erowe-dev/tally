@@ -245,9 +245,15 @@ const MAX_ROUTE_HISTORY = 5;
           </div>
           <div class="best-badge" *ngIf="i === 0">BEST VALUE</div>
 
-          <button class="save-btn" (click)="saveTrip(rec)" [class.saved]="justSaved() === rec.program">
-            {{ justSaved() === rec.program ? '✓ Saved' : '+ Save' }}
-          </button>
+          <div class="card-action-row">
+            <button class="save-btn" (click)="saveTrip(rec)" [class.saved]="justSaved() === rec.program">
+              {{ justSaved() === rec.program ? '✓ Saved' : '+ Save' }}
+            </button>
+            <button class="copy-btn" *ngIf="i === 0"
+              (click)="copyTopResult(rec)" [class.copied]="copiedResult()">
+              {{ copiedResult() ? '✓ Copied' : '📋 Share' }}
+            </button>
+          </div>
         </div>
 
         <p class="disclaimer">
@@ -535,8 +541,9 @@ const MAX_ROUTE_HISTORY = 5;
       letter-spacing: 0.05em; margin-top: 12px;
     }
 
+    .card-action-row { display: flex; gap: 6px; margin-top: 10px; }
     .save-btn {
-      margin-top: 10px; background: none;
+      background: none;
       border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace;
       font-size: 10px; letter-spacing: 0.08em; padding: 5px 10px;
@@ -544,6 +551,15 @@ const MAX_ROUTE_HISTORY = 5;
     }
     .save-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .save-btn.saved { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--text3); font-family: 'Geist Mono', monospace;
+      font-size: 10px; letter-spacing: 0.08em; padding: 5px 10px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .copy-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
+    .copy-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
 
     .saved-card {
       background: var(--white); border: 1px solid var(--border);
@@ -649,6 +665,8 @@ export class OptimizerComponent implements OnChanges {
   pendingNote = '';
   // Briefly highlights the save button after saving
   justSaved = signal<string | null>(null);
+  // Briefly highlights the copy button after copying
+  copiedResult = signal(false);
   // Filters / sorting for results
   canAffordOnly = signal(false);
   sortBy = signal<'cpp' | 'coverage'>('cpp');
@@ -873,6 +891,27 @@ export class OptimizerComponent implements OnChanges {
     // Close quick wins if open so user sees results
     this.showQuickWins.set(false);
     this.analyze();
+  }
+
+  copyTopResult(rec: Recommendation): void {
+    const pts = (rec.ptsRequired ?? rec.ptsBase).toLocaleString();
+    const val = `$${this.getCashValue(rec).toLocaleString()}`;
+    const route = this.tripType() === 'flight'
+      ? (this.fromCity && this.toCity ? `${this.fromCity}→${this.toCity} · ${this.cabin}` : this.cabin)
+      : `${this.hotelCategory} · ${this.hotelNights} nights`;
+    const lines = [
+      `✈ Best transfer: ${rec.program}`,
+      `Partner: ${rec.partner}`,
+      `Route: ${route}`,
+      `${pts} pts (~${val} value · ${rec.cpp}¢/pt)`,
+      `${rec.note}`,
+      '',
+      'Found with Tally Points Advisor',
+    ];
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      this.copiedResult.set(true);
+      setTimeout(() => this.copiedResult.set(false), 2000);
+    }).catch(() => {/* silent fail */});
   }
 
   formatTripDate(iso: string): string {
