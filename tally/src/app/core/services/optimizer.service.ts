@@ -43,17 +43,19 @@ const CABIN_MULT: Record<CabinClass, number> = {
 export class OptimizerService {
   private data = inject(DataService);
 
-  getFlightRecs(from: string, to: string, cabin: CabinClass, passengers: number): Recommendation[] {
+  getFlightRecs(from: string, to: string, cabin: CabinClass, passengers: number): { recs: Recommendation[]; category: string } {
     const category = this.detectRoute(from.toUpperCase(), to.toUpperCase());
     const base = this.data.flightRecs[category] ?? this.data.flightRecs['default'];
     const mult = CABIN_MULT[cabin] ?? 1.0;
 
-    return base
+    const recs = base
       .map(r => ({
         ...r,
         ptsRequired: Math.round(r.ptsBase * mult * passengers / 1000) * 1000,
       }))
       .sort((a, b) => b.cpp - a.cpp);
+
+    return { recs, category };
   }
 
   getHotelRecs(category: HotelCategory, nights: number): Recommendation[] {

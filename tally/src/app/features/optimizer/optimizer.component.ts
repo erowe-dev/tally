@@ -112,7 +112,10 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
       <!-- Results -->
       <div class="results" *ngIf="results().length">
         <div class="results-header">
-          <span class="section-eyebrow">{{ results().length }} Options</span>
+          <div>
+            <span class="section-eyebrow">{{ results().length }} Options</span>
+            <span class="route-label" *ngIf="routeLabel()">{{ routeLabel() }}</span>
+          </div>
           <span class="results-hint" *ngIf="wallet.hasAnyPoints()">✓ = you have enough</span>
         </div>
 
@@ -276,6 +279,10 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
       margin-top: 24px; margin-bottom: 12px;
     }
     .results-hint { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--tally-green); }
+    .route-label {
+      display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px;
+    }
 
     .result-card {
       background: var(--white); border: 1px solid var(--border);
@@ -420,15 +427,31 @@ export class OptimizerComponent {
   results = signal<Recommendation[]>([]);
   analyzed = signal(false);
   maxCpp = signal(1);
+  routeLabel = signal<string>('');
   // Briefly highlights the save button after saving
   justSaved = signal<string | null>(null);
+
+  private static readonly ROUTE_LABELS: Record<string, string> = {
+    transatlantic: 'US ↔ Europe',
+    transpacific:  'US ↔ Asia/Pacific',
+    domestic:      'US Domestic',
+    latin_america: 'US ↔ Latin America',
+    caribbean:     'US ↔ Caribbean',
+    middle_east:   'US ↔ Middle East',
+    africa:        'US ↔ Africa',
+    eurasia:       'Europe ↔ Asia',
+    default:       'Worldwide',
+  };
 
   analyze(): void {
     let recs: Recommendation[];
     if (this.tripType() === 'flight') {
-      recs = this.optimizer.getFlightRecs(this.fromCity, this.toCity, this.cabin, this.passengers);
+      const result = this.optimizer.getFlightRecs(this.fromCity, this.toCity, this.cabin, this.passengers);
+      recs = result.recs;
+      this.routeLabel.set(OptimizerComponent.ROUTE_LABELS[result.category] ?? '');
     } else {
       recs = this.optimizer.getHotelRecs(this.hotelCategory, this.hotelNights);
+      this.routeLabel.set('');
     }
     this.maxCpp.set(recs[0]?.cpp ?? 1);
     this.results.set(recs);

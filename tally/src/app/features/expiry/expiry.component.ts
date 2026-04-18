@@ -43,6 +43,15 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
         </div>
       </div>
 
+      <!-- All-safe banner -->
+      <div class="alert-banner safe" *ngIf="expiry.criticalCount() === 0 && expiry.warningCount() === 0 && !expiry.hasWarnings()">
+        <span class="alert-icon">✅</span>
+        <div>
+          <div class="alert-title">All programs are in good shape</div>
+          <div class="alert-sub">No points expiring soon. Keep earning!</div>
+        </div>
+      </div>
+
       <!-- Status cards -->
       <div class="expiry-list">
         <div
@@ -144,6 +153,9 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
     .alert-banner.warning { background: rgba(251,191,36,0.1); border: 1px solid rgba(217,119,6,0.2); }
     .alert-banner.warning .alert-title { color: var(--tally-amber, #d97706); }
     .alert-banner.warning .alert-sub { color: var(--tally-amber, #d97706); }
+    .alert-banner.safe { background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2); }
+    .alert-banner.safe .alert-title { color: var(--tally-green); }
+    .alert-banner.safe .alert-sub { color: var(--tally-green-mid); }
     .alert-icon { font-size: 20px; flex-shrink: 0; }
     .alert-title { font-size: 14px; font-weight: 600; color: var(--tally-red); margin-bottom: 2px; }
     .alert-sub { font-size: 12px; color: var(--tally-red); opacity: 0.8; }
