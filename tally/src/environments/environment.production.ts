@@ -1,8 +1,8 @@
 export const environment = {
   production: true,
   auth0: {
-    domain: 'TODO_YOUR_AUTH0_DOMAIN', // e.g. 'your-tenant.us.auth0.com'
-    clientId: 'TODO_YOUR_AUTH0_CLIENT_ID',
+    domain: 'dev-2iqdjh6lgnv6pnz5.us.auth0.com',
+    clientId: 'gowY6jnkLVTalCdvhymKOYfHl8DFjiYd',
     authorizationParams: {
       redirect_uri: 'https://tally-theta-two.vercel.app',
       audience: 'https://api.tally.app',

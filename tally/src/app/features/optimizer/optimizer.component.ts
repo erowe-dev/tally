@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { OptimizerService } from '../../core/services/optimizer.service';
 import { WalletService } from '../../core/services/wallet.service';
 import { DataService } from '../../core/services/data.service';
+import { TripsService } from '../../core/services/trips.service';
 import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
 
 @Component({
@@ -143,12 +144,33 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
             <span class="chip" *ngFor="let cid of rec.cards">{{ getShort(cid) }}</span>
           </div>
           <div class="best-badge" *ngIf="i === 0">BEST VALUE</div>
+
+          <button class="save-btn" (click)="saveTrip(rec)" [class.saved]="justSaved() === rec.program">
+            {{ justSaved() === rec.program ? '✓ Saved' : '+ Save' }}
+          </button>
         </div>
 
         <p class="disclaimer">
           ¢/pt values are estimates. Actual value varies by route and availability.
           Add balances in Wallet for coverage indicators.
         </p>
+      </div>
+
+      <!-- Saved Trips -->
+      <div class="saved-section" *ngIf="trips.trips().length > 0">
+        <div class="section-eyebrow" style="margin-top:28px; margin-bottom:12px;">Saved Trips</div>
+        <div class="saved-card" *ngFor="let trip of trips.trips()">
+          <div class="saved-info">
+            <div class="saved-program">{{ trip.programName }}</div>
+            <div class="saved-meta">
+              <span *ngIf="trip.tripType === 'flight' && trip.origin">{{ trip.origin }}→{{ trip.destination }}</span>
+              <span *ngIf="trip.tripType === 'flight' && trip.cabin"> · {{ trip.cabin }}</span>
+              <span *ngIf="trip.tripType === 'hotel' && trip.hotelCat"> {{ trip.hotelCat }} · {{ trip.nights }}n</span>
+            </div>
+          </div>
+          <div class="saved-pts">{{ trip.ptsRequired | number }}<small>pts</small></div>
+          <button class="delete-btn" (click)="trips.deleteTrip(trip.id)" title="Remove">×</button>
+        </div>
       </div>
     </div>
   `,
@@ -290,12 +312,44 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
       color: var(--text3); line-height: 1.6;
       letter-spacing: 0.05em; margin-top: 12px;
     }
+
+    .save-btn {
+      margin-top: 10px; background: none;
+      border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--text3); font-family: 'Geist Mono', monospace;
+      font-size: 10px; letter-spacing: 0.08em; padding: 5px 10px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .save-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
+    .save-btn.saved { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
+
+    .saved-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 14px;
+      display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+    }
+    .saved-info { flex: 1; min-width: 0; }
+    .saved-program { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .saved-meta { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 0.04em; }
+    .saved-pts {
+      font-family: 'Geist Mono', monospace; font-size: 14px;
+      color: var(--tally-green); text-align: right; flex-shrink: 0;
+    }
+    .saved-pts small { display: block; font-size: 9px; color: var(--text3); }
+    .delete-btn {
+      background: none; border: none; color: var(--text3);
+      font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 4px;
+      border-radius: 4px; transition: color 0.15s;
+      flex-shrink: 0;
+    }
+    .delete-btn:hover { color: var(--tally-red); }
   `]
 })
 export class OptimizerComponent {
   private optimizer = inject(OptimizerService);
   private data = inject(DataService);
   wallet = inject(WalletService);
+  trips = inject(TripsService);
 
   tripType = signal<'flight' | 'hotel'>('flight');
   fromCity = '';
@@ -309,6 +363,8 @@ export class OptimizerComponent {
   results = signal<Recommendation[]>([]);
   analyzed = signal(false);
   maxCpp = signal(1);
+  // Briefly highlights the save button after saving
+  justSaved = signal<string | null>(null);
 
   analyze(): void {
     let recs: Recommendation[];
@@ -320,6 +376,31 @@ export class OptimizerComponent {
     this.maxCpp.set(recs[0]?.cpp ?? 1);
     this.results.set(recs);
     this.analyzed.set(true);
+  }
+
+  saveTrip(rec: Recommendation): void {
+    const ptsRequired = rec.ptsRequired ?? rec.ptsBase;
+    if (this.tripType() === 'flight') {
+      this.trips.saveTrip({
+        tripType: 'flight',
+        origin: this.fromCity.toUpperCase() || undefined,
+        destination: this.toCity.toUpperCase() || undefined,
+        cabin: this.cabin,
+        passengers: this.passengers,
+        programName: rec.program,
+        ptsRequired,
+      });
+    } else {
+      this.trips.saveTrip({
+        tripType: 'hotel',
+        hotelCat: this.hotelCategory,
+        nights: this.hotelNights,
+        programName: rec.program,
+        ptsRequired,
+      });
+    }
+    this.justSaved.set(rec.program);
+    setTimeout(() => this.justSaved.set(null), 2000);
   }
 
   getBarPct(rec: Recommendation): number {

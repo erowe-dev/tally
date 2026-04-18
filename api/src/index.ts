@@ -10,6 +10,7 @@ import cors from 'cors';
 import usersRouter from './routes/users';
 import balancesRouter from './routes/balances';
 import expiryRouter from './routes/expiry';
+import tripsRouter from './routes/trips';
 
 const app = express();
 const port = parseInt(process.env['PORT'] ?? '3000', 10);
@@ -45,6 +46,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/users', usersRouter);
 app.use('/api/balances', balancesRouter);
 app.use('/api/expiry', expiryRouter);
+app.use('/api/trips', tripsRouter);
 
 // Fallback error handler — any error that reaches here is unexpected.
 // Keeps the response shape consistent and avoids leaking stack traces.

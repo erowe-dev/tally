@@ -47,6 +47,7 @@ function isValidDateString(value: string): boolean {
 }
 
 const EXPIRY_RULES: ExpiryRule[] = [
+  // ── Transferable currencies ────────────────────────────────────────────────
   {
     cardId: 'amex_mr',
     programName: 'Amex Membership Rewards',
@@ -81,10 +82,76 @@ const EXPIRY_RULES: ExpiryRule[] = [
     inactivityMonths: 24,
     note: 'Points expire after 24 months of inactivity. Pay rent each month to keep them active.',
   },
+
+  // ── Airline programs ──────────────────────────────────────────────────────
+  {
+    cardId: 'delta_skymiles',
+    programName: 'Delta SkyMiles',
+    expiryType: 'never',
+    note: 'Delta SkyMiles never expire. Delta eliminated expiry in 2011.',
+  },
+  {
+    cardId: 'united_mp',
+    programName: 'United MileagePlus',
+    expiryType: 'activity',
+    inactivityMonths: 18,
+    note: 'Miles expire after 18 months of account inactivity. Any earning or redemption resets the clock.',
+  },
+  {
+    cardId: 'aa_aadvantage',
+    programName: 'American AAdvantage',
+    expiryType: 'activity',
+    inactivityMonths: 24,
+    note: 'Miles expire after 24 months of inactivity. Any flight, purchase, or partner earn resets the clock.',
+  },
+  {
+    cardId: 'southwest_rr',
+    programName: 'Southwest Rapid Rewards',
+    expiryType: 'activity',
+    inactivityMonths: 24,
+    note: 'Points expire after 24 months of inactivity. Any purchase on the Southwest card resets the clock.',
+  },
+  {
+    cardId: 'alaska_mp',
+    programName: 'Alaska MileagePlan',
+    expiryType: 'activity',
+    inactivityMonths: 24,
+    note: 'Miles expire after 24 months of inactivity. Flying, earning via partners, or shopping portal activity resets the clock.',
+  },
+
+  // ── Hotel programs ────────────────────────────────────────────────────────
+  {
+    cardId: 'marriott_bonvoy',
+    programName: 'Marriott Bonvoy',
+    expiryType: 'activity',
+    inactivityMonths: 24,
+    note: 'Points expire after 24 months of inactivity. Any stay, purchase, or transfer resets the clock.',
+  },
+  {
+    cardId: 'hyatt',
+    programName: 'World of Hyatt',
+    expiryType: 'activity',
+    inactivityMonths: 24,
+    note: 'Points expire after 24 months of inactivity. Any stay or qualifying activity resets the clock.',
+  },
+  {
+    cardId: 'hilton_honors',
+    programName: 'Hilton Honors',
+    expiryType: 'activity',
+    inactivityMonths: 24,
+    note: 'Points expire after 24 months of inactivity. A single stay, purchase, or partner activity resets the clock.',
+  },
+  {
+    cardId: 'ihg_rewards',
+    programName: 'IHG One Rewards',
+    expiryType: 'activity',
+    inactivityMonths: 12,
+    note: 'Points expire after just 12 months of inactivity — shortest window of any major hotel program. Any stay or purchase resets.',
+  },
 ];
 
 // Programs where expiry is "never" or tied to card-open status (no date needed)
-const SAFE_CARDS = new Set(['amex_mr', 'chase_ur', 'cap1_miles']);
+const SAFE_CARDS = new Set(['amex_mr', 'chase_ur', 'cap1_miles', 'delta_skymiles']);
 
 @Injectable({ providedIn: 'root' })
 export class ExpiryService {

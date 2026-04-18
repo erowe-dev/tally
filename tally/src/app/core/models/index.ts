@@ -14,8 +14,11 @@ export interface CreditCard {
   icon: string;
   color: string;
   textColor: string;
+  /** Cards that earn in this program */
   cards: string[];
   baseCpp: number;
+  /** 'transferable' = Amex MR / Chase UR style; 'airline' / 'hotel' = co-branded */
+  category: 'transferable' | 'airline' | 'hotel';
   partners: TransferPartner[];
 }
 
@@ -38,6 +41,22 @@ export interface SweetSpot {
   cards: string[];
   programs: string[];
   note: string;
+  category: 'flight' | 'hotel' | 'promo';
+}
+
+export interface SavedTrip {
+  id: string;
+  tripType: 'flight' | 'hotel';
+  origin?: string;
+  destination?: string;
+  cabin?: CabinClass;
+  passengers?: number;
+  nights?: number;
+  hotelCat?: HotelCategory;
+  programName: string;
+  ptsRequired: number;
+  notes?: string;
+  createdAt: string; // ISO timestamp
 }
 
 export type TripType = 'flight' | 'hotel';

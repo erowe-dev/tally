@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService as Auth0Service } from '@auth0/auth0-angular';
 import { Observable, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { SavedTrip } from '../models';
 
 export interface ApiExpiryRecord {
   cardId: string;
@@ -75,6 +76,26 @@ export class ApiService {
         `${environment.apiUrl}/api/expiry/${cardId}`,
         { headers },
       ),
+    );
+  }
+
+  // ── Trips ───────────────────────────────────────────────────────────────────
+
+  getTrips(): Observable<SavedTrip[]> {
+    return this.withAuth(headers =>
+      this.http.get<SavedTrip[]>(`${environment.apiUrl}/api/trips`, { headers }),
+    );
+  }
+
+  createTrip(trip: Omit<SavedTrip, 'id' | 'createdAt'>): Observable<SavedTrip> {
+    return this.withAuth(headers =>
+      this.http.post<SavedTrip>(`${environment.apiUrl}/api/trips`, trip, { headers }),
+    );
+  }
+
+  deleteTrip(id: string): Observable<unknown> {
+    return this.withAuth(headers =>
+      this.http.delete(`${environment.apiUrl}/api/trips/${id}`, { headers }),
     );
   }
 }

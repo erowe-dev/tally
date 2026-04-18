@@ -1,8 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WalletService } from '../../core/services/wallet.service';
 import { DataService } from '../../core/services/data.service';
+import { CreditCard } from '../../core/models';
 
 @Component({
   selector: 'tally-wallet',
@@ -19,30 +20,43 @@ import { DataService } from '../../core/services/data.service';
         <span class="sync-text">{{ syncLabel() }}</span>
       </div>
 
-      <!-- Loading shimmer while fetching from API -->
-      <div class="wallet-list" *ngIf="wallet.syncState() !== 'loading'; else loading">
-        <div class="wallet-row" *ngFor="let card of data.cards">
-          <div class="card-badge" [style.background]="card.color">{{ card.icon }}</div>
-          <div class="card-info">
-            <div class="card-name">{{ card.name }}</div>
-            <div class="card-sub">{{ card.cards[0] }} & more</div>
-          </div>
-          <input
-            class="balance-input"
-            type="number"
-            inputmode="numeric"
-            placeholder="0"
-            [value]="wallet.getBalance(card.id) || null"
-            (input)="onInput(card.id, $event)"
-            min="0" step="1000">
-        </div>
-      </div>
-
-      <ng-template #loading>
+      <!-- Loading shimmer -->
+      <ng-container *ngIf="wallet.syncState() === 'loading'">
         <div class="wallet-list">
           <div class="shimmer-row" *ngFor="let n of [1,2,3,4,5]"></div>
         </div>
-      </ng-template>
+      </ng-container>
+
+      <!-- Program groups -->
+      <ng-container *ngIf="wallet.syncState() !== 'loading'">
+        <div *ngFor="let group of programGroups" class="program-group">
+          <div class="group-header">
+            <span class="group-icon">{{ group.icon }}</span>
+            <span class="group-label">{{ group.label }}</span>
+            <span class="group-total" *ngIf="groupTotal(group.cards) > 0">
+              {{ groupTotal(group.cards) | number }} pts
+            </span>
+          </div>
+
+          <div class="wallet-list">
+            <div class="wallet-row" *ngFor="let card of group.cards">
+              <div class="card-badge" [style.background]="card.color">{{ card.icon }}</div>
+              <div class="card-info">
+                <div class="card-name">{{ card.name }}</div>
+                <div class="card-sub">{{ card.cards[0] }}<span *ngIf="card.cards.length > 1"> & more</span></div>
+              </div>
+              <input
+                class="balance-input"
+                type="number"
+                inputmode="numeric"
+                placeholder="0"
+                [value]="wallet.getBalance(card.id) || null"
+                (input)="onInput(card.id, $event)"
+                min="0" step="1000">
+            </div>
+          </div>
+        </div>
+      </ng-container>
 
       <div class="divider"></div>
 
@@ -57,7 +71,7 @@ import { DataService } from '../../core/services/data.service';
       </div>
 
       <ng-template #noPoints>
-        <div class="empty-state" *ngIf="wallet.syncState() !== 'loading'">
+        <div class="empty-state">
           <div class="empty-icon">💳</div>
           <p>Add your balances above to see your total estimated value</p>
         </div>
@@ -71,53 +85,63 @@ import { DataService } from '../../core/services/data.service';
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.08em; text-transform: uppercase;
       padding: 4px 10px; border-radius: 20px;
-      border: 1px solid var(--border); margin-bottom: 16px;
+      border: 1px solid var(--border); margin-bottom: 20px;
       color: var(--text3); background: var(--surface);
       transition: all 0.3s;
     }
     .sync-pill.synced { border-color: rgba(26,122,74,0.3); color: var(--tally-green); background: var(--tally-green-light); }
     .sync-pill.error  { border-color: rgba(220,38,38,0.3); color: var(--tally-red); background: var(--tally-red-light); }
-
-    .sync-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: currentColor; flex-shrink: 0;
-    }
-    .sync-pill.loading .sync-dot {
-      animation: pulse 1.2s ease-in-out infinite;
-    }
+    .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .sync-pill.loading .sync-dot { animation: pulse 1.2s ease-in-out infinite; }
     @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
-    /* Shimmer loading state */
+    /* Shimmer */
     .shimmer-row {
-      height: 64px; border-radius: 14px;
+      height: 64px; border-radius: 14px; margin-bottom: 10px;
       background: linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.4s ease-in-out infinite;
+      background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite;
     }
     @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
+    /* Program groups */
+    .program-group { margin-bottom: 20px; }
+    .group-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+      padding: 0 2px;
+    }
+    .group-icon { font-size: 13px; }
+    .group-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3);
+      flex: 1;
+    }
+    .group-total {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--tally-green); letter-spacing: 0.04em;
+    }
+
     /* Card list */
-    .wallet-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+    .wallet-list { display: flex; flex-direction: column; gap: 8px; }
 
     .wallet-row {
       background: var(--white); border: 1px solid var(--border);
-      border-radius: 14px; padding: 14px 16px;
-      display: flex; align-items: center; gap: 14px;
+      border-radius: 14px; padding: 12px 14px;
+      display: flex; align-items: center; gap: 12px;
     }
     .card-badge {
-      width: 42px; height: 28px; border-radius: 7px;
+      width: 38px; height: 26px; border-radius: 6px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px; flex-shrink: 0;
+      font-size: 14px; flex-shrink: 0;
     }
     .card-info { flex: 1; min-width: 0; }
-    .card-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-sub { font-size: 10px; color: var(--text3); font-family: 'Geist Mono', monospace; margin-top: 1px; }
 
     .balance-input {
       background: var(--surface); border: 1.5px solid var(--border2);
       border-radius: 9px; color: var(--tally-green);
-      font-family: 'Geist Mono', monospace; font-size: 14px;
-      padding: 8px 10px; width: 100px; text-align: right;
+      font-family: 'Geist Mono', monospace; font-size: 13px;
+      padding: 7px 9px; width: 90px; text-align: right;
       outline: none; transition: border-color 0.15s;
       -moz-appearance: textfield;
     }
@@ -158,6 +182,28 @@ import { DataService } from '../../core/services/data.service';
 export class WalletComponent {
   wallet = inject(WalletService);
   data = inject(DataService);
+
+  readonly programGroups = [
+    {
+      label: 'Transferable Currencies',
+      icon: '↔',
+      cards: this.data.cards.filter(c => c.category === 'transferable'),
+    },
+    {
+      label: 'Airline Programs',
+      icon: '✈',
+      cards: this.data.cards.filter(c => c.category === 'airline'),
+    },
+    {
+      label: 'Hotel Programs',
+      icon: '🏨',
+      cards: this.data.cards.filter(c => c.category === 'hotel'),
+    },
+  ];
+
+  groupTotal(cards: CreditCard[]): number {
+    return cards.reduce((sum, c) => sum + this.wallet.getBalance(c.id), 0);
+  }
 
   syncLabel(): string {
     switch (this.wallet.syncState()) {

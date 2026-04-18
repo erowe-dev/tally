@@ -17,6 +17,7 @@ model User {
 
   balances      Balance[]
   expiryRecords ExpiryRecord[]
+  trips         Trip[]
 
   @@map("users")
 }
@@ -47,4 +48,25 @@ model ExpiryRecord {
   @@unique([userId, cardId])
   @@index([userId])
   @@map("expiry_records")
+}
+
+model Trip {
+  id          String   @id @default(cuid())
+  userId      String
+  tripType    String   // 'flight' | 'hotel'
+  origin      String?  // IATA code e.g. 'ORD'
+  destination String?  // IATA code or city name
+  cabin       String?  // 'economy' | 'premium' | 'business' | 'first'
+  passengers  Int?
+  nights      Int?
+  hotelCat    String?  // 'budget' | 'mid' | 'luxury' | 'top'
+  programName String   // e.g. 'ANA Mileage Club'
+  ptsRequired Int
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@map("trips")
 }

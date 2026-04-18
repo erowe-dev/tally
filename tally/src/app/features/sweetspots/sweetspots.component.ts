@@ -1,18 +1,34 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DataService } from '../../core/services/data.service';
+import { SweetSpot } from '../../core/models';
+
+type Filter = 'all' | 'flight' | 'hotel' | 'promo';
 
 @Component({
   selector: 'tally-sweetspots',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="page-content">
       <div class="section-eyebrow">Known Sweet Spots</div>
       <h2 class="section-title"><em>Hidden</em> value<br>redemptions</h2>
 
+      <!-- Filter tabs -->
+      <div class="filter-row">
+        <button *ngFor="let f of filters" class="filter-btn"
+          [class.active]="activeFilter() === f.id"
+          (click)="activeFilter.set(f.id)">
+          {{ f.label }}
+        </button>
+      </div>
+
+      <div class="count-line">{{ filtered().length }} spot{{ filtered().length !== 1 ? 's' : '' }}</div>
+
       <div class="spots-list">
-        <div class="spot-card" *ngFor="let s of data.sweetSpots">
+        <div class="spot-card" *ngFor="let s of filtered()" [class]="'cat-' + s.category">
+          <div class="category-badge">{{ categoryLabel(s.category) }}</div>
           <div class="spot-route" [innerHTML]="formatRoute(s.route)"></div>
           <div class="spot-detail">{{ s.detail.toUpperCase() }}</div>
           <div class="spot-stats">
@@ -36,9 +52,33 @@ import { DataService } from '../../core/services/data.service';
           </div>
         </div>
       </div>
+
+      <div class="empty-filter" *ngIf="filtered().length === 0">
+        <p>No spots match this filter.</p>
+      </div>
     </div>
   `,
   styles: [`
+    .filter-row {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .filter-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 5px 13px;
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.08em; color: var(--text3); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn.active {
+      background: var(--tally-green); border-color: var(--tally-green);
+      color: white;
+    }
+
+    .count-line {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--text3); letter-spacing: 0.08em; margin-bottom: 16px;
+    }
+
     .spots-list { display: flex; flex-direction: column; gap: 12px; }
 
     .spot-card {
@@ -51,10 +91,22 @@ import { DataService } from '../../core/services/data.service';
       top: 0; left: 0; right: 0; height: 2px;
       background: linear-gradient(90deg, transparent, var(--tally-green), transparent);
     }
+    .spot-card.cat-hotel::before { background: linear-gradient(90deg, transparent, var(--tally-amber, #b45309), transparent); }
+    .spot-card.cat-promo::before { background: linear-gradient(90deg, transparent, var(--tally-green-mid), transparent); }
+
+    .category-badge {
+      position: absolute; top: 14px; right: 14px;
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 3px 7px; border-radius: 4px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text3);
+    }
 
     .spot-route {
       font-family: 'Instrument Serif', serif;
       font-size: 20px; font-weight: 400; color: var(--text); margin-bottom: 4px;
+      padding-right: 70px;
     }
     :host ::ng-deep .spot-route .arrow { color: var(--tally-green); font-style: italic; }
 
@@ -67,9 +119,7 @@ import { DataService } from '../../core/services/data.service';
       background: var(--surface); border-radius: 10px; padding: 10px;
       text-align: center; display: flex; flex-direction: column; gap: 2px;
     }
-    .stat-val {
-      font-family: 'Geist Mono', monospace; font-size: 14px; color: var(--tally-green);
-    }
+    .stat-val { font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--tally-green); }
     .stat-val.cpp { color: var(--tally-green-mid); }
     .stat-label {
       font-family: 'Geist Mono', monospace; font-size: 8px;
@@ -84,12 +134,37 @@ import { DataService } from '../../core/services/data.service';
     }
     .card-chip { background: var(--surface); border: 1px solid var(--border); color: var(--text2); }
     .prog-chip { background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2); color: var(--tally-green); }
+
+    .empty-filter { text-align: center; padding: 32px 16px; color: var(--text3); font-size: 14px; }
   `]
 })
 export class SweetspotsComponent {
   data = inject(DataService);
 
+  activeFilter = signal<Filter>('all');
+
+  readonly filters: { id: Filter; label: string }[] = [
+    { id: 'all',    label: 'All' },
+    { id: 'flight', label: '✈ Flights' },
+    { id: 'hotel',  label: '🏨 Hotels' },
+    { id: 'promo',  label: '⚡ Promos' },
+  ];
+
+  readonly filtered = computed<SweetSpot[]>(() => {
+    const f = this.activeFilter();
+    if (f === 'all') return this.data.sweetSpots;
+    return this.data.sweetSpots.filter(s => s.category === f);
+  });
+
   formatRoute(route: string): string {
     return route.replace('→', '<span class="arrow"> → </span>');
+  }
+
+  categoryLabel(cat: SweetSpot['category']): string {
+    switch (cat) {
+      case 'flight': return '✈ Flight';
+      case 'hotel':  return '🏨 Hotel';
+      case 'promo':  return '⚡ Promo';
+    }
   }
 }
