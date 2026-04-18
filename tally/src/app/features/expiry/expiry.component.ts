@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expiry.service';
@@ -133,6 +133,15 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
           </div>
 
         </div>
+      </div>
+
+      <!-- Calendar export -->
+      <div class="calendar-export">
+        <button class="cal-btn" (click)="exportCalendar()" [disabled]="calExportCount() === 0">
+          📅 Export reminders to calendar
+          <span class="cal-count" *ngIf="calExportCount() > 0">({{ calExportCount() }} events)</span>
+        </button>
+        <p class="cal-note">Generates a .ics file with reminders 30 days before each program's computed expiry date. Import into Google Calendar, Apple Calendar, or Outlook.</p>
       </div>
 
       <div class="expiry-footer">
@@ -313,6 +322,26 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
       color: var(--text3); letter-spacing: 0.06em; margin-top: 6px;
     }
 
+    /* Calendar export */
+    .calendar-export { padding: 16px 0 8px; }
+    .cal-btn {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 16px;
+      font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 500;
+      color: var(--text2); cursor: pointer; text-align: left;
+      display: flex; align-items: center; gap: 6px;
+      transition: border-color 0.15s; margin-bottom: 6px;
+    }
+    .cal-btn:hover:not(:disabled) { border-color: var(--tally-green); color: var(--tally-green); }
+    .cal-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .cal-count {
+      font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text3); margin-left: 4px;
+    }
+    .cal-note {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--text3); line-height: 1.5; letter-spacing: 0.04em;
+    }
+
     .expiry-footer {
       margin-top: 20px; padding: 14px 16px;
       background: var(--surface); border-radius: 10px;
@@ -384,5 +413,76 @@ export class ExpiryComponent {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  /** Count of statuses that have a computed expiry date (for calendar export button) */
+  readonly calExportCount = computed(() =>
+    this.expiry.statuses().filter(s => s.expiryDate !== null && s.urgency !== 'never').length
+  );
+
+  exportCalendar(): void {
+    const lines: string[] = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Tally Points//Expiry Tracker//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+    ];
+
+    const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+    for (const s of this.expiry.statuses()) {
+      if (!s.expiryDate || s.urgency === 'never') continue;
+
+      // 30-day warning event
+      const reminderDate = new Date(s.expiryDate);
+      reminderDate.setDate(reminderDate.getDate() - 30);
+      const dtStart = this.icsDate(reminderDate);
+
+      // Expiry event
+      const dtExpiry = this.icsDate(s.expiryDate);
+
+      // 30-day reminder
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:tally-remind-${s.cardId}-${now}`,
+        `DTSTAMP:${now}`,
+        `DTSTART;VALUE=DATE:${dtStart}`,
+        `DTEND;VALUE=DATE:${dtStart}`,
+        `SUMMARY:⏱ ${s.programName} — 30 days to expiry`,
+        `DESCRIPTION:Your ${s.programName} points will expire on ${s.expiryDate?.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} if you don't take action.\\n\\n${s.note}\\n\\nEasy ways to reset:\\n${s.quickActions.map(a => '• ' + a).join('\\n')}`,
+        'END:VEVENT',
+      );
+
+      // Expiry day event
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:tally-expire-${s.cardId}-${now}`,
+        `DTSTAMP:${now}`,
+        `DTSTART;VALUE=DATE:${dtExpiry}`,
+        `DTEND;VALUE=DATE:${dtExpiry}`,
+        `SUMMARY:🔴 ${s.programName} points expire TODAY`,
+        `DESCRIPTION:${s.programName} points are expiring today. Act immediately or points may be lost.`,
+        'END:VEVENT',
+      );
+    }
+
+    lines.push('END:VCALENDAR');
+
+    const ics = lines.join('\r\n');
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tally-expiry-reminders-${this.todayStr}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private icsDate(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}${m}${d}`;
   }
 }
