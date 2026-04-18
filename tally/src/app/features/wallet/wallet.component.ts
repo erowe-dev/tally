@@ -220,6 +220,12 @@ import { CreditCard } from '../../core/models';
           </svg>
         </div>
 
+        <div class="maximize-btn-row">
+          <button class="maximize-btn" (click)="nav.navigateTo({ tab: 'optimizer' })">
+            ⚡ Find best redemption in Optimizer →
+          </button>
+        </div>
+
         <div class="summary-note">
           This is a conservative blended estimate. Optimal transfers can yield 2–3× more.
           Use the Optimizer to find your best redemption.
@@ -393,6 +399,14 @@ import { CreditCard } from '../../core/models';
     }
     .weekly-change.positive { color: var(--tally-green); }
     .weekly-change.negative { color: var(--tally-red, #dc2626); }
+    .maximize-btn-row { margin-bottom: 14px; }
+    .maximize-btn {
+      width: 100%; background: var(--tally-green); color: white;
+      border: none; border-radius: 10px; padding: 12px 16px;
+      font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: opacity 0.15s; letter-spacing: 0.01em;
+    }
+    .maximize-btn:hover { opacity: 0.88; }
 
     .summary-note {
       background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2);
