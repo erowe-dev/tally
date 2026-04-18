@@ -2,6 +2,7 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expiry.service';
+import { WalletService } from '../../core/services/wallet.service';
 
 @Component({
   selector: 'tally-expiry',
@@ -23,6 +24,11 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
           (click)="markAllToday()"
           [class.done]="bulkDone()">
           {{ bulkDone() ? '✓ All updated' : 'Mark all today' }}
+        </button>
+        <button class="filter-held-btn" *ngIf="wallet.hasAnyPoints()"
+          [class.active]="showHeldOnly()"
+          (click)="showHeldOnly.set(!showHeldOnly())">
+          {{ showHeldOnly() ? '★ Mine' : '☆ Mine' }}
         </button>
       </div>
 
@@ -64,7 +70,7 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
       <div class="expiry-list">
         <div
           class="expiry-card"
-          *ngFor="let status of expiry.statuses()"
+          *ngFor="let status of visibleStatuses()"
           [class.never]="status.urgency === 'never'"
           [class.safe]="status.urgency === 'safe'"
           [class.warning]="status.urgency === 'warning'"
@@ -165,6 +171,12 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
     }
     .bulk-today-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .bulk-today-btn.done { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
+    .filter-held-btn {
+      background: none; border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.1em; padding: 4px 12px; cursor: pointer; transition: all 0.15s;
+    }
+    .filter-held-btn.active { border-color: var(--tally-amber, #d97706); color: var(--tally-amber, #d97706); background: rgba(217,119,6,0.07); }
 
     /* Sync status pill */
     .sync-pill {
@@ -352,8 +364,16 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
 })
 export class ExpiryComponent {
   expiry = inject(ExpiryService);
+  wallet = inject(WalletService);
   todayStr = this.formatLocalDate(new Date());
   bulkDone = signal(false);
+  showHeldOnly = signal(false);
+
+  readonly visibleStatuses = computed(() => {
+    const statuses = this.expiry.statuses();
+    if (!this.showHeldOnly()) return statuses;
+    return statuses.filter(s => this.wallet.getBalance(s.cardId) > 0);
+  });
 
   syncLabel(state: SyncState): string {
     switch (state) {
