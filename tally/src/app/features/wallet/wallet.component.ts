@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WalletService, HistoryEntry } from '../../core/services/wallet.service';
 import { DataService } from '../../core/services/data.service';
+import { OptimizerService } from '../../core/services/optimizer.service';
 import { CreditCard } from '../../core/models';
 
 @Component({
@@ -109,6 +110,21 @@ import { CreditCard } from '../../core/models';
             </div>
           </div>
         </ng-container>
+      </div>
+
+      <!-- Next Milestone -->
+      <div class="milestone-card" *ngIf="nextMilestone() as m">
+        <div class="milestone-icon">{{ m.tripType === 'flight' ? '✈' : '🏨' }}</div>
+        <div class="milestone-body">
+          <div class="milestone-label">Next milestone</div>
+          <div class="milestone-name">{{ m.name }}</div>
+          <div class="milestone-bar-wrap">
+            <div class="milestone-bar" [style.width]="m.pct + '%'"></div>
+          </div>
+          <div class="milestone-stat">
+            {{ m.pct }}% there · {{ m.gap | number }} pts to go
+          </div>
+        </div>
       </div>
 
       <div class="divider"></div>
@@ -336,6 +352,24 @@ import { CreditCard } from '../../core/models';
     .action-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .action-btn.share-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
 
+    /* Next Milestone */
+    .milestone-card {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 16px;
+      margin: 0 0 20px;
+    }
+    .milestone-icon { font-size: 22px; flex-shrink: 0; }
+    .milestone-body { flex: 1; min-width: 0; }
+    .milestone-label {
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); margin-bottom: 2px;
+    }
+    .milestone-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+    .milestone-bar-wrap { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 5px; }
+    .milestone-bar { height: 100%; background: var(--tally-green); border-radius: 99px; transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+    .milestone-stat { font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--text3); letter-spacing: 0.05em; }
+
     .empty-state { text-align: center; padding: 40px 16px; }
     .empty-icon { font-size: 36px; margin-bottom: 12px; }
     .empty-state p {
@@ -347,6 +381,8 @@ import { CreditCard } from '../../core/models';
 export class WalletComponent {
   wallet = inject(WalletService);
   data = inject(DataService);
+  private optimizer = inject(OptimizerService);
+  private _allRecs = this.optimizer.getAllRecs();
 
   expandedCard = signal<string | null>(null);
   readonly quickIncrements = [5_000, 10_000, 25_000, 50_000, 100_000];
@@ -378,6 +414,29 @@ export class WalletComponent {
       return `${x},${y}`;
     });
     return pts.join(' ');
+  });
+
+  /** Best balance across a set of card IDs */
+  private bestBalance(cardIds: string[]): number {
+    return Math.max(0, ...cardIds.map(id => this.wallet.getBalance(id)));
+  }
+
+  /** Closest partially-funded redemption, or null */
+  readonly nextMilestone = computed(() => {
+    if (!this.wallet.hasAnyPoints()) return null;
+
+    let best: { name: string; gap: number; pct: number; cpp: number; tripType: string } | null = null;
+    for (const rec of this._allRecs) {
+      const needed = rec.ptsRequired ?? rec.ptsBase;
+      const have = this.bestBalance(rec.cards);
+      if (have <= 0 || have >= needed) continue; // skip zero and already-covered
+      const gap = needed - have;
+      const pct = Math.round((have / needed) * 100);
+      if (!best || gap < best.gap) {
+        best = { name: rec.program, gap, pct, cpp: rec.cpp, tripType: rec.tripType };
+      }
+    }
+    return best;
   });
 
   readonly programGroups = [
