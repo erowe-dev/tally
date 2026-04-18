@@ -265,6 +265,21 @@ const MAX_ROUTE_HISTORY = 5;
               (click)="copyTopResult(rec)" [class.copied]="copiedResult()">
               {{ copiedResult() ? '✓ Copied' : '📋 Share' }}
             </button>
+            <button class="howto-btn" *ngIf="getHowToSteps(rec.program).length > 0"
+              (click)="toggleHowTo(rec.program)"
+              [class.open]="expandedHowTo() === rec.program">
+              {{ expandedHowTo() === rec.program ? 'Hide steps' : 'How to book' }}
+            </button>
+          </div>
+          <!-- How-to panel -->
+          <div class="howto-panel" *ngIf="expandedHowTo() === rec.program">
+            <ol class="howto-steps">
+              <li *ngFor="let step of getHowToSteps(rec.program)">{{ step }}</li>
+            </ol>
+            <a *ngIf="getBookingUrl(rec.program) as url"
+              class="howto-link" [href]="'https://' + url" target="_blank" rel="noopener">
+              🌐 {{ url }}
+            </a>
           </div>
         </div>
 
@@ -574,7 +589,34 @@ const MAX_ROUTE_HISTORY = 5;
       letter-spacing: 0.05em; margin-top: 12px;
     }
 
-    .card-action-row { display: flex; gap: 6px; margin-top: 10px; }
+    .card-action-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+    /* How-to-Book button and panel */
+    .howto-btn {
+      background: none; border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.06em; padding: 5px 10px; cursor: pointer;
+      transition: all 0.15s; margin-left: auto;
+    }
+    .howto-btn:hover, .howto-btn.open {
+      border-color: var(--tally-green); color: var(--tally-green);
+    }
+    .howto-panel {
+      margin-top: 10px; padding: 12px 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; animation: fadeUp 0.2s ease both;
+    }
+    .howto-steps {
+      margin: 0 0 8px 0; padding-left: 18px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .howto-steps li { font-size: 12px; color: var(--text2); line-height: 1.5; }
+    .howto-link {
+      display: inline-block; font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--tally-green); letter-spacing: 0.04em;
+      text-decoration: none; margin-top: 4px;
+    }
+    .howto-link:hover { text-decoration: underline; }
     .save-btn {
       background: none;
       border: 1px solid var(--border2); border-radius: 8px;
@@ -723,6 +765,8 @@ export class OptimizerComponent implements OnChanges {
   showQuickWins = signal(false);
   // Two-step confirm for clearing all saved trips
   clearConfirm = signal(false);
+  // Tracks which result card has the "How to Book" panel open
+  expandedHowTo = signal<string | null>(null);
   private _clearConfirmTimer: ReturnType<typeof setTimeout> | null = null;
   private _allRecs = this.optimizer.getAllRecs();
   // Route history
@@ -1009,6 +1053,120 @@ export class OptimizerComponent implements OnChanges {
       this.copiedResult.set(true);
       setTimeout(() => this.copiedResult.set(false), 2000);
     }).catch(() => {/* silent fail */});
+  }
+
+  private readonly HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
+    'ANA Mileage Club': {
+      steps: [
+        'Transfer Amex MR → ANA at 1:1 (allow 3–5 business days to post)',
+        'Go to anamileageclub.com → Book Award Travel',
+        'Enter round-trip route — ANA requires round-trip for partner awards',
+        'If online is sold out, call ANA at 1-800-235-9262 and ask for Star Alliance award space',
+      ],
+      url: 'anamileageclub.com',
+    },
+    'Turkish Miles&Smiles': {
+      steps: [
+        'Transfer Citi TY or Capital One → Turkish Airlines Miles&Smiles (1:1)',
+        'Go to turkishairlines.com → Miles&Smiles → Search Award Tickets',
+        'Tip: Try at midnight Turkey time (UTC+3) — inventory often refreshes then',
+        'If online booking fails, call Turkish at 1-800-874-8875 and request the award',
+      ],
+      url: 'turkishairlines.com/en-us/miles-and-smiles/miles-award-tickets',
+    },
+    'Air Canada Aeroplan': {
+      steps: [
+        'Transfer points from any linked program (Amex MR, Chase UR, Cap1, Bilt) at 1:1',
+        'Go to aircanada.com or open the Air Canada app',
+        'Select "Aeroplan Points" as payment method when searching flights',
+        'Aeroplan allows open-jaw and stopovers — mix airlines freely (Star Alliance + partners)',
+      ],
+      url: 'aircanada.com',
+    },
+    'Singapore KrisFlyer': {
+      steps: [
+        'Transfer Amex MR, Chase UR, Citi TY, or Cap1 → KrisFlyer (1:1)',
+        'Log in at singaporeair.com → Book with KrisFlyer miles',
+        'For Suites class: search 3.5 days before departure — last-minute inventory often drops',
+        'No fuel surcharges when booking on Singapore Airlines metal',
+      ],
+      url: 'singaporeair.com',
+    },
+    'Virgin Atlantic Flying Club': {
+      steps: [
+        'Transfer Amex MR, Chase UR, or Citi TY → Virgin Atlantic (1:1)',
+        'Log in at virginatlantic.com → Redeem Miles → Flights',
+        'For ANA bookings: call Virgin at 1-800-862-8621 (cannot book ANA online)',
+        'For Delta One: search on virgin\'s site — online booking works for Delta',
+      ],
+      url: 'virginatlantic.com',
+    },
+    'Air France/KLM Flying Blue': {
+      steps: [
+        'Transfer Amex MR, Chase UR, Citi TY, or Cap1 → Flying Blue (1:1)',
+        'Go to airfranceklm.com → Flying Blue → Search Award Tickets',
+        'Promo Awards (25–50% off) publish monthly — check on the 1st of each month',
+        'No change fees on award tickets — very flexible program',
+      ],
+      url: 'airfranceklm.com',
+    },
+    'British Airways Avios': {
+      steps: [
+        'Transfer Amex MR, Chase UR, or Cap1 → British Airways (1:1)',
+        'Go to britishairways.com → Spend Avios → Flights',
+        'For AA/Iberia/Alaska metal: pricing is distance-based — calculate at ba.com',
+        'Short-haul hops (e.g., ORD→BOS) can cost as little as 4,500 Avios one-way',
+      ],
+      url: 'britishairways.com',
+    },
+    'Alaska MileagePlan': {
+      steps: [
+        'Transfer Bilt → Alaska MileagePlan (1:1) — only Bilt transfers to Alaska',
+        'Go to alaskaair.com → Find Award Flights',
+        'For Cathay Pacific and JAL: search on alaskaair.com → partner airlines',
+        'JAL First/Business awards open 11 days before departure — set a reminder',
+      ],
+      url: 'alaskaair.com',
+    },
+    'World of Hyatt': {
+      steps: [
+        'Transfer Chase UR or Bilt → Hyatt (1:1 — instant transfer)',
+        'Go to hyatt.com → Find & Book → Use Points toggle',
+        'Book exactly 13 months ahead for best availability at top properties',
+        'Park Hyatt and Alila properties have the best CPP in the portfolio',
+      ],
+      url: 'hyatt.com',
+    },
+    'Marriott Bonvoy': {
+      steps: [
+        'Transfer Amex MR, Chase UR, or Bilt → Bonvoy (Amex: 1:3 including a 5K bonus every 60K)',
+        'Go to marriott.com → Redeem Points',
+        'Always book 5-night stays to get the 5th night free (effective 20% discount)',
+        'Off-peak pricing applies — check calendar for cheaper point windows',
+      ],
+      url: 'marriott.com',
+    },
+    'Avianca LifeMiles': {
+      steps: [
+        'Transfer Citi TY or Capital One → Avianca LifeMiles (1:1)',
+        'Go to lifemiles.com → Redeem → Flights',
+        'Watch for transfer bonuses — Avianca runs them several times per year',
+        'Star Alliance Business Class to South America is priced well here',
+      ],
+      url: 'lifemiles.com',
+    },
+  };
+
+  getHowToSteps(program: string): string[] {
+    return this.HOW_TO_BOOK[program]?.steps ?? [];
+  }
+
+  getBookingUrl(program: string): string | null {
+    return this.HOW_TO_BOOK[program]?.url ?? null;
+  }
+
+  toggleHowTo(program: string): void {
+    this.expandedHowTo.update(cur => cur === program ? null : program);
   }
 
   clearAllTrips(): void {
