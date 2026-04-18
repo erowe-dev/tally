@@ -647,8 +647,24 @@ export class CardsComponent {
       .slice(0, 3);
   });
 
-  // Accordion: set of expanded card ids
+  // Accordion: set of manually expanded card ids
   expandedCards = signal<Set<string>>(new Set());
+
+  /** When searching by partner name, auto-expand matching program cards */
+  readonly autoExpandedCards = computed<Set<string>>(() => {
+    const q = this.searchRaw.toLowerCase().trim();
+    if (!q) return new Set();
+    const ids = new Set<string>();
+    for (const card of this.data.cards) {
+      const nameMatch =
+        card.name.toLowerCase().includes(q) ||
+        card.cards.some(c => c.toLowerCase().includes(q));
+      const partnerMatch = card.partners.some(p => p.name.toLowerCase().includes(q));
+      // Only auto-expand when the search specifically targets a partner (not the program itself)
+      if (partnerMatch && !nameMatch) ids.add(card.id);
+    }
+    return ids;
+  });
 
   readonly catFilters: { id: CatFilter; label: string }[] = [
     { id: 'all',          label: 'All' },
@@ -711,7 +727,7 @@ export class CardsComponent {
   }
 
   isExpanded(cardId: string): boolean {
-    return this.expandedCards().has(cardId);
+    return this.expandedCards().has(cardId) || this.autoExpandedCards().has(cardId);
   }
 
   toggleCard(cardId: string): void {

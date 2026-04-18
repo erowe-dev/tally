@@ -168,6 +168,18 @@ const MAX_ROUTE_HISTORY = 5;
       <div class="empty-state" *ngIf="!results().length && !analyzed() && !showQuickWins()">
         <div class="empty-icon">⚡</div>
         <p>Enter your trip details<br>to see the best transfers</p>
+        <!-- Wallet-aware suggestion: surfaces when user has points -->
+        <div class="wallet-hint" *ngIf="walletSuggestion() as hint">
+          <div class="wh-label">Suggested for your wallet</div>
+          <button class="wh-card" (click)="applyWalletSuggestion(hint)">
+            <span class="wh-icon">💡</span>
+            <div class="wh-body">
+              <div class="wh-title">{{ hint.title }}</div>
+              <div class="wh-sub">{{ hint.sub }}</div>
+            </div>
+            <span class="wh-arrow">→</span>
+          </button>
+        </div>
       </div>
 
       <!-- Results -->
@@ -405,13 +417,31 @@ const MAX_ROUTE_HISTORY = 5;
     }
 
     .empty-state {
-      text-align: center; padding: 48px 20px; color: var(--text3);
+      text-align: center; padding: 48px 20px 20px; color: var(--text3);
     }
     .empty-icon { font-size: 36px; margin-bottom: 12px; }
     .empty-state p {
       font-family: 'Instrument Serif', serif;
       font-style: italic; font-size: 18px; line-height: 1.5; color: var(--text2);
     }
+    .wallet-hint { margin-top: 20px; text-align: left; }
+    .wh-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--text3); margin-bottom: 8px;
+    }
+    .wh-card {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2);
+      border-radius: 12px; padding: 12px 14px; cursor: pointer; text-align: left;
+      transition: all 0.15s;
+    }
+    .wh-card:hover { background: rgba(26,122,74,0.12); border-color: var(--tally-green); }
+    .wh-icon { font-size: 18px; flex-shrink: 0; }
+    .wh-body { flex: 1; min-width: 0; }
+    .wh-title { font-size: 13px; font-weight: 600; color: var(--tally-green); margin-bottom: 2px; }
+    .wh-sub { font-size: 11px; color: var(--tally-green-mid, #2d9e62); line-height: 1.4; }
+    .wh-arrow { font-size: 16px; color: var(--tally-green); flex-shrink: 0; }
 
     .results-header {
       display: flex; justify-content: space-between; align-items: center;
@@ -889,6 +919,51 @@ export class OptimizerComponent implements OnChanges {
     this.hotelCategory = entry.hotelCategory;
     this.hotelNights  = entry.hotelNights;
     // Close quick wins if open so user sees results
+    this.showQuickWins.set(false);
+    this.analyze();
+  }
+
+  /**
+   * When the user has wallet balances but hasn't analyzed anything yet,
+   * suggests a relevant route/type based on their largest balance and best CPP partner.
+   */
+  readonly walletSuggestion = computed((): { title: string; sub: string; tripType: 'flight' | 'hotel'; programCat: string } | null => {
+    if (!this.wallet.hasAnyPoints() || this.analyzed() || this.showQuickWins()) return null;
+
+    // Find the card with the largest balance
+    let bestCard: { id: string; balance: number; name: string; category: string; topCpp: number; topPartner: string } | null = null;
+    for (const card of this.data.cards) {
+      const bal = this.wallet.getBalance(card.id);
+      if (bal <= 0) continue;
+      const topPartner = card.partners.reduce((m, p) => p.cpp > m.cpp ? p : m, card.partners[0]);
+      if (!topPartner) continue;
+      if (!bestCard || bal > bestCard.balance) {
+        bestCard = { id: card.id, balance: bal, name: card.name, category: card.category, topCpp: topPartner.cpp, topPartner: topPartner.name };
+      }
+    }
+    if (!bestCard) return null;
+
+    if (bestCard.category === 'hotel') {
+      return {
+        title: `Try hotel search with ${bestCard.name}`,
+        sub: `${bestCard.balance.toLocaleString()} pts — best hotel CPP: ${bestCard.topCpp}¢ via ${bestCard.topPartner}`,
+        tripType: 'hotel',
+        programCat: 'mid',
+      };
+    }
+    return {
+      title: `Find flights with ${bestCard.name}`,
+      sub: `${bestCard.balance.toLocaleString()} pts — best value: ${bestCard.topCpp}¢/pt via ${bestCard.topPartner}`,
+      tripType: 'flight',
+      programCat: 'flight',
+    };
+  });
+
+  applyWalletSuggestion(hint: { tripType: 'flight' | 'hotel'; programCat: string }): void {
+    this.tripType.set(hint.tripType);
+    if (hint.tripType === 'hotel') {
+      this.hotelCategory = 'mid';
+    }
     this.showQuickWins.set(false);
     this.analyze();
   }

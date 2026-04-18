@@ -391,6 +391,13 @@ export class SweetspotsComponent {
         const pB = parseInt(b.ptsNeeded.replace(/[^0-9]/g, '')) || 0;
         return pA - pB;
       });
+    } else if (f === 'all' && this.wallet.hasAnyPoints()) {
+      // Default sort on 'all': float affordable spots to the top
+      spots = [...spots].sort((a, b) => {
+        const covA = this.canAfford(a) ? 1 : 0;
+        const covB = this.canAfford(b) ? 1 : 0;
+        return covB - covA; // covered first
+      });
     }
     return spots;
   });
