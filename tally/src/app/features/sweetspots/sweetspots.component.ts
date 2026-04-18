@@ -90,6 +90,10 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
               <span class="stat-label">Est. CPP</span>
             </div>
           </div>
+          <!-- Active bonus badge — shows when any source card has an active transfer bonus -->
+          <div class="spot-bonus-badge" *ngIf="getActiveBonusForSpot(s) as bonus">
+            ⚡ {{ bonus.from }} → {{ bonus.to }} — {{ bonus.bonus }}
+          </div>
           <p class="spot-note">{{ s.note }}</p>
           <button class="spot-optimizer-btn" *ngIf="s.category === 'flight'"
             (click)="openInOptimizer(s)">
@@ -256,6 +260,14 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
     .card-chip { background: var(--surface); border: 1px solid var(--border); color: var(--text2); }
     .prog-chip { background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2); color: var(--tally-green); }
 
+    .spot-bonus-badge {
+      display: inline-block; margin-bottom: 8px;
+      background: rgba(217,119,6,0.1); border: 1px solid rgba(217,119,6,0.3);
+      border-radius: 6px; padding: 3px 10px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.06em; color: var(--tally-amber, #d97706);
+    }
+
     .spot-optimizer-btn {
       display: inline-block; margin-bottom: 10px;
       background: none; border: 1px solid var(--tally-green);
@@ -402,6 +414,14 @@ export class SweetspotsComponent {
       case 'hotel':  return '🏨 Hotel';
       case 'promo':  return '⚡ Promo';
     }
+  }
+
+  /** Returns the first active transfer bonus that applies to any of the spot's source cards */
+  getActiveBonusForSpot(spot: SweetSpot): TransferBonus | null {
+    const today = new Date().toISOString().slice(0, 10);
+    return this.data.transferBonuses.find(b =>
+      b.expires >= today && spot.cards.some(c => c === b.from)
+    ) ?? null;
   }
 
   /** Parse a sweet spot and navigate to the Optimizer tab pre-filled */
