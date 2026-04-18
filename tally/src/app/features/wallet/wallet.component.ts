@@ -73,6 +73,46 @@ import { CreditCard } from '../../core/models';
 
       <div class="divider"></div>
 
+      <!-- Point Goal Tracker -->
+      <div class="goal-section">
+        <div class="goal-header">
+          <span class="goal-label">Point Goal</span>
+          <button class="goal-toggle" (click)="showGoal.set(!showGoal())">
+            {{ showGoal() ? 'Hide' : 'Set Goal' }}
+          </button>
+        </div>
+        <ng-container *ngIf="showGoal()">
+          <div class="goal-inputs">
+            <input class="goal-name-input" [(ngModel)]="goalName" placeholder="e.g. Tokyo Business Class">
+            <input class="goal-pts-input" type="number" inputmode="numeric" [(ngModel)]="goalPts"
+              placeholder="60000" min="0" step="5000">
+          </div>
+          <div class="goal-progress" *ngIf="goalPts > 0">
+            <div class="goal-bar-wrap">
+              <div class="goal-bar" [style.width]="goalPct() + '%'" [class.complete]="goalPct() >= 100"></div>
+            </div>
+            <div class="goal-stat">
+              <span class="goal-have" [class.complete]="goalPct() >= 100">
+                {{ wallet.totalPoints() | number }}
+              </span>
+              <span class="goal-sep"> / </span>
+              <span class="goal-need">{{ goalPts | number }} pts</span>
+              <span class="goal-pct" [class.complete]="goalPct() >= 100">
+                {{ goalPct() }}%
+              </span>
+            </div>
+            <div class="goal-remaining" *ngIf="goalPct() < 100">
+              {{ (goalPts - wallet.totalPoints()) | number }} more points to go
+            </div>
+            <div class="goal-complete" *ngIf="goalPct() >= 100">
+              🎉 You have enough points!
+            </div>
+          </div>
+        </ng-container>
+      </div>
+
+      <div class="divider"></div>
+
       <div class="summary" *ngIf="wallet.hasAnyPoints(); else noPoints">
         <div class="summary-label">Estimated Total Value</div>
         <div class="summary-value">\${{ wallet.estimatedValue() | number }}</div>
@@ -204,6 +244,59 @@ import { CreditCard } from '../../core/models';
       font-size: 13px; color: var(--tally-green); line-height: 1.5; text-align: left;
     }
 
+    /* Goal tracker */
+    .goal-section { padding: 4px 0 8px; }
+    .goal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .goal-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3);
+    }
+    .goal-toggle {
+      background: none; border: 1px solid var(--border2); border-radius: 7px;
+      color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.06em; padding: 3px 9px; cursor: pointer; transition: all 0.15s;
+    }
+    .goal-toggle:hover { border-color: var(--tally-green); color: var(--tally-green); }
+    .goal-inputs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .goal-name-input {
+      flex: 1; background: var(--white); border: 1.5px solid var(--border2);
+      border-radius: 9px; font-family: 'Geist', sans-serif; font-size: 13px;
+      color: var(--text); padding: 8px 10px; outline: none; transition: border-color 0.15s;
+    }
+    .goal-name-input:focus { border-color: var(--tally-green); }
+    .goal-name-input::placeholder { color: var(--text3); }
+    .goal-pts-input {
+      width: 90px; background: var(--white); border: 1.5px solid var(--border2);
+      border-radius: 9px; font-family: 'Geist Mono', monospace; font-size: 13px;
+      color: var(--tally-green); padding: 8px 10px; outline: none;
+      text-align: right; transition: border-color 0.15s; -moz-appearance: textfield;
+    }
+    .goal-pts-input::-webkit-outer-spin-button,
+    .goal-pts-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .goal-pts-input:focus { border-color: var(--tally-green); }
+    .goal-bar-wrap { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 8px; }
+    .goal-bar {
+      height: 100%; background: var(--border2); border-radius: 99px;
+      transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .goal-bar.complete { background: var(--tally-green); }
+    .goal-stat {
+      display: flex; align-items: baseline; gap: 3px;
+      font-family: 'Geist Mono', monospace; font-size: 12px; margin-bottom: 4px;
+    }
+    .goal-have { color: var(--text); font-weight: 600; }
+    .goal-have.complete { color: var(--tally-green); }
+    .goal-sep { color: var(--text3); }
+    .goal-need { color: var(--text3); flex: 1; }
+    .goal-pct { color: var(--text3); }
+    .goal-pct.complete { color: var(--tally-green); font-weight: 700; }
+    .goal-remaining {
+      font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 0.06em;
+    }
+    .goal-complete {
+      font-family: 'Geist', sans-serif; font-size: 13px; color: var(--tally-green); font-weight: 600;
+    }
+
     .empty-state { text-align: center; padding: 40px 16px; }
     .empty-icon { font-size: 36px; margin-bottom: 12px; }
     .empty-state p {
@@ -218,6 +311,16 @@ export class WalletComponent {
 
   expandedCard = signal<string | null>(null);
   readonly quickIncrements = [5_000, 10_000, 25_000, 50_000, 100_000];
+
+  // Goal tracker
+  showGoal = signal(false);
+  goalName = '';
+  goalPts = 0;
+
+  readonly goalPct = computed(() => {
+    if (!this.goalPts) return 0;
+    return Math.min(100, Math.round((this.wallet.totalPoints() / this.goalPts) * 100));
+  });
 
   readonly programGroups = [
     {

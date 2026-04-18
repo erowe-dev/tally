@@ -132,6 +132,7 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
             <div class="rc-pts">
               {{ (rec.ptsRequired ?? rec.ptsBase) | number }}
               <small>pts needed</small>
+              <div class="rc-cash">~\${{ getCashValue(rec) | number }}</div>
             </div>
           </div>
           <div class="rc-bar-row">
@@ -306,6 +307,11 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
       display: block; font-size: 9px; color: var(--text3);
       letter-spacing: 0.08em; text-align: right; margin-top: 1px;
     }
+    .rc-cash {
+      font-family: 'Geist Mono', monospace; font-size: 11px;
+      color: var(--tally-green); text-align: right; margin-top: 4px;
+      font-weight: 600;
+    }
 
     .rc-bar-row {
       display: flex; align-items: center; gap: 10px;
@@ -461,6 +467,12 @@ export class OptimizerComponent {
   /** Best balance the user holds across the recommendation's eligible cards */
   getBestBalance(rec: Recommendation): number {
     return Math.max(0, ...rec.cards.map(id => this.wallet.getBalance(id)));
+  }
+
+  /** Estimated cash value of the redemption */
+  getCashValue(rec: Recommendation): number {
+    const pts = rec.ptsRequired ?? rec.ptsBase;
+    return Math.round(pts * rec.cpp / 100);
   }
 
   /** Percentage of required points the user already has (0–100, capped at 100) */
