@@ -1,8 +1,9 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavTab } from '../../../core/models';
 import { ExpiryService } from '../../../core/services/expiry.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { DataService } from '../../../core/services/data.service';
 
 interface NavItem { id: NavTab; label: string; icon: string; }
 
@@ -25,6 +26,8 @@ interface NavItem { id: NavTab; label: string; icon: string; }
           <span class="badge" *ngIf="item.id === 'expiry' && expiry.criticalCount() > 0 && auth.isAuthenticated()">
             {{ expiry.criticalCount() }}
           </span>
+          <!-- Active transfer bonus dot on Spots tab -->
+          <span class="bonus-dot" *ngIf="item.id === 'sweetspots' && activeBonusCount() > 0"></span>
           <!-- Lock indicator for protected tabs when unauthenticated -->
           <span class="lock-dot" *ngIf="isLocked(item.id)"></span>
         </span>
@@ -60,6 +63,13 @@ interface NavItem { id: NavTab; label: string; icon: string; }
       display: flex; align-items: center; justify-content: center;
     }
 
+    /* Active transfer bonus indicator on Spots tab */
+    .bonus-dot {
+      position: absolute; top: -2px; right: -6px;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--tally-amber, #d97706); border: 1.5px solid var(--off);
+    }
+
     /* Small dot on protected tabs when not signed in */
     .lock-dot {
       position: absolute; top: -2px; right: -6px;
@@ -82,6 +92,12 @@ export class BottomNavComponent {
 
   expiry = inject(ExpiryService);
   auth = inject(AuthService);
+  private data = inject(DataService);
+
+  readonly activeBonusCount = computed(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return this.data.transferBonuses.filter(b => b.expires >= today).length;
+  });
 
   private readonly PROTECTED: Set<NavTab> = new Set(['optimizer', 'wallet', 'expiry']);
 
