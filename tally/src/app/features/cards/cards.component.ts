@@ -85,8 +85,36 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
         <button class="link-btn" (click)="clearAll()">Clear filters</button>
       </div>
 
-      <!-- CPP Calculator -->
+      <!-- Rate My Redemption -->
       <div class="calc-section">
+        <button class="calc-toggle" (click)="showRater.set(!showRater())">
+          <span>🎯 Rate My Redemption</span>
+          <span class="calc-chevron">{{ showRater() ? '▲' : '▼' }}</span>
+        </button>
+        <div class="calc-body" *ngIf="showRater()">
+          <div class="rater-inputs">
+            <div class="calc-input-wrap">
+              <label class="calc-label">Points used</label>
+              <input class="calc-input" type="number" inputmode="numeric"
+                [(ngModel)]="raterPts" placeholder="60000" min="0" step="1000">
+            </div>
+            <div class="calc-input-wrap">
+              <label class="calc-label">Cash value received ($)</label>
+              <input class="calc-input" type="number" inputmode="decimal"
+                [(ngModel)]="raterCash" placeholder="900" min="0" step="10">
+            </div>
+          </div>
+          <div class="rater-result" *ngIf="raterCpp() !== null">
+            <div class="rater-cpp" [class]="raterGrade()">{{ raterCpp() | number:'1.2-2' }}¢</div>
+            <div class="rater-label">per point</div>
+            <div class="rater-grade" [class]="raterGrade()">{{ raterGradeLabel() }}</div>
+            <div class="rater-note">{{ raterNote() }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CPP Calculator -->
+      <div class="calc-section" style="margin-top:10px">
         <button class="calc-toggle" (click)="showCalc.set(!showCalc())">
           <span>💡 Points Value Calculator</span>
           <span class="calc-chevron">{{ showCalc() ? '▲' : '▼' }}</span>
@@ -217,6 +245,32 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
       color: var(--tally-green); font-size: 14px; padding: 8px;
       text-decoration: underline; text-underline-offset: 3px;
     }
+
+    /* Rate My Redemption */
+    .rater-inputs { display: flex; gap: 8px; margin-bottom: 14px; }
+    .rater-inputs .calc-input-wrap { flex: 1; margin-bottom: 0; }
+    .rater-result { text-align: center; padding: 12px 0 4px; }
+    .rater-cpp {
+      font-family: 'Instrument Serif', serif; font-size: 44px;
+      line-height: 1; color: var(--text);
+    }
+    .rater-cpp.great { color: var(--tally-green); }
+    .rater-cpp.good  { color: var(--tally-amber, #d97706); }
+    .rater-cpp.bad   { color: var(--text3); }
+    .rater-label {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .rater-grade {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 4px; display: inline-block; margin-bottom: 10px;
+    }
+    .rater-grade.great { background: var(--tally-green-light); color: var(--tally-green); }
+    .rater-grade.good  { background: rgba(251,191,36,0.15); color: var(--tally-amber, #d97706); }
+    .rater-grade.bad   { background: var(--surface); color: var(--text3); }
+    .rater-note { font-size: 12px; color: var(--text2); line-height: 1.5; font-style: italic; }
 
     /* CPP Calculator */
     .calc-section { margin-top: 20px; }
@@ -366,6 +420,44 @@ export class CardsComponent {
     this.activeCat.set('all');
     this.greatOnly.set(false);
   }
+
+  // Rate My Redemption
+  showRater = signal(false);
+  raterPts = 0;
+  raterCash = 0;
+
+  readonly raterCpp = computed((): number | null => {
+    if (!this.raterPts || !this.raterCash) return null;
+    return Math.round((this.raterCash / this.raterPts) * 10000) / 100;
+  });
+
+  readonly raterGrade = computed((): 'great' | 'good' | 'bad' => {
+    const c = this.raterCpp();
+    if (c === null) return 'bad';
+    if (c >= 2.0) return 'great';
+    if (c >= 1.2) return 'good';
+    return 'bad';
+  });
+
+  readonly raterGradeLabel = computed((): string => {
+    const c = this.raterCpp();
+    if (c === null) return '';
+    if (c >= 3.0)  return '🏆 Exceptional';
+    if (c >= 2.0)  return '✅ Great redemption';
+    if (c >= 1.2)  return '👍 Decent redemption';
+    if (c >= 0.8)  return '😐 Below average';
+    return '❌ Poor redemption';
+  });
+
+  readonly raterNote = computed((): string => {
+    const c = this.raterCpp();
+    if (c === null) return '';
+    if (c >= 3.0)  return 'World-class! You maximized a premium transfer partner redemption.';
+    if (c >= 2.0)  return 'Solid. You\'re well above the 1.6¢ blended average.';
+    if (c >= 1.2)  return 'Reasonable — better than cash-back but not elite. Consider premium cabins next time.';
+    if (c >= 0.8)  return 'You might have done better redeeming for travel directly. Check partner CPP values.';
+    return 'Consider transferring to a premium partner for your next redemption instead.';
+  });
 
   // CPP Calculator
   showCalc = signal(false);
