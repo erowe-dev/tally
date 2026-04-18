@@ -6,6 +6,24 @@ import { WalletService } from '../../core/services/wallet.service';
 import { CreditCard } from '../../core/models';
 
 type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
+type SpendCat = 'travel' | 'dining' | 'groceries' | 'gas' | 'online' | 'general';
+
+const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
+  amex_mr:        { travel: 5, dining: 4, groceries: 4, gas: 1, online: 1, general: 2 },
+  chase_ur:       { travel: 3, dining: 3, groceries: 3, gas: 1, online: 1, general: 1 },
+  citi_ty:        { travel: 3, dining: 3, groceries: 3, gas: 3, online: 1, general: 1 },
+  cap1_miles:     { travel: 2, dining: 2, groceries: 2, gas: 2, online: 2, general: 2 },
+  bilt:           { travel: 2, dining: 3, groceries: 1, gas: 1, online: 1, general: 1 },
+  delta_skymiles: { travel: 2, dining: 2, groceries: 2, gas: 1, online: 1, general: 1 },
+  united_mp:      { travel: 2, dining: 2, groceries: 1, gas: 2, online: 1, general: 1 },
+  aa_aadvantage:  { travel: 2, dining: 1, groceries: 1, gas: 1, online: 1, general: 1 },
+  southwest_rr:   { travel: 2, dining: 2, groceries: 1, gas: 1, online: 1, general: 1 },
+  alaska_mp:      { travel: 3, dining: 2, groceries: 1, gas: 1, online: 1, general: 1 },
+  hyatt:          { travel: 2, dining: 2, groceries: 1, gas: 1, online: 1, general: 1 },
+  marriott_bonvoy:{ travel: 2, dining: 2, groceries: 1, gas: 2, online: 1, general: 2 },
+  hilton_honors:  { travel: 1, dining: 5, groceries: 3, gas: 5, online: 1, general: 3 },
+  ihg_rewards:    { travel: 2, dining: 1, groceries: 1, gas: 1, online: 1, general: 1 },
+};
 
 @Component({
   selector: 'tally-cards',
@@ -44,6 +62,37 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
 
       <div class="count-line">
         {{ filteredCards().length }} program{{ filteredCards().length !== 1 ? 's' : '' }}
+      </div>
+
+      <!-- Best card for spend category -->
+      <div class="spend-rec-section">
+        <button class="spend-rec-toggle" (click)="showSpendRec.set(!showSpendRec())">
+          <span>💳 Best card for your spend</span>
+          <span class="spend-rec-chevron">{{ showSpendRec() ? '▲' : '▼' }}</span>
+        </button>
+        <div class="spend-rec-body" *ngIf="showSpendRec()">
+          <div class="spend-cat-row">
+            <button *ngFor="let c of spendCats" class="spend-cat-btn"
+              [class.active]="selectedSpendCat() === c.id"
+              (click)="selectedSpendCat.set(c.id)">
+              {{ c.icon }} {{ c.label }}
+            </button>
+          </div>
+          <div class="spend-results">
+            <div class="spend-result-row" *ngFor="let r of bestForCategory(); let i = index"
+              [class.spend-top]="i === 0">
+              <div class="spend-badge" [style.background]="r.card.color">{{ r.card.icon }}</div>
+              <div class="spend-info">
+                <div class="spend-name">{{ r.card.name }}</div>
+                <div class="spend-cards">{{ r.card.cards[0] }}<span *ngIf="r.card.cards.length > 1"> & more</span></div>
+              </div>
+              <div class="spend-rate" [class.spend-rate-top]="i === 0">
+                {{ r.rate }}x<small>pts/$</small>
+              </div>
+            </div>
+            <p class="spend-note">Rates shown are the highest available on any card in each program. Exact rates vary by card.</p>
+          </div>
+        </div>
       </div>
 
       <div class="cards-list">
@@ -302,6 +351,61 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
       text-decoration: underline; text-underline-offset: 3px;
     }
 
+    /* Best card for spend */
+    .spend-rec-section { margin-bottom: 16px; }
+    .spend-rec-toggle {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 16px;
+      font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 500;
+      color: var(--text2); cursor: pointer; display: flex;
+      align-items: center; justify-content: space-between;
+      transition: border-color 0.15s;
+    }
+    .spend-rec-toggle:hover { border-color: var(--tally-green); }
+    .spend-rec-chevron { font-size: 10px; color: var(--text3); }
+    .spend-rec-body {
+      background: var(--white); border: 1px solid var(--border);
+      border-top: none; border-radius: 0 0 12px 12px; padding: 14px 16px;
+    }
+    .spend-cat-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 14px; }
+    .spend-cat-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 5px 11px;
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.05em; color: var(--text3); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .spend-cat-btn.active {
+      background: var(--tally-green); border-color: var(--tally-green); color: white;
+    }
+    .spend-results { display: flex; flex-direction: column; gap: 8px; }
+    .spend-result-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface); border-radius: 10px; padding: 10px 12px;
+      border: 1px solid var(--border);
+    }
+    .spend-result-row.spend-top {
+      background: var(--tally-green-light); border-color: rgba(26,122,74,0.25);
+    }
+    .spend-badge {
+      width: 32px; height: 22px; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; flex-shrink: 0;
+    }
+    .spend-info { flex: 1; min-width: 0; }
+    .spend-name { font-size: 12px; font-weight: 600; color: var(--text); }
+    .spend-cards { font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--text3); margin-top: 1px; }
+    .spend-rate {
+      font-family: 'Geist Mono', monospace; font-size: 17px;
+      color: var(--text2); flex-shrink: 0; text-align: right;
+    }
+    .spend-rate small { display: block; font-size: 8px; color: var(--text3); letter-spacing: 0.06em; }
+    .spend-rate-top { color: var(--tally-green); }
+    .spend-note {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--text3); line-height: 1.5; margin-top: 10px; letter-spacing: 0.04em;
+    }
+
     /* Rate My Redemption */
     .rater-inputs { display: flex; gap: 8px; margin-bottom: 14px; }
     .rater-inputs .calc-input-wrap { flex: 1; margin-bottom: 0; }
@@ -400,6 +504,28 @@ export class CardsComponent {
 
   activeCat = signal<CatFilter>('all');
   greatOnly = signal(false);
+
+  // Spend category recommender
+  showSpendRec = signal(false);
+  selectedSpendCat = signal<SpendCat>('travel');
+
+  readonly spendCats: { id: SpendCat; icon: string; label: string }[] = [
+    { id: 'travel',    icon: '✈',  label: 'Travel'    },
+    { id: 'dining',    icon: '🍽',  label: 'Dining'    },
+    { id: 'groceries', icon: '🛒',  label: 'Groceries' },
+    { id: 'gas',       icon: '⛽',  label: 'Gas'       },
+    { id: 'online',    icon: '🛍',  label: 'Online'    },
+    { id: 'general',   icon: '💳',  label: 'General'   },
+  ];
+
+  /** Top 3 programs sorted by earn rate for the selected category */
+  readonly bestForCategory = computed(() => {
+    const cat = this.selectedSpendCat();
+    return this.data.cards
+      .map(card => ({ card, rate: EARN_RATES[card.id]?.[cat] ?? 1 }))
+      .sort((a, b) => b.rate - a.rate)
+      .slice(0, 3);
+  });
 
   // Accordion: set of expanded card ids
   expandedCards = signal<Set<string>>(new Set());
