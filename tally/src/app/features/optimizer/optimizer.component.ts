@@ -76,18 +76,14 @@ const MAX_ROUTE_HISTORY = 5;
       <div class="fields" *ngIf="tripType() === 'hotel'">
         <div class="field-row">
           <div class="field full">
-            <label class="field-label">Destination</label>
+            <label class="field-label">Destination (optional)</label>
             <input
-              class="field-input is-disabled"
-              [value]="hotelDest"
-              placeholder="Destination-aware hotel search coming soon"
-              disabled
-              aria-describedby="hotel-destination-note">
+              class="field-input"
+              [(ngModel)]="hotelDest"
+              placeholder="Tokyo, Maldives, Paris…"
+              aria-label="Hotel destination">
           </div>
         </div>
-        <p class="field-note" id="hotel-destination-note">
-          Hotel recommendations currently use category and nights only.
-        </p>
         <div class="field-row">
           <div class="field">
             <label class="field-label">Category</label>
@@ -283,6 +279,7 @@ const MAX_ROUTE_HISTORY = 5;
                 <span *ngIf="trip.passengers && trip.passengers > 1"> · {{ trip.passengers }}pax</span>
               </ng-container>
               <ng-container *ngIf="trip.tripType === 'hotel'">
+                <span *ngIf="trip.destination">{{ trip.destination }} · </span>
                 <span *ngIf="trip.hotelCat">{{ trip.hotelCat }}</span>
                 <span *ngIf="trip.nights"> · {{ trip.nights }} night{{ trip.nights !== 1 ? 's' : '' }}</span>
               </ng-container>
@@ -729,6 +726,7 @@ export class OptimizerComponent implements OnChanges {
         tripType: 'hotel',
         hotelCat: this.hotelCategory,
         nights: this.hotelNights,
+        destination: this.hotelDest.trim() || undefined,
         programName: rec.program,
         ptsRequired,
       });
