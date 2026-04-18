@@ -13,7 +13,14 @@ import { DataService } from '../../core/services/data.service';
       <div class="section-eyebrow">My Points Wallet</div>
       <h2 class="section-title">Enter your <em>balances</em></h2>
 
-      <div class="wallet-list">
+      <!-- Sync status pill -->
+      <div class="sync-pill" [class]="wallet.syncState()">
+        <span class="sync-dot"></span>
+        <span class="sync-text">{{ syncLabel() }}</span>
+      </div>
+
+      <!-- Loading shimmer while fetching from API -->
+      <div class="wallet-list" *ngIf="wallet.syncState() !== 'loading'; else loading">
         <div class="wallet-row" *ngFor="let card of data.cards">
           <div class="card-badge" [style.background]="card.color">{{ card.icon }}</div>
           <div class="card-info">
@@ -31,6 +38,12 @@ import { DataService } from '../../core/services/data.service';
         </div>
       </div>
 
+      <ng-template #loading>
+        <div class="wallet-list">
+          <div class="shimmer-row" *ngFor="let n of [1,2,3,4,5]"></div>
+        </div>
+      </ng-template>
+
       <div class="divider"></div>
 
       <div class="summary" *ngIf="wallet.hasAnyPoints(); else noPoints">
@@ -44,7 +57,7 @@ import { DataService } from '../../core/services/data.service';
       </div>
 
       <ng-template #noPoints>
-        <div class="empty-state">
+        <div class="empty-state" *ngIf="wallet.syncState() !== 'loading'">
           <div class="empty-icon">💳</div>
           <p>Add your balances above to see your total estimated value</p>
         </div>
@@ -52,6 +65,38 @@ import { DataService } from '../../core/services/data.service';
     </div>
   `,
   styles: [`
+    /* Sync status pill */
+    .sync-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 4px 10px; border-radius: 20px;
+      border: 1px solid var(--border); margin-bottom: 16px;
+      color: var(--text3); background: var(--surface);
+      transition: all 0.3s;
+    }
+    .sync-pill.synced { border-color: rgba(26,122,74,0.3); color: var(--tally-green); background: var(--tally-green-light); }
+    .sync-pill.error  { border-color: rgba(220,38,38,0.3); color: var(--tally-red); background: var(--tally-red-light); }
+
+    .sync-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor; flex-shrink: 0;
+    }
+    .sync-pill.loading .sync-dot {
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+    /* Shimmer loading state */
+    .shimmer-row {
+      height: 64px; border-radius: 14px;
+      background: linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* Card list */
     .wallet-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
 
     .wallet-row {
@@ -113,6 +158,15 @@ import { DataService } from '../../core/services/data.service';
 export class WalletComponent {
   wallet = inject(WalletService);
   data = inject(DataService);
+
+  syncLabel(): string {
+    switch (this.wallet.syncState()) {
+      case 'idle':    return 'Local';
+      case 'loading': return 'Syncing…';
+      case 'synced':  return 'Synced';
+      case 'error':   return 'Offline — local only';
+    }
+  }
 
   onInput(cardId: string, event: Event): void {
     const val = parseInt((event.target as HTMLInputElement).value) || 0;

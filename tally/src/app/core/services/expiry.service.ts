@@ -15,7 +15,7 @@ export interface ExpiryRule {
 
 export interface ExpiryRecord {
   cardId: string;
-  lastActivityDate: string; // ISO date string
+  lastActivityDate: string; // ISO date string YYYY-MM-DD
 }
 
 export interface ExpiryStatus {
@@ -28,14 +28,15 @@ export interface ExpiryStatus {
   actionNeeded: string;
 }
 
+export type SyncState = 'idle' | 'loading' | 'synced' | 'error';
+
 const STORAGE_KEY = 'tally_expiry_v1';
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Validates a YYYY-MM-DD string semantically — e.g. rejects '2026-13-99'
- * that passes a regex but would produce a garbage Date (month overflow).
- * Exported-module-local so both setLastActivity and computeStatus use it.
+ * Validates a YYYY-MM-DD string both syntactically and semantically.
+ * Rejects '2026-13-99' that passes the regex but overflows to a wrong date.
  */
 function isValidDateString(value: string): boolean {
   if (typeof value !== 'string' || !DATE_RE.test(value)) return false;
@@ -49,9 +50,8 @@ const EXPIRY_RULES: ExpiryRule[] = [
     cardId: 'amex_mr',
     programName: 'Amex Membership Rewards',
     expiryType: 'activity',
-    inactivityMonths: 0, // Never expire while card is open
+    inactivityMonths: 0,
     note: 'Points expire only when you close all earning MR cards.',
-    // Special case — handled below
   },
   {
     cardId: 'chase_ur',
@@ -82,7 +82,7 @@ const EXPIRY_RULES: ExpiryRule[] = [
   },
 ];
 
-// Programs where expiry is "never" or tied to card open status
+// Programs where expiry is "never" or tied to card-open status (no date needed)
 const SAFE_CARDS = new Set(['amex_mr', 'chase_ur', 'cap1_miles']);
 
 @Injectable({ providedIn: 'root' })
@@ -91,8 +91,13 @@ export class ExpiryService {
   private api = inject(ApiService);
 
   private _records = signal<Record<string, ExpiryRecord>>(this.loadLocal());
+  private _syncState = signal<SyncState>('idle');
+
+  // One-shot guard: prevents the effect from re-running on signal re-evaluation
+  private _apiLoaded = false;
 
   readonly records = this._records.asReadonly();
+  readonly syncState = this._syncState.asReadonly();
 
   readonly statuses = computed<ExpiryStatus[]>(() => {
     const records = this._records();
@@ -110,28 +115,47 @@ export class ExpiryService {
   );
 
   constructor() {
-    // Gate on isProvisioned() to avoid racing ahead of POST /api/users/me.
-    // See WalletService for the same pattern.
+    // Load from API exactly once per session, after user row is confirmed.
+    // Gate on isProvisioned() to prevent a 404 race with POST /api/users/me.
     effect(() => {
       if (
+        !this._apiLoaded &&
         this.auth.isResolved() &&
         this.auth.isAuthenticated() &&
         this.auth.isProvisioned()
       ) {
+        this._apiLoaded = true;
+        this._syncState.set('loading');
+
         this.api.getExpiryRecords().subscribe({
-          next: records => {
-            this._records.set(records);
-            this.saveLocal(records);
+          next: apiRecords => {
+            const localRecords = this.loadLocal();
+            const localHasData = Object.keys(localRecords).length > 0;
+            const apiIsEmpty = Object.keys(apiRecords).length === 0;
+
+            if (apiIsEmpty && localHasData) {
+              // First login with existing local data — push local state up to
+              // the API rather than silently wiping the user's saved dates.
+              this._records.set(localRecords);
+              this._syncState.set('synced');
+              this._pushLocalToApi(localRecords);
+            } else {
+              // API has data (or both empty) — API is source of truth.
+              this._records.set(apiRecords);
+              this.saveLocal(apiRecords);
+              this._syncState.set('synced');
+            }
           },
-          error: err =>
-            console.error('[ExpiryService] API load failed, using localStorage cache:', err),
+          error: err => {
+            console.error('[ExpiryService] API load failed, using localStorage cache:', err);
+            this._syncState.set('error');
+          },
         });
       }
     });
   }
 
   setLastActivity(cardId: string, date: string): void {
-    // Reject garbage dates at the source so we never persist invalid data
     if (!isValidDateString(date)) {
       console.error('[ExpiryService] Rejected invalid date:', date);
       return;
@@ -160,6 +184,15 @@ export class ExpiryService {
     if (this.auth.isProvisioned()) {
       this.api.deleteExpiryRecord(cardId).subscribe({
         error: err => console.error('[ExpiryService] API delete failed:', err),
+      });
+    }
+  }
+
+  private _pushLocalToApi(records: Record<string, ExpiryRecord>): void {
+    for (const { cardId, lastActivityDate } of Object.values(records)) {
+      this.api.setExpiryRecord(cardId, lastActivityDate).subscribe({
+        error: err =>
+          console.error(`[ExpiryService] Failed to push local ${cardId} to API:`, err),
       });
     }
   }
@@ -222,7 +255,7 @@ export class ExpiryService {
   private loadLocal(): Record<string, ExpiryRecord> {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {};
+      return raw ? (JSON.parse(raw) as Record<string, ExpiryRecord>) : {};
     } catch {
       return {};
     }
@@ -231,7 +264,9 @@ export class ExpiryService {
   private saveLocal(data: Record<string, ExpiryRecord>): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+    } catch {
+      // Storage unavailable — not a fatal error
+    }
   }
 
   private parseLocalDate(value: string): Date {

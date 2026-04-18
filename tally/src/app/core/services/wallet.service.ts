@@ -5,6 +5,15 @@ import { ApiService } from './api.service';
 
 const STORAGE_KEY = 'tally_wallet_v1';
 
+/**
+ * Possible states for API sync:
+ * - 'idle'    — not yet authenticated / not triggered
+ * - 'loading' — first fetch in-flight
+ * - 'synced'  — API data loaded successfully this session
+ * - 'error'   — API load failed; using localStorage cache
+ */
+export type SyncState = 'idle' | 'loading' | 'synced' | 'error';
+
 @Injectable({ providedIn: 'root' })
 export class WalletService {
   private auth = inject(AuthService);
@@ -13,8 +22,14 @@ export class WalletService {
   private data = inject(DataService);
 
   private _balances = signal<Record<string, number>>(this.loadLocal());
+  private _syncState = signal<SyncState>('idle');
+
+  // Prevent the effect from running more than once per session even if
+  // signals are re-evaluated (e.g. token refresh re-emits isLoading)
+  private _apiLoaded = false;
 
   readonly balances = this._balances.asReadonly();
+  readonly syncState = this._syncState.asReadonly();
 
   readonly totalPoints = computed(() =>
     Object.values(this._balances()).reduce((a, b) => a + b, 0),
@@ -27,23 +42,42 @@ export class WalletService {
   readonly hasAnyPoints = computed(() => this.totalPoints() > 0);
 
   constructor() {
-    // When Auth0 finishes its session check, the user is logged in, AND the
-    // DB user row has been provisioned, fetch from the API and overwrite the
-    // local cache. Gating on isProvisioned() avoids a 404 race where GET
-    // /api/balances arrives before POST /api/users/me finishes.
+    // Load from API once per session, after user row is confirmed to exist.
+    // Gating on isProvisioned() prevents a 404 race where GET /api/balances
+    // arrives before POST /api/users/me finishes.
     effect(() => {
       if (
+        !this._apiLoaded &&
         this.auth.isResolved() &&
         this.auth.isAuthenticated() &&
         this.auth.isProvisioned()
       ) {
+        this._apiLoaded = true;
+        this._syncState.set('loading');
+
         this.api.getBalances().subscribe({
-          next: balances => {
-            this._balances.set(balances);
-            this.saveLocal(balances);
+          next: apiBalances => {
+            const localBalances = this.loadLocal();
+            const localHasData = Object.keys(localBalances).some(k => (localBalances[k] ?? 0) > 0);
+            const apiIsEmpty = Object.keys(apiBalances).length === 0;
+
+            if (apiIsEmpty && localHasData) {
+              // First login with existing local data — push local state up to
+              // the API rather than silently wiping the user's saved balances.
+              this._balances.set(localBalances);
+              this._syncState.set('synced');
+              this._pushLocalToApi(localBalances);
+            } else {
+              // API has data (or both are empty) — API is source of truth.
+              this._balances.set(apiBalances);
+              this.saveLocal(apiBalances);
+              this._syncState.set('synced');
+            }
           },
-          error: err =>
-            console.error('[WalletService] API load failed, using localStorage cache:', err),
+          error: err => {
+            console.error('[WalletService] API load failed, using localStorage cache:', err);
+            this._syncState.set('error');
+          },
         });
       }
     });
@@ -57,12 +91,7 @@ export class WalletService {
     this._balances.set(updated);
     this.saveLocal(updated);
 
-    // Fire-and-forget sync to API only if provisioning has completed.
-    // If not, the value is still in localStorage and will flush on next
-    // successful session (API is source of truth on load, but local writes
-    // made while offline/unprovisioned are preserved because we only read
-    // from API — they'd only be lost if the user sets the same card on
-    // another device before provisioning completes here, which is fine).
+    // Fire-and-forget sync to API only after provisioning is confirmed
     if (this.auth.isProvisioned()) {
       this.api.setBalance(cardId, amount).subscribe({
         error: err => console.error('[WalletService] API sync failed:', err),
@@ -79,10 +108,20 @@ export class WalletService {
     return cardIds.some(id => (this._balances()[id] ?? 0) >= ptsRequired);
   }
 
+  private _pushLocalToApi(balances: Record<string, number>): void {
+    const entries = Object.entries(balances).filter(([, v]) => v > 0);
+    for (const [cardId, amount] of entries) {
+      this.api.setBalance(cardId, amount).subscribe({
+        error: err =>
+          console.error(`[WalletService] Failed to push local ${cardId} to API:`, err),
+      });
+    }
+  }
+
   private loadLocal(): Record<string, number> {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : {};
+      return raw ? (JSON.parse(raw) as Record<string, number>) : {};
     } catch {
       return {};
     }

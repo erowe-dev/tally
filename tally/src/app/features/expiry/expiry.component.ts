@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ExpiryService, ExpiryStatus } from '../../core/services/expiry.service';
+import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expiry.service';
 
 @Component({
   selector: 'tally-expiry',
@@ -11,6 +11,19 @@ import { ExpiryService, ExpiryStatus } from '../../core/services/expiry.service'
     <div class="page-content">
       <div class="section-eyebrow">Points Expiry Tracker</div>
       <h2 class="section-title">Don't let your <em>points die</em></h2>
+
+      <!-- Sync status pill -->
+      <div class="sync-pill" [class]="expiry.syncState()">
+        <span class="sync-dot"></span>
+        <span class="sync-text">{{ syncLabel(expiry.syncState()) }}</span>
+      </div>
+
+      <!-- Loading shimmer -->
+      <div *ngIf="expiry.syncState() === 'loading'" class="shimmer-list">
+        <div class="shimmer-card" *ngFor="let n of [1,2,3]"></div>
+      </div>
+
+      <ng-container *ngIf="expiry.syncState() !== 'loading'">
 
       <!-- Summary banner if warnings exist -->
       <div class="alert-banner critical" *ngIf="expiry.criticalCount() > 0">
@@ -80,9 +93,37 @@ import { ExpiryService, ExpiryStatus } from '../../core/services/expiry.service'
       <div class="expiry-footer">
         <p>Expiry rules are sourced from each program's terms. Rules can change — verify directly with the program before points expire.</p>
       </div>
+
+      </ng-container>
     </div>
   `,
   styles: [`
+    /* Sync status pill */
+    .sync-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 4px 10px; border-radius: 20px;
+      border: 1px solid var(--border); margin-bottom: 16px;
+      color: var(--text3); background: var(--surface);
+      transition: all 0.3s;
+    }
+    .sync-pill.synced { border-color: rgba(26,122,74,0.3); color: var(--tally-green); background: var(--tally-green-light); }
+    .sync-pill.error  { border-color: rgba(220,38,38,0.3); color: var(--tally-red); background: var(--tally-red-light); }
+    .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .sync-pill.loading .sync-dot { animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+    /* Shimmer loading */
+    .shimmer-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .shimmer-card {
+      height: 100px; border-radius: 14px;
+      background: linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
     .alert-banner {
       display: flex; align-items: flex-start; gap: 12px;
       padding: 14px 16px; border-radius: 12px; margin-bottom: 20px;
@@ -179,6 +220,15 @@ import { ExpiryService, ExpiryStatus } from '../../core/services/expiry.service'
 export class ExpiryComponent {
   expiry = inject(ExpiryService);
   todayStr = this.formatLocalDate(new Date());
+
+  syncLabel(state: SyncState): string {
+    switch (state) {
+      case 'idle':    return 'Local';
+      case 'loading': return 'Syncing…';
+      case 'synced':  return 'Synced';
+      case 'error':   return 'Offline — local only';
+    }
+  }
 
   urgencyLabel(status: ExpiryStatus): string {
     switch (status.urgency) {
