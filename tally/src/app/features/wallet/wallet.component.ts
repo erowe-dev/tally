@@ -72,6 +72,44 @@ import { CreditCard } from '../../core/models';
         </div>
       </ng-container>
 
+      <!-- Spending Simulator -->
+      <div class="spend-sim" *ngIf="wallet.syncState() !== 'loading'">
+        <div class="spend-sim-header">
+          <span class="spend-sim-label">Earning simulator</span>
+          <button class="goal-toggle" (click)="showSim.set(!showSim())">
+            {{ showSim() ? 'Hide' : 'Show' }}
+          </button>
+        </div>
+        <ng-container *ngIf="showSim()">
+          <div class="spend-sim-body">
+            <div class="sim-field">
+              <label class="field-label-sm">Monthly spend ($)</label>
+              <input class="sim-input" type="number" inputmode="numeric"
+                [(ngModel)]="simMonthlySpend" placeholder="2000" min="0" step="500">
+            </div>
+            <div class="sim-field">
+              <label class="field-label-sm">Earn rate (pts/$)</label>
+              <input class="sim-input" type="number" inputmode="decimal"
+                [(ngModel)]="simEarnRate" placeholder="2" min="0.5" step="0.5">
+            </div>
+          </div>
+          <div class="sim-results" *ngIf="simMonthlySpend > 0 && simEarnRate > 0">
+            <div class="sim-row">
+              <span class="sim-val">{{ simMonthlyEarn() | number }}</span>
+              <span class="sim-key">pts/month</span>
+            </div>
+            <div class="sim-row">
+              <span class="sim-val">{{ simYearlyEarn() | number }}</span>
+              <span class="sim-key">pts/year</span>
+            </div>
+            <div class="sim-note" *ngIf="nextMilestone() as m">
+              At this rate: <strong>{{ simMonthsToMilestone(m.gap) }} month{{ simMonthsToMilestone(m.gap) !== 1 ? 's' : '' }}</strong>
+              to close the gap to <em>{{ m.name }}</em>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+
       <div class="divider"></div>
 
       <!-- Point Goal Tracker -->
@@ -352,6 +390,46 @@ import { CreditCard } from '../../core/models';
     .action-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .action-btn.share-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
 
+    /* Spending Simulator */
+    .spend-sim { margin-bottom: 20px; }
+    .spend-sim-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .spend-sim-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3);
+    }
+    .spend-sim-body { display: flex; gap: 8px; margin-bottom: 12px; }
+    .sim-field { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .field-label-sm {
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
+    }
+    .sim-input {
+      background: var(--white); border: 1.5px solid var(--border2);
+      border-radius: 9px; color: var(--tally-green);
+      font-family: 'Geist Mono', monospace; font-size: 14px;
+      padding: 8px 10px; outline: none; transition: border-color 0.15s;
+      -moz-appearance: textfield; width: 100%; box-sizing: border-box;
+    }
+    .sim-input::-webkit-outer-spin-button,
+    .sim-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .sim-input:focus { border-color: var(--tally-green); }
+    .sim-results {
+      background: var(--surface); border-radius: 10px; padding: 10px 12px;
+      display: flex; gap: 16px; flex-wrap: wrap;
+    }
+    .sim-row { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    .sim-val {
+      font-family: 'Geist Mono', monospace; font-size: 16px;
+      color: var(--tally-green); font-weight: 600;
+    }
+    .sim-key {
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      color: var(--text3); letter-spacing: 0.08em;
+    }
+    .sim-note {
+      flex-basis: 100%; font-size: 12px; color: var(--text2); line-height: 1.5;
+    }
+
     /* Next Milestone */
     .milestone-card {
       display: flex; align-items: center; gap: 12px;
@@ -398,6 +476,22 @@ export class WalletComponent {
   });
 
   copied = signal(false);
+
+  // Spending Simulator
+  showSim = signal(false);
+  simMonthlySpend = 2000;
+  simEarnRate = 2; // pts per dollar
+
+  readonly simMonthlyEarn = computed(() =>
+    Math.round(this.simMonthlySpend * this.simEarnRate)
+  );
+  readonly simYearlyEarn = computed(() => this.simMonthlyEarn() * 12);
+
+  simMonthsToMilestone(gap: number): number {
+    const monthly = this.simMonthlyEarn();
+    if (!monthly) return 0;
+    return Math.ceil(gap / monthly);
+  }
 
   /** SVG polyline points string for the 30-day sparkline, or null if < 2 entries */
   readonly sparklinePoints = computed((): string | null => {
