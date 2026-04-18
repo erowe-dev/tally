@@ -98,4 +98,10 @@ export class ApiService {
       this.http.delete(`${environment.apiUrl}/api/trips/${id}`, { headers }),
     );
   }
+
+  updateTripNotes(id: string, notes: string): Observable<unknown> {
+    return this.withAuth(headers =>
+      this.http.patch(`${environment.apiUrl}/api/trips/${id}`, { notes }, { headers }),
+    );
+  }
 }

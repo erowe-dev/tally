@@ -66,6 +66,21 @@ export class TripsService {
     }
   }
 
+  updateNotes(id: string, notes: string): void {
+    const trimmed = notes.trim().slice(0, 500);
+    const updated = this._trips().map(t =>
+      t.id === id ? { ...t, notes: trimmed || undefined } : t,
+    );
+    this._trips.set(updated);
+    this.saveLocal(updated);
+
+    if (!id.startsWith('local_') && this.auth.isProvisioned() && this.network.isOnline()) {
+      this.api.updateTripNotes(id, trimmed).subscribe({
+        error: err => console.error('[TripsService] Note update failed:', err),
+      });
+    }
+  }
+
   deleteTrip(id: string): void {
     const updated = this._trips().filter(t => t.id !== id);
     this._trips.set(updated);

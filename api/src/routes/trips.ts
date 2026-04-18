@@ -83,6 +83,42 @@ router.post(
   }),
 );
 
+// PATCH /api/trips/:id
+// Updates the notes on a saved trip — user must own it.
+router.patch(
+  '/:id',
+  checkJwt,
+  jwtErrorHandler,
+  asyncRoute(async (req, res) => {
+    const user = await requireUser(getAuth0Id(req));
+    const { id } = req.params;
+
+    if (!id || id.length > 100) {
+      res.status(400).json({ error: 'Invalid trip id' });
+      return;
+    }
+
+    const b = req.body as Record<string, unknown>;
+    if (typeof b['notes'] !== 'string') {
+      res.status(400).json({ error: 'notes must be a string' });
+      return;
+    }
+    const notes = b['notes'].trim().slice(0, 500);
+
+    const result = await prisma.trip.updateMany({
+      where: { id, userId: user.id },
+      data: { notes },
+    });
+
+    if (result.count === 0) {
+      res.status(404).json({ error: 'Trip not found' });
+      return;
+    }
+
+    res.json({ id, notes });
+  }),
+);
+
 // DELETE /api/trips/:id
 // Deletes a saved trip — user must own it.
 router.delete(

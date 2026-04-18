@@ -204,6 +204,24 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
                 <span *ngIf="trip.nights"> · {{ trip.nights }} night{{ trip.nights !== 1 ? 's' : '' }}</span>
               </ng-container>
             </div>
+            <!-- Inline note display / edit -->
+            <div class="saved-note-area">
+              <input *ngIf="editingNoteId() !== trip.id"
+                class="saved-note-preview"
+                readonly
+                [value]="trip.notes || ''"
+                placeholder="Add a note…"
+                (click)="startEditNote(trip.id, trip.notes || '')"
+              />
+              <div class="saved-note-edit" *ngIf="editingNoteId() === trip.id">
+                <input class="saved-note-input" [(ngModel)]="pendingNote"
+                  placeholder="Add a note…" maxlength="500"
+                  (keyup.enter)="commitNote(trip.id)"
+                  (keyup.escape)="editingNoteId.set(null)">
+                <button class="note-save-btn" (click)="commitNote(trip.id)">Save</button>
+                <button class="note-cancel-btn" (click)="editingNoteId.set(null)">✕</button>
+              </div>
+            </div>
             <div class="saved-date">{{ formatTripDate(trip.createdAt) }}</div>
           </div>
           <div class="saved-pts">{{ trip.ptsRequired | number }}<small>pts</small></div>
@@ -422,6 +440,29 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
       flex-shrink: 0;
     }
     .delete-btn:hover { color: var(--tally-red); }
+
+    .saved-note-area { margin-top: 4px; }
+    .saved-note-preview {
+      width: 100%; background: none; border: none; outline: none; cursor: pointer;
+      font-family: 'Geist', sans-serif; font-size: 11px; color: var(--text3);
+      padding: 0; line-height: 1.4;
+    }
+    .saved-note-preview:not([value=""]):not([value]) { color: var(--text2); }
+    .saved-note-edit { display: flex; gap: 4px; align-items: center; }
+    .saved-note-input {
+      flex: 1; background: var(--surface); border: 1.5px solid var(--tally-green);
+      border-radius: 7px; font-family: 'Geist', sans-serif; font-size: 11px;
+      color: var(--text); padding: 4px 8px; outline: none;
+    }
+    .note-save-btn {
+      background: var(--tally-green); border: none; border-radius: 6px;
+      color: white; font-family: 'Geist Mono', monospace; font-size: 9px;
+      padding: 4px 8px; cursor: pointer; flex-shrink: 0; letter-spacing: 0.06em;
+    }
+    .note-cancel-btn {
+      background: none; border: none; color: var(--text3); font-size: 12px;
+      cursor: pointer; padding: 2px; flex-shrink: 0;
+    }
   `]
 })
 export class OptimizerComponent {
@@ -443,6 +484,8 @@ export class OptimizerComponent {
   analyzed = signal(false);
   maxCpp = signal(1);
   routeLabel = signal<string>('');
+  editingNoteId = signal<string | null>(null);
+  pendingNote = '';
   // Briefly highlights the save button after saving
   justSaved = signal<string | null>(null);
 
@@ -522,6 +565,16 @@ export class OptimizerComponent {
 
   getShort(cardId: string): string {
     return this.data.cards.find(c => c.id === cardId)?.short ?? cardId;
+  }
+
+  startEditNote(tripId: string, currentNote: string): void {
+    this.pendingNote = currentNote;
+    this.editingNoteId.set(tripId);
+  }
+
+  commitNote(tripId: string): void {
+    this.trips.updateNotes(tripId, this.pendingNote);
+    this.editingNoteId.set(null);
   }
 
   formatTripDate(iso: string): string {
