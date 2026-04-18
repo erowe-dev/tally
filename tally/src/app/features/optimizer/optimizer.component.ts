@@ -1,4 +1,4 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { OptimizerService } from '../../core/services/optimizer.service';
@@ -113,14 +113,31 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
       <div class="results" *ngIf="results().length">
         <div class="results-header">
           <div>
-            <span class="section-eyebrow">{{ results().length }} Options</span>
+            <span class="section-eyebrow">{{ filteredResults().length }} of {{ results().length }} Options</span>
             <span class="route-label" *ngIf="routeLabel()">{{ routeLabel() }}</span>
           </div>
-          <span class="results-hint" *ngIf="wallet.hasAnyPoints()">✓ = you have enough</span>
+        </div>
+
+        <!-- Result filters (only when user has a wallet) -->
+        <div class="result-filters" *ngIf="wallet.hasAnyPoints()">
+          <button class="rf-btn" [class.active]="canAffordOnly()"
+            (click)="canAffordOnly.set(!canAffordOnly())">
+            ✓ Can afford
+          </button>
+          <div class="rf-sort">
+            <button class="rf-btn" [class.active]="sortBy() === 'cpp'"
+              (click)="sortBy.set('cpp')">Best CPP</button>
+            <button class="rf-btn" [class.active]="sortBy() === 'coverage'"
+              (click)="sortBy.set('coverage')">My Coverage</button>
+          </div>
+        </div>
+
+        <div class="no-affordable" *ngIf="canAffordOnly() && filteredResults().length === 0">
+          <p>No results match your current wallet. Add more points in Wallet to unlock options.</p>
         </div>
 
         <div class="result-card"
-             *ngFor="let rec of results(); let i = index"
+             *ngFor="let rec of filteredResults(); let i = index"
              [class.best]="i === 0"
              [style.animation-delay]="i * 60 + 'ms'">
           <div class="rc-top">
@@ -307,6 +324,26 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
       margin-top: 24px; margin-bottom: 12px;
     }
     .results-hint { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--tally-green); }
+
+    /* Result filter bar */
+    .result-filters {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .rf-sort { display: flex; gap: 4px; margin-left: auto; }
+    .rf-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 11px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.08em; color: var(--text3); cursor: pointer;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .rf-btn.active { background: var(--tally-green); border-color: var(--tally-green); color: white; }
+    .no-affordable {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px 16px; text-align: center;
+      font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 12px;
+    }
     .route-label {
       display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px;
@@ -488,6 +525,25 @@ export class OptimizerComponent {
   pendingNote = '';
   // Briefly highlights the save button after saving
   justSaved = signal<string | null>(null);
+  // Filters / sorting for results
+  canAffordOnly = signal(false);
+  sortBy = signal<'cpp' | 'coverage'>('cpp');
+
+  readonly filteredResults = computed<Recommendation[]>(() => {
+    let recs = this.results();
+    if (this.canAffordOnly()) {
+      recs = recs.filter(r => this.wallet.canCover(r.cards, r.ptsRequired ?? r.ptsBase));
+    }
+    if (this.sortBy() === 'coverage' && this.wallet.hasAnyPoints()) {
+      recs = [...recs].sort((a, b) => {
+        const covA = this.getCovPct(a);
+        const covB = this.getCovPct(b);
+        if (covA !== covB) return covB - covA; // highest coverage first
+        return b.cpp - a.cpp;
+      });
+    }
+    return recs;
+  });
 
   private static readonly ROUTE_LABELS: Record<string, string> = {
     transatlantic: 'US ↔ Europe',
