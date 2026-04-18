@@ -2,6 +2,7 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../core/services/data.service';
+import { WalletService } from '../../core/services/wallet.service';
 import { CreditCard } from '../../core/models';
 
 type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
@@ -53,6 +54,10 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
             <div class="cc-meta">
               <div class="cc-name">{{ card.name }}</div>
               <div class="cc-cards">{{ card.cards.join(' · ') }}</div>
+              <!-- Wallet balance indicator -->
+              <div class="cc-balance" *ngIf="wallet.getBalance(card.id) > 0">
+                {{ wallet.getBalance(card.id) | number }} pts
+              </div>
             </div>
             <div class="cc-right">
               <div class="cc-best">
@@ -218,6 +223,11 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
       font-family: 'Geist Mono', monospace; letter-spacing: 0.04em;
       margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    .cc-balance {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--tally-green); letter-spacing: 0.04em; margin-top: 2px;
+    }
+
     .cc-best { text-align: right; }
     .cc-best-val { font-family: 'Geist Mono', monospace; font-size: 16px; color: var(--tally-green); }
     .cc-best-label {
@@ -337,6 +347,7 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
 })
 export class CardsComponent {
   data = inject(DataService);
+  wallet = inject(WalletService);
 
   // Two-way bound to ngModel; signal reads it via computed
   searchRaw = '';
