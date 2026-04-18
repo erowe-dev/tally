@@ -101,10 +101,17 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
             ⚡ {{ bonus.from }} → {{ bonus.to }} — {{ bonus.bonus }}
           </div>
           <p class="spot-note">{{ s.note }}</p>
-          <button class="spot-optimizer-btn" *ngIf="s.category === 'flight'"
-            (click)="openInOptimizer(s)">
-            Find availability in Optimizer →
-          </button>
+          <div class="spot-action-row">
+            <button class="spot-optimizer-btn" *ngIf="s.category === 'flight'"
+              (click)="openInOptimizer(s)">
+              Find in Optimizer →
+            </button>
+            <button class="spot-share-btn"
+              (click)="shareSpot(s)"
+              [class.copied]="copiedSpotKey() === spotKey(s)">
+              {{ copiedSpotKey() === spotKey(s) ? '✓ Copied' : '📋 Share' }}
+            </button>
+          </div>
           <div class="spot-chips">
             <span class="chip card-chip" *ngFor="let c of s.cards">{{ c }}</span>
             <span class="chip prog-chip" *ngFor="let p of s.programs">{{ p }}</span>
@@ -292,8 +299,11 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
       width: 14px; height: 14px; border-radius: 50%; margin-left: 4px;
     }
 
+    .spot-action-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+    }
     .spot-optimizer-btn {
-      display: inline-block; margin-bottom: 10px;
+      display: inline-block;
       background: none; border: 1px solid var(--tally-green);
       border-radius: 8px; color: var(--tally-green);
       font-family: 'Geist Mono', monospace; font-size: 10px;
@@ -301,6 +311,14 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
       transition: all 0.15s;
     }
     .spot-optimizer-btn:hover { background: var(--tally-green); color: white; }
+    .spot-share-btn {
+      background: none; border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.06em; padding: 5px 10px; cursor: pointer;
+      transition: all 0.15s; margin-left: auto;
+    }
+    .spot-share-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
+    .spot-share-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
 
     .empty-filter { text-align: center; padding: 32px 16px; color: var(--text3); font-size: 14px; }
     .spot-clear-btn {
@@ -341,6 +359,7 @@ export class SweetspotsComponent {
   activeFilter = signal<Filter>('all');
   activeSort = signal<SortMode>('default');
   private _favs = signal<Set<string>>(this.loadFavs());
+  copiedSpotKey = signal<string | null>(null);
 
   readonly sortModes: { id: SortMode; label: string }[] = [
     { id: 'default', label: 'Default' },
@@ -506,6 +525,26 @@ export class SweetspotsComponent {
     if (!this.wallet.hasAnyPoints()) return 0;
     return this.data.sweetSpots.filter(s => this.canAfford(s)).length;
   });
+
+  shareSpot(s: SweetSpot): void {
+    const lines = [
+      `✈ Sweet Spot: ${s.route}`,
+      `${s.detail}`,
+      ``,
+      `Points: ${s.ptsNeeded} | Cash value: ${s.estCash} | CPP: ${s.cpp}`,
+      `Programs: ${s.programs.join(', ')}`,
+      `Cards: ${s.cards.join(', ')}`,
+      ``,
+      `Note: ${s.note}`,
+      ``,
+      `Found with Tally Points Advisor`,
+    ];
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      const key = this.spotKey(s);
+      this.copiedSpotKey.set(key);
+      setTimeout(() => this.copiedSpotKey.set(null), 2000);
+    }).catch(() => {/* silent fail */});
+  }
 
   formatExpiry(dateStr: string): string {
     const d = new Date(dateStr + 'T00:00:00');
