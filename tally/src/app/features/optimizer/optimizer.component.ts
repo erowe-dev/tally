@@ -186,15 +186,25 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
 
       <!-- Saved Trips -->
       <div class="saved-section" *ngIf="trips.trips().length > 0">
-        <div class="section-eyebrow" style="margin-top:28px; margin-bottom:12px;">Saved Trips</div>
+        <div class="section-eyebrow" style="margin-top:28px; margin-bottom:12px;">
+          Saved Trips ({{ trips.trips().length }})
+        </div>
         <div class="saved-card" *ngFor="let trip of trips.trips()">
+          <div class="trip-type-icon">{{ trip.tripType === 'flight' ? '✈' : '🏨' }}</div>
           <div class="saved-info">
             <div class="saved-program">{{ trip.programName }}</div>
             <div class="saved-meta">
-              <span *ngIf="trip.tripType === 'flight' && trip.origin">{{ trip.origin }}→{{ trip.destination }}</span>
-              <span *ngIf="trip.tripType === 'flight' && trip.cabin"> · {{ trip.cabin }}</span>
-              <span *ngIf="trip.tripType === 'hotel' && trip.hotelCat"> {{ trip.hotelCat }} · {{ trip.nights }}n</span>
+              <ng-container *ngIf="trip.tripType === 'flight'">
+                <span *ngIf="trip.origin">{{ trip.origin }}→{{ trip.destination }}</span>
+                <span *ngIf="trip.cabin"> · {{ trip.cabin }}</span>
+                <span *ngIf="trip.passengers && trip.passengers > 1"> · {{ trip.passengers }}pax</span>
+              </ng-container>
+              <ng-container *ngIf="trip.tripType === 'hotel'">
+                <span *ngIf="trip.hotelCat">{{ trip.hotelCat }}</span>
+                <span *ngIf="trip.nights"> · {{ trip.nights }} night{{ trip.nights !== 1 ? 's' : '' }}</span>
+              </ng-container>
             </div>
+            <div class="saved-date">{{ formatTripDate(trip.createdAt) }}</div>
           </div>
           <div class="saved-pts">{{ trip.ptsRequired | number }}<small>pts</small></div>
           <button class="delete-btn" (click)="trips.deleteTrip(trip.id)" title="Remove">×</button>
@@ -390,11 +400,16 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
     .saved-card {
       background: var(--white); border: 1px solid var(--border);
       border-radius: 12px; padding: 12px 14px;
-      display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
     }
+    .trip-type-icon { font-size: 16px; flex-shrink: 0; opacity: 0.7; }
     .saved-info { flex: 1; min-width: 0; }
     .saved-program { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .saved-meta { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 0.04em; }
+    .saved-date {
+      font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--border2);
+      letter-spacing: 0.04em; margin-top: 2px;
+    }
     .saved-pts {
       font-family: 'Geist Mono', monospace; font-size: 14px;
       color: var(--tally-green); text-align: right; flex-shrink: 0;
@@ -507,5 +522,13 @@ export class OptimizerComponent {
 
   getShort(cardId: string): string {
     return this.data.cards.find(c => c.id === cardId)?.short ?? cardId;
+  }
+
+  formatTripDate(iso: string): string {
+    try {
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+      return '';
+    }
   }
 }
