@@ -43,9 +43,22 @@ export class WalletService {
     Object.values(this._balances()).reduce((a, b) => a + b, 0),
   );
 
-  readonly estimatedValue = computed(() =>
-    Math.round(this.totalPoints() * 0.016),
-  );
+  /**
+   * Estimated portfolio value using each program's best partner CPP.
+   * Falls back to 1.6¢ for any program with no partners defined.
+   */
+  readonly estimatedValue = computed(() => {
+    let total = 0;
+    for (const card of this.data.cards) {
+      const bal = this._balances()[card.id] ?? 0;
+      if (bal <= 0) continue;
+      const bestCpp = card.partners.length
+        ? Math.max(...card.partners.map(p => p.cpp))
+        : 1.6;
+      total += Math.round(bal * bestCpp / 100);
+    }
+    return total;
+  });
 
   readonly hasAnyPoints = computed(() => this.totalPoints() > 0);
 

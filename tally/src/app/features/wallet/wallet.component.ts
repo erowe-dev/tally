@@ -216,7 +216,7 @@ import { CreditCard } from '../../core/models';
       <div class="summary" *ngIf="wallet.hasAnyPoints(); else noPoints">
         <div class="summary-label">Estimated Total Value</div>
         <div class="summary-value">\${{ wallet.estimatedValue() | number }}</div>
-        <div class="summary-sub">{{ wallet.totalPoints() | number }} total points · blended ~1.6¢/pt</div>
+        <div class="summary-sub">{{ wallet.totalPoints() | number }} total points · at best available CPP</div>
         <div class="weekly-change" *ngIf="weeklyChange() as wc"
           [class.positive]="wc.delta > 0" [class.negative]="wc.delta < 0">
           {{ wc.delta > 0 ? '▲' : '▼' }} {{ (wc.delta > 0 ? wc.delta : -wc.delta) | number }} this week
@@ -256,8 +256,8 @@ import { CreditCard } from '../../core/models';
         </div>
 
         <div class="summary-note">
-          This is a conservative blended estimate. Optimal transfers can yield 2–3× more.
-          Use the Optimizer to find your best redemption.
+          Estimated using the best CPP partner for each program. Actual value depends on
+          availability — use the Optimizer to find and book specific redemptions.
         </div>
         <div class="action-row">
           <button class="action-btn" (click)="exportCsv()">↓ Export CSV</button>
@@ -860,15 +860,16 @@ export class WalletComponent {
   readonly weeklyChange = computed((): { delta: number } | null => {
     const h = this.wallet.history();
     if (h.length < 2) return null;
-    const today = h[0].total;
-    // Find entry ~7 days ago
-    const todayDate = new Date(h[0].date);
-    const oldest = h.find(e => {
+    // History is ordered oldest-first; newest is at the end
+    const latest = h[h.length - 1];
+    const latestDate = new Date(latest.date);
+    // Find the entry closest to 7 days ago (at least 6 full days back)
+    const weekOld = h.find(e => {
       const d = new Date(e.date);
-      return (todayDate.getTime() - d.getTime()) >= 6 * 24 * 60 * 60 * 1000;
+      return (latestDate.getTime() - d.getTime()) >= 6 * 24 * 60 * 60 * 1000;
     });
-    if (!oldest) return null;
-    const delta = today - oldest.total;
+    if (!weekOld) return null;
+    const delta = latest.total - weekOld.total;
     if (delta === 0) return null;
     return { delta };
   });
