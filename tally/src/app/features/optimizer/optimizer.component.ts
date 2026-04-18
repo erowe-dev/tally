@@ -7,6 +7,15 @@ import { DataService } from '../../core/services/data.service';
 import { TripsService } from '../../core/services/trips.service';
 import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
 
+interface RouteHistoryEntry {
+  tripType: 'flight' | 'hotel';
+  fromCity: string; toCity: string; cabin: CabinClass; passengers: number;
+  hotelCategory: HotelCategory; hotelNights: number;
+  label: string; ts: string;
+}
+const ROUTE_HISTORY_KEY = 'tally_route_history_v1';
+const MAX_ROUTE_HISTORY = 5;
+
 @Component({
   selector: 'tally-optimizer',
   standalone: true,
@@ -98,6 +107,17 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
               <option [value]="7">7 Nights</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      <!-- Recent searches -->
+      <div class="recent-routes" *ngIf="recentRoutes().length > 0">
+        <span class="recent-label">Recent</span>
+        <div class="recent-chips">
+          <button class="recent-chip" *ngFor="let h of recentRoutes()" (click)="applyHistory(h)"
+            [title]="'Re-run: ' + h.label">
+            {{ h.tripType === 'flight' ? '✈' : '🏨' }} {{ h.label }}
+          </button>
         </div>
       </div>
 
@@ -567,6 +587,29 @@ import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
       background: none; border: none; color: var(--text3); font-size: 12px;
       cursor: pointer; padding: 2px; flex-shrink: 0;
     }
+
+    /* Recent routes */
+    .recent-routes {
+      display: flex; align-items: flex-start; gap: 8px;
+      margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .recent-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
+      flex-shrink: 0; padding-top: 5px;
+    }
+    .recent-chips { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; }
+    .recent-chip {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 11px;
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.03em; color: var(--text2); cursor: pointer;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .recent-chip:hover {
+      border-color: var(--tally-green); color: var(--tally-green);
+      background: var(--tally-green-light);
+    }
   `]
 })
 export class OptimizerComponent {
@@ -598,6 +641,9 @@ export class OptimizerComponent {
   // Quick Wins panel
   showQuickWins = signal(false);
   private _allRecs = this.optimizer.getAllRecs();
+  // Route history
+  private _routeHistory = signal<RouteHistoryEntry[]>(this.loadRouteHistory());
+  readonly recentRoutes = this._routeHistory.asReadonly();
 
   readonly quickWins = computed(() => {
     return this._allRecs.filter(r =>
@@ -646,6 +692,7 @@ export class OptimizerComponent {
     this.maxCpp.set(recs[0]?.cpp ?? 1);
     this.results.set(recs);
     this.analyzed.set(true);
+    this.pushToHistory();
   }
 
   saveTrip(rec: Recommendation): void {
@@ -721,6 +768,62 @@ export class OptimizerComponent {
   commitNote(tripId: string): void {
     this.trips.updateNotes(tripId, this.pendingNote);
     this.editingNoteId.set(null);
+  }
+
+  // ── Route history ──────────────────────────────────────────────────────────
+  private loadRouteHistory(): RouteHistoryEntry[] {
+    try {
+      const raw = localStorage.getItem(ROUTE_HISTORY_KEY);
+      return raw ? (JSON.parse(raw) as RouteHistoryEntry[]) : [];
+    } catch { return []; }
+  }
+
+  private saveRouteHistory(entries: RouteHistoryEntry[]): void {
+    try { localStorage.setItem(ROUTE_HISTORY_KEY, JSON.stringify(entries)); } catch {}
+  }
+
+  private buildHistoryLabel(): string {
+    if (this.tripType() === 'flight') {
+      const from = this.fromCity || '?';
+      const to   = this.toCity   || '?';
+      const cab  = this.cabin.charAt(0).toUpperCase() + this.cabin.slice(1);
+      const pax  = this.passengers > 1 ? ` · ${this.passengers}pax` : '';
+      return `${from}→${to} · ${cab}${pax}`;
+    }
+    const catMap: Record<HotelCategory, string> = {
+      budget: 'Budget', mid: 'Mid-Range', luxury: 'Luxury', top: 'Top Tier',
+    };
+    return `${catMap[this.hotelCategory]} · ${this.hotelNights}n`;
+  }
+
+  private pushToHistory(): void {
+    const entry: RouteHistoryEntry = {
+      tripType: this.tripType(),
+      fromCity: this.fromCity, toCity: this.toCity,
+      cabin: this.cabin, passengers: this.passengers,
+      hotelCategory: this.hotelCategory, hotelNights: this.hotelNights,
+      label: this.buildHistoryLabel(),
+      ts: new Date().toISOString(),
+    };
+    this._routeHistory.update(prev => {
+      const deduped = prev.filter(h => h.label !== entry.label);
+      const next = [entry, ...deduped].slice(0, MAX_ROUTE_HISTORY);
+      this.saveRouteHistory(next);
+      return next;
+    });
+  }
+
+  applyHistory(entry: RouteHistoryEntry): void {
+    this.tripType.set(entry.tripType);
+    this.fromCity = entry.fromCity;
+    this.toCity   = entry.toCity;
+    this.cabin    = entry.cabin;
+    this.passengers   = entry.passengers;
+    this.hotelCategory = entry.hotelCategory;
+    this.hotelNights  = entry.hotelNights;
+    // Close quick wins if open so user sees results
+    this.showQuickWins.set(false);
+    this.analyze();
   }
 
   formatTripDate(iso: string): string {
