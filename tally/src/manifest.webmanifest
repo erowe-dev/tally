@@ -1,0 +1,38 @@
+{
+  "name": "Tally — Points Advisor",
+  "short_name": "Tally",
+  "description": "The points advisor that tells you what to do, not just what's possible.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f6f3",
+  "theme_color": "#1a7a4a",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "travel", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Optimizer",
+      "url": "/?tab=optimizer",
+      "description": "Find the best use of your points"
+    },
+    {
+      "name": "My Wallet",
+      "url": "/?tab=wallet",
+      "description": "View and edit your point balances"
+    }
+  ]
+}

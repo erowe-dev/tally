@@ -1,6 +1,7 @@
 
 
 :root {
+  /* Light palette (default) */
   --white:             #ffffff;
   --off:               #f7f6f3;
   --surface:           #f0efe9;
@@ -16,6 +17,26 @@
   --tally-amber-light: #fef3c7;
   --tally-red:         #dc2626;
   --tally-red-light:   #fef2f2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --white:             #1e1d1b;
+    --off:               #131210;
+    --surface:           #252320;
+    --border:            #2e2c28;
+    --border2:           #3e3b36;
+    --text:              #f0ede8;
+    --text2:             #b0ada4;
+    --text3:             #7a7770;
+    --tally-green:       #2db868;
+    --tally-green-light: #0f2a1a;
+    --tally-green-mid:   #3ad47a;
+    --tally-amber:       #f59e0b;
+    --tally-amber-light: #1c1500;
+    --tally-red:         #f87171;
+    --tally-red-light:   #200a0a;
+  }
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
