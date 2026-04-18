@@ -141,6 +141,21 @@ import { CreditCard } from '../../core/models';
         </div>
       </div>
 
+      <!-- Points Health Score -->
+      <div class="health-score-card" *ngIf="wallet.hasAnyPoints() && healthScore() as hs">
+        <div class="hs-left">
+          <div class="hs-label">Portfolio Health</div>
+          <div class="hs-grade" [class]="hs.grade.toLowerCase()">{{ hs.grade }}</div>
+          <div class="hs-score">{{ hs.score }}/100</div>
+        </div>
+        <div class="hs-right">
+          <div class="hs-bar-wrap">
+            <div class="hs-bar" [style.width]="hs.score + '%'" [class]="hs.grade.toLowerCase()"></div>
+          </div>
+          <div class="hs-tip">{{ hs.tip }}</div>
+        </div>
+      </div>
+
       <div class="divider"></div>
 
       <!-- Point Goal Tracker -->
@@ -334,6 +349,44 @@ import { CreditCard } from '../../core/models';
     .ins-body { flex: 1; min-width: 0; }
     .ins-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
     .ins-sub { font-size: 11px; color: var(--text3); line-height: 1.45; }
+
+    /* Points Health Score */
+    .health-score-card {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 16px; margin-bottom: 20px;
+    }
+    .hs-left { text-align: center; flex-shrink: 0; min-width: 60px; }
+    .hs-label {
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); margin-bottom: 4px;
+    }
+    .hs-grade {
+      font-family: 'Instrument Serif', serif; font-size: 40px; line-height: 1;
+      color: var(--text);
+    }
+    .hs-grade.a { color: var(--tally-green); }
+    .hs-grade.b { color: var(--tally-green-mid); }
+    .hs-grade.c { color: var(--tally-amber, #d97706); }
+    .hs-grade.d { color: var(--tally-red, #dc2626); }
+    .hs-score {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--text3); letter-spacing: 0.06em; margin-top: 2px;
+    }
+    .hs-right { flex: 1; min-width: 0; }
+    .hs-bar-wrap {
+      height: 5px; background: var(--border); border-radius: 99px;
+      overflow: hidden; margin-bottom: 8px;
+    }
+    .hs-bar {
+      height: 100%; border-radius: 99px;
+      transition: width 0.7s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .hs-bar.a { background: var(--tally-green); }
+    .hs-bar.b { background: var(--tally-green-mid); }
+    .hs-bar.c { background: var(--tally-amber, #d97706); }
+    .hs-bar.d { background: var(--tally-red, #dc2626); }
+    .hs-tip { font-size: 11px; color: var(--text2); line-height: 1.45; }
 
     /* Points at risk banner */
     .at-risk-banner {
@@ -895,6 +948,63 @@ export class WalletComponent {
     }
 
     return result.slice(0, 3);
+  });
+
+  /** Portfolio health score 0–100, letter grade A/B/C/D, and an actionable tip */
+  readonly healthScore = computed((): { score: number; grade: 'A' | 'B' | 'C' | 'D'; tip: string } | null => {
+    const total = this.wallet.totalPoints();
+    if (total === 0) return null;
+
+    let score = 100;
+    let tip = 'Your points portfolio looks great!';
+
+    // ── Penalty 1: At-risk points (expiry within 90 days) ──────────────────
+    let atRiskPts = 0;
+    for (const s of this.expiry.statuses()) {
+      if (s.urgency === 'expired' || s.urgency === 'critical') {
+        atRiskPts += this.wallet.getBalance(s.cardId);
+      } else if (s.urgency === 'warning') {
+        atRiskPts += this.wallet.getBalance(s.cardId) * 0.5;
+      }
+    }
+    const atRiskPct = atRiskPts / total;
+    const expiryPenalty = Math.min(35, Math.round(atRiskPct * 60));
+    score -= expiryPenalty;
+    if (expiryPenalty > 20) tip = 'Some points are expiring soon — mark activity in the Expiry tab.';
+    else if (expiryPenalty > 5) tip = 'A few programs need attention — check your expiry dates.';
+
+    // ── Penalty 2: Over-concentration ──────────────────────────────────────
+    let maxSinglePct = 0;
+    for (const card of this.data.cards) {
+      const pct = this.wallet.getBalance(card.id) / total;
+      if (pct > maxSinglePct) maxSinglePct = pct;
+    }
+    if (maxSinglePct > 0.85) {
+      score -= 20;
+      tip = 'All your points are in one program — diversify for more flexibility.';
+    } else if (maxSinglePct > 0.70) {
+      score -= 10;
+      if (expiryPenalty <= 5) tip = 'Consider spreading points across 2–3 programs for more redemption options.';
+    }
+
+    // ── Penalty 3: No transferable currencies ──────────────────────────────
+    const transferBal = this.data.cards
+      .filter(c => c.category === 'transferable')
+      .reduce((sum, c) => sum + this.wallet.getBalance(c.id), 0);
+    if (transferBal === 0) {
+      score -= 15;
+      if (expiryPenalty <= 5 && maxSinglePct <= 0.70) {
+        tip = 'You hold no transferable currencies (Amex MR, Chase UR, etc.) — these unlock the most partners.';
+      }
+    } else if (transferBal / total < 0.25) {
+      score -= 7;
+    }
+
+    score = Math.max(0, Math.min(100, score));
+    const grade: 'A' | 'B' | 'C' | 'D' =
+      score >= 85 ? 'A' : score >= 70 ? 'B' : score >= 50 ? 'C' : 'D';
+
+    return { score, grade, tip };
   });
 
   /** Returns a colored badge object for programs with at-risk points, or null. */
