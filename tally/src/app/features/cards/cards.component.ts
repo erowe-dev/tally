@@ -218,6 +218,51 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         </div>
       </div>
 
+      <!-- Transfer Route Finder -->
+      <div class="calc-section" style="margin-top:10px">
+        <button class="calc-toggle" (click)="showTransferFinder.set(!showTransferFinder())">
+          <span>🔀 Transfer Route Finder</span>
+          <span class="calc-chevron">{{ showTransferFinder() ? '▲' : '▼' }}</span>
+        </button>
+        <div class="calc-body" *ngIf="showTransferFinder()">
+          <div class="tf-inputs">
+            <div class="calc-input-wrap">
+              <label class="calc-label">Target program</label>
+              <select class="calc-input" [(ngModel)]="tfTargetPartner">
+                <option value="">-- pick a partner --</option>
+                <option *ngFor="let p of allPartnerNames" [value]="p">{{ p }}</option>
+              </select>
+            </div>
+            <div class="calc-input-wrap">
+              <label class="calc-label">Miles / pts needed</label>
+              <input class="calc-input" type="number" inputmode="numeric"
+                [(ngModel)]="tfTargetMiles" placeholder="60000" min="0" step="5000">
+            </div>
+          </div>
+          <div class="tf-results" *ngIf="tfTargetPartner && tfRoutes().length > 0">
+            <div class="tf-row" *ngFor="let r of tfRoutes()"
+              [class.tf-covered]="r.covered">
+              <div class="tf-source-badge" [style.background]="r.card.color">{{ r.card.icon }}</div>
+              <div class="tf-source-info">
+                <div class="tf-source-name">{{ r.card.short }}</div>
+                <div class="tf-source-ratio">{{ r.ratio }} ratio · need {{ r.srcNeeded | number }} pts</div>
+              </div>
+              <div class="tf-coverage" [class.tf-cov-ok]="r.covered">
+                <span *ngIf="wallet.getBalance(r.card.id) > 0">{{ wallet.getBalance(r.card.id) | number }} / {{ r.srcNeeded | number }}</span>
+                <span *ngIf="wallet.getBalance(r.card.id) === 0">No balance</span>
+                <span class="tf-check" *ngIf="r.covered">✓</span>
+              </div>
+            </div>
+          </div>
+          <div class="tf-empty" *ngIf="tfTargetPartner && tfRoutes().length === 0">
+            <p>No transfer paths found for this partner. It may not be a transfer partner of any tracked program.</p>
+          </div>
+          <div class="tf-hint" *ngIf="!tfTargetPartner">
+            Select a target partner to see all transfer paths and whether your wallet can cover the needed miles.
+          </div>
+        </div>
+      </div>
+
     </div>
   `,
   styles: [`
@@ -406,6 +451,32 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       color: var(--text3); line-height: 1.5; margin-top: 10px; letter-spacing: 0.04em;
     }
 
+    /* Transfer Route Finder */
+    .tf-inputs { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+    .tf-results { display: flex; flex-direction: column; gap: 8px; }
+    .tf-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px;
+    }
+    .tf-row.tf-covered { border-color: rgba(26,122,74,0.3); background: var(--tally-green-light); }
+    .tf-source-badge {
+      width: 30px; height: 20px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; flex-shrink: 0;
+    }
+    .tf-source-info { flex: 1; min-width: 0; }
+    .tf-source-name { font-size: 12px; font-weight: 600; color: var(--text); }
+    .tf-source-ratio { font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--text3); margin-top: 1px; }
+    .tf-coverage {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--text3); text-align: right; flex-shrink: 0;
+    }
+    .tf-cov-ok { color: var(--tally-green); font-weight: 600; }
+    .tf-check { margin-left: 4px; }
+    .tf-empty { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; font-size: 12px; color: var(--text3); line-height: 1.5; }
+    .tf-hint { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text3); line-height: 1.5; letter-spacing: 0.04em; }
+
     /* Rate My Redemption */
     .rater-inputs { display: flex; gap: 8px; margin-bottom: 14px; }
     .rater-inputs .calc-input-wrap { flex: 1; margin-bottom: 0; }
@@ -517,6 +588,36 @@ export class CardsComponent {
     { id: 'online',    icon: '🛍',  label: 'Online'    },
     { id: 'general',   icon: '💳',  label: 'General'   },
   ];
+
+  // Transfer Route Finder
+  showTransferFinder = signal(false);
+  tfTargetPartner = '';
+  tfTargetMiles = 0;
+
+  /** Deduplicated list of all partner names across all cards, sorted A-Z */
+  readonly allPartnerNames: string[] = Array.from(
+    new Set(this.data.cards.flatMap(c => c.partners.map(p => p.name)))
+  ).sort();
+
+  /** Cards that transfer to the selected target, with computed coverage */
+  readonly tfRoutes = computed(() => {
+    if (!this.tfTargetPartner) return [];
+    const needed = this.tfTargetMiles;
+    return this.data.cards
+      .flatMap(card => {
+        const partner = card.partners.find(p => p.name === this.tfTargetPartner);
+        if (!partner) return [];
+        // Parse ratio "1:1", "1:2", "2:3" → srcNeeded = needed * (from/to)
+        const [from, to] = partner.ratio.split(':').map(Number);
+        const srcNeeded = needed > 0 ? Math.ceil(needed * (from / to)) : 0;
+        const balance = this.wallet.getBalance(card.id);
+        return [{ card, ratio: partner.ratio, srcNeeded, balance, covered: balance >= srcNeeded && srcNeeded > 0 }];
+      })
+      .sort((a, b) => {
+        if (a.covered !== b.covered) return a.covered ? -1 : 1;
+        return a.srcNeeded - b.srcNeeded;
+      });
+  });
 
   /** Top 3 programs sorted by earn rate for the selected category */
   readonly bestForCategory = computed(() => {
