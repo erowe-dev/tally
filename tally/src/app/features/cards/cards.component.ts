@@ -109,6 +109,10 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
               </div>
             </div>
             <div class="cc-right">
+              <div class="cc-partner-count" *ngIf="card.category === 'transferable'">
+                <span class="cc-pc-great">{{ greatPartnerCount(card) }}★</span>
+                <span class="cc-pc-total"> / {{ card.partners.length }}</span>
+              </div>
               <div class="cc-best">
                 <div class="cc-best-val">{{ getBestCpp(card) }}¢</div>
                 <div class="cc-best-label">best cpp</div>
@@ -344,6 +348,12 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       color: var(--tally-green); letter-spacing: 0.04em; margin-top: 2px;
     }
 
+    .cc-partner-count {
+      text-align: right; font-family: 'Geist Mono', monospace; font-size: 10px;
+      margin-bottom: 3px; letter-spacing: 0.04em;
+    }
+    .cc-pc-great { color: var(--tally-green); font-weight: 600; }
+    .cc-pc-total { color: var(--text3); }
     .cc-best { text-align: right; }
     .cc-best-val { font-family: 'Geist Mono', monospace; font-size: 16px; color: var(--tally-green); }
     .cc-best-label {
@@ -681,6 +691,10 @@ export class CardsComponent {
 
   getBestCpp(card: CreditCard): number {
     return Math.max(...card.partners.map(p => p.cpp));
+  }
+
+  greatPartnerCount(card: CreditCard): number {
+    return card.partners.filter(p => p.quality === 'great').length;
   }
 
   isExpanded(cardId: string): boolean {
