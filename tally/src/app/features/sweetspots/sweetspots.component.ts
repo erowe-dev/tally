@@ -5,6 +5,7 @@ import { DataService } from '../../core/services/data.service';
 import { SweetSpot, TransferBonus } from '../../core/models';
 
 type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'saved';
+type SortMode = 'default' | 'cpp' | 'pts';
 const FAV_KEY = 'tally_sweetspot_favs_v1';
 
 @Component({
@@ -41,6 +42,16 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
           (click)="activeFilter.set(f.id)">
           {{ f.label }}
           <span class="fav-count" *ngIf="f.id === 'saved' && favCount() > 0">{{ favCount() }}</span>
+        </button>
+      </div>
+
+      <!-- Sort row -->
+      <div class="sort-row">
+        <span class="sort-label">Sort:</span>
+        <button *ngFor="let s of sortModes" class="sort-btn"
+          [class.active]="activeSort() === s.id"
+          (click)="activeSort.set(s.id)">
+          {{ s.label }}
         </button>
       </div>
 
@@ -133,6 +144,22 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
       color: white;
     }
 
+    .sort-row {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+    }
+    .sort-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3);
+    }
+    .sort-btn {
+      background: none; border: 1px solid var(--border);
+      border-radius: 16px; padding: 3px 10px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.06em; color: var(--text3); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sort-btn.active { border-color: var(--tally-green); color: var(--tally-green); }
+
     .count-line {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       color: var(--text3); letter-spacing: 0.08em; margin-bottom: 16px;
@@ -224,7 +251,14 @@ export class SweetspotsComponent {
   data = inject(DataService);
 
   activeFilter = signal<Filter>('all');
+  activeSort = signal<SortMode>('default');
   private _favs = signal<Set<string>>(this.loadFavs());
+
+  readonly sortModes: { id: SortMode; label: string }[] = [
+    { id: 'default', label: 'Default' },
+    { id: 'cpp',     label: '↑ CPP' },
+    { id: 'pts',     label: '↑ Points' },
+  ];
 
   readonly favCount = computed(() => this._favs().size);
 
@@ -239,9 +273,24 @@ export class SweetspotsComponent {
   readonly filtered = computed<SweetSpot[]>(() => {
     const f = this.activeFilter();
     const favs = this._favs();
-    if (f === 'saved') return this.data.sweetSpots.filter(s => favs.has(this.spotKey(s)));
-    if (f === 'all') return this.data.sweetSpots;
-    return this.data.sweetSpots.filter(s => s.category === f);
+    const sort = this.activeSort();
+
+    let spots: SweetSpot[];
+    if (f === 'saved') spots = this.data.sweetSpots.filter(s => favs.has(this.spotKey(s)));
+    else if (f === 'all') spots = [...this.data.sweetSpots];
+    else spots = this.data.sweetSpots.filter(s => s.category === f);
+
+    if (sort === 'cpp') {
+      spots = [...spots].sort((a, b) => parseFloat(b.cpp) - parseFloat(a.cpp));
+    } else if (sort === 'pts') {
+      // parse "88,000" → 88000 for comparison
+      spots = [...spots].sort((a, b) => {
+        const pA = parseInt(a.ptsNeeded.replace(/[^0-9]/g, '')) || 0;
+        const pB = parseInt(b.ptsNeeded.replace(/[^0-9]/g, '')) || 0;
+        return pA - pB;
+      });
+    }
+    return spots;
   });
 
   spotKey(s: SweetSpot): string {
