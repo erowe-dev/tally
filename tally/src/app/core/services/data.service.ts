@@ -372,6 +372,64 @@ export class DataService {
       note: 'The IHG Premier card gives a free night cert every anniversary — often worth more than the annual fee alone.'
     },
 
+    // More Flight Sweet Spots
+    {
+      route: 'US → Maldives (Business)', detail: 'Qatar Airways Qsuite via Star Alliance partners',
+      ptsNeeded: '70,000', estCash: '$6,000+', cpp: '8.6¢',
+      cards: ['Amex MR', 'Chase UR'], programs: ['Air Canada Aeroplan'], category: 'flight',
+      note: 'Aeroplan books Qatar Qsuites without fuel surcharges. One of the few programs that does. Book via Air Canada app/site.'
+    },
+    {
+      route: 'US → Australia (Business)', detail: 'Qantas Business via partner awards',
+      ptsNeeded: '80,000', estCash: '$8,000+', cpp: '10¢',
+      cards: ['Amex MR', 'Chase UR', 'Citi TY'], programs: ['Air Canada Aeroplan'], category: 'flight',
+      note: 'Aeroplan → Qantas Business without brutal fuel surcharges. Far cheaper than booking through Qantas directly.'
+    },
+    {
+      route: 'US → South Africa (Business)', detail: 'Star Alliance to JNB via Ethiopian/South African',
+      ptsNeeded: '75,000', estCash: '$5,000+', cpp: '6.7¢',
+      cards: ['Amex MR', 'Chase UR', 'Cap1'], programs: ['Air Canada Aeroplan'], category: 'flight',
+      note: 'Underrated route. Aeroplan prices Star Alliance partners without fuel surcharges — the only sensible way to book this in Business.'
+    },
+    {
+      route: 'US → India (Business)', detail: 'Air India via Star Alliance or Lufthansa',
+      ptsNeeded: '60,000', estCash: '$3,500+', cpp: '5.8¢',
+      cards: ['Citi TY', 'Cap1'], programs: ['Turkish Miles&Smiles'], category: 'flight',
+      note: 'Turkish prices Star Alliance partners incredibly low — Lufthansa Business to BOM/DEL is a steal vs. cash fares.'
+    },
+    {
+      route: 'US → Brazil (Business)', detail: 'Avianca LifeMiles on LATAM/United to GRU',
+      ptsNeeded: '63,000', estCash: '$3,000+', cpp: '4.8¢',
+      cards: ['Citi TY', 'Cap1'], programs: ['Avianca LifeMiles'], category: 'flight',
+      note: 'Avianca LifeMiles prices South American routes well. Watch for transfer bonuses — they run them periodically.'
+    },
+    {
+      route: 'US → Hawaii (Economy)', detail: 'Hawaiian Airlines or Alaska on AA/BA Avios',
+      ptsNeeded: '7,500', estCash: '$250–400', cpp: '3.7¢',
+      cards: ['Amex MR', 'Chase UR'], programs: ['British Airways Avios'], category: 'flight',
+      note: 'Short hop? Avios is distance-based. Mainland → Hawaii on Alaska codeshares can go as low as 7,500 Avios one-way.'
+    },
+
+    // More Hotel Sweet Spots
+    {
+      route: 'Conrad Bora Bora Overwater Villa', detail: 'Hilton Honors Category 10',
+      ptsNeeded: '120,000/night', estCash: '$2,500+/night', cpp: '2.1¢',
+      cards: ['Amex MR'], programs: ['Hilton Honors'], category: 'hotel',
+      note: 'One of the few places where Hilton Honors delivers elite value. The villa rate makes the math compelling. Use the 5th night free on a 5-night stay.'
+    },
+    {
+      route: 'Park Hyatt Maldives Hadahaa', detail: 'World of Hyatt Category 7',
+      ptsNeeded: '40,000/night', estCash: '$1,500+/night', cpp: '3.8¢',
+      cards: ['Chase UR', 'Bilt'], programs: ['World of Hyatt'], category: 'hotel',
+      note: 'Hands down the best CPP in Hyatt\'s portfolio. An all-inclusive private island experience for 40K points.'
+    },
+    {
+      route: 'Marriott Cat 1–4 in Asia/Europe', detail: '5-night stays with 5th night free',
+      ptsNeeded: '4× 30,000', estCash: '5× $200–400', cpp: '1.5–2.0¢',
+      cards: ['Amex MR', 'Chase UR', 'Bilt'], programs: ['Marriott Bonvoy'], category: 'hotel',
+      note: 'Lesser-known in Asia/Europe: Category 3–4 Marriotts in Japan, Prague, Barcelona cash out at 1.8–2¢+ on 5-night stays.'
+    },
+
     // Promos
     {
       route: 'Flying Blue Promo Awards', detail: 'Monthly flash sales — Air France / KLM routes',
@@ -390,6 +448,18 @@ export class DataService {
       ptsNeeded: 'Varies', estCash: 'Varies', cpp: '3.0¢+',
       cards: ['Amex MR'], programs: ['Various'], category: 'promo',
       note: 'Amex periodically offers 20–40% transfer bonuses to specific partners (often Aeroplan, Virgin, BA). Never transfer MR without checking current bonuses first.'
+    },
+    {
+      route: 'IHG Annual Free Night', detail: 'Worth up to 40,000 points/year',
+      ptsNeeded: '0 extra (card benefit)', estCash: '$200–500', cpp: '∞',
+      cards: ['Chase UR'], programs: ['IHG One Rewards'], category: 'promo',
+      note: 'IHG Premier card annual free night cert is often worth $300+. Combine with IHG points for a free multi-night stay.'
+    },
+    {
+      route: 'Bilt Rent Day (1st of Month)', detail: '3× points on all spend on the 1st',
+      ptsNeeded: 'N/A', estCash: 'N/A', cpp: '3.0¢+ earned',
+      cards: ['Bilt'], programs: ['Bilt Rewards'], category: 'promo',
+      note: 'Every month on the 1st, Bilt offers 3× points on all purchases (normally 1×). Combined with Hyatt transfers, this is one of the best recurring earn opportunities.'
     },
   ];
 
