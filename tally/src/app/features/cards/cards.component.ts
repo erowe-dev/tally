@@ -68,15 +68,37 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
             </div>
           </button>
           <div class="partners" *ngIf="isExpanded(card.id)">
-            <div class="partner-row"
+            <div class="partner-wrap"
               *ngFor="let p of visiblePartners(card)"
-              [class.dimmed]="greatOnly() && p.quality !== 'great'"
-            >
-              <span class="p-icon">{{ p.icon }}</span>
-              <span class="p-name">{{ p.name }}</span>
-              <span class="p-ratio" [class.great]="p.quality === 'great'" [class.good]="p.quality === 'good'">
-                {{ p.ratio }} · ~{{ p.cpp }}¢
-              </span>
+              [class.dimmed]="greatOnly() && p.quality !== 'great'">
+              <button class="partner-row"
+                (click)="togglePartnerDetail(card.id, p.name)">
+                <span class="p-icon">{{ p.icon }}</span>
+                <span class="p-name">{{ p.name }}</span>
+                <span class="p-ratio" [class.great]="p.quality === 'great'" [class.good]="p.quality === 'good'">
+                  {{ p.ratio }} · ~{{ p.cpp }}¢
+                </span>
+                <span class="p-expand-icon">{{ isPartnerExpanded(card.id, p.name) ? '▲' : '▼' }}</span>
+              </button>
+              <!-- Transfer detail row -->
+              <div class="transfer-detail" *ngIf="isPartnerExpanded(card.id, p.name)">
+                <ng-container *ngIf="wallet.getBalance(card.id) > 0; else noBalance">
+                  <div class="td-chain">
+                    <span class="td-amount">{{ wallet.getBalance(card.id) | number }}</span>
+                    <span class="td-prog">{{ card.short }}</span>
+                    <span class="td-arrow">→</span>
+                    <span class="td-amount result">{{ transferResult(wallet.getBalance(card.id), p.ratio) | number }}</span>
+                    <span class="td-prog">{{ p.name }}</span>
+                  </div>
+                  <div class="td-value">
+                    Est. value: ~\${{ transferValue(wallet.getBalance(card.id), p.ratio, p.cpp) | number }}
+                    at {{ p.cpp }}¢/pt
+                  </div>
+                </ng-container>
+                <ng-template #noBalance>
+                  <div class="td-no-bal">Add your {{ card.short }} balance in Wallet to see transfer math.</div>
+                </ng-template>
+              </div>
             </div>
             <div class="no-partners" *ngIf="visiblePartners(card).length === 0">
               No partners match.
@@ -235,14 +257,38 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
       color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase;
     }
 
-    .partners { padding: 12px 18px; display: flex; flex-direction: column; gap: 8px; }
-    .partner-row { display: flex; align-items: center; gap: 10px; transition: opacity 0.2s; }
-    .partner-row.dimmed { opacity: 0.28; }
+    .partners { padding: 12px 18px; display: flex; flex-direction: column; gap: 4px; }
+    .partner-wrap { transition: opacity 0.2s; border-radius: 8px; overflow: hidden; }
+    .partner-wrap.dimmed { opacity: 0.28; }
+    .partner-row {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; background: none; border: none; cursor: pointer;
+      padding: 6px 0; text-align: left;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .partner-row:hover { background: var(--surface); border-radius: 6px; }
     .p-icon { font-size: 15px; width: 22px; text-align: center; flex-shrink: 0; }
     .p-name { flex: 1; font-size: 12px; color: var(--text); font-weight: 500; }
     .p-ratio { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--text3); white-space: nowrap; }
     .p-ratio.great { color: var(--tally-green); }
     .p-ratio.good  { color: var(--tally-amber, #d97706); }
+    .p-expand-icon { font-size: 7px; color: var(--border2); flex-shrink: 0; }
+
+    /* Transfer detail */
+    .transfer-detail {
+      background: var(--surface); border-radius: 8px; padding: 9px 12px; margin: 2px 0 6px;
+    }
+    .td-chain {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap;
+    }
+    .td-amount {
+      font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--text); font-weight: 600;
+    }
+    .td-amount.result { color: var(--tally-green); }
+    .td-prog { font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--text3); }
+    .td-arrow { color: var(--tally-green); font-size: 13px; }
+    .td-value { font-size: 11px; color: var(--text2); line-height: 1.4; }
+    .td-no-bal { font-size: 11px; color: var(--text3); font-style: italic; }
 
     .no-partners {
       font-family: 'Geist Mono', monospace; font-size: 10px;
@@ -430,6 +476,30 @@ export class CardsComponent {
     this.searchRaw = '';
     this.activeCat.set('all');
     this.greatOnly.set(false);
+  }
+
+  // Partner detail expand/collapse
+  private _expandedPartner = signal<string | null>(null); // key: `${cardId}|${partnerName}`
+
+  isPartnerExpanded(cardId: string, partnerName: string): boolean {
+    return this._expandedPartner() === `${cardId}|${partnerName}`;
+  }
+
+  togglePartnerDetail(cardId: string, partnerName: string): void {
+    const key = `${cardId}|${partnerName}`;
+    this._expandedPartner.update(cur => cur === key ? null : key);
+  }
+
+  /** Parse ratio string like "1:2" and compute result miles from balance */
+  transferResult(balance: number, ratio: string): number {
+    const [from, to] = ratio.split(':').map(Number);
+    if (!from || !to) return balance;
+    return Math.round(balance * (to / from));
+  }
+
+  /** Estimated dollar value after transfer */
+  transferValue(balance: number, ratio: string, cpp: number): number {
+    return Math.round(this.transferResult(balance, ratio) * cpp / 100);
   }
 
   // Rate My Redemption
