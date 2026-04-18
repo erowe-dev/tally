@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject } from '@angular/core';
+import { Component, signal, computed, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavTab } from './core/models';
 import { WalletService } from './core/services/wallet.service';
@@ -268,5 +268,31 @@ export class AppComponent {
       return;
     }
     this.activeTab.set(tab);
+  }
+
+  private readonly TAB_ORDER: NavTab[] = ['optimizer', 'wallet', 'cards', 'sweetspots', 'expiry'];
+
+  /** Keyboard shortcuts: 1–5 for tabs, Cmd/Ctrl+← / → for adjacent tabs */
+  @HostListener('document:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent): void {
+    // Don't fire inside inputs/textareas
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
+
+    const idx = this.TAB_ORDER.indexOf(this.activeTab());
+
+    if (event.key >= '1' && event.key <= '5') {
+      const tab = this.TAB_ORDER[parseInt(event.key) - 1];
+      if (tab) this.handleTabChange(tab);
+      return;
+    }
+
+    const isModified = event.metaKey || event.ctrlKey;
+    if (isModified && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      event.preventDefault();
+      const dir = event.key === 'ArrowLeft' ? -1 : 1;
+      const next = this.TAB_ORDER[(idx + dir + this.TAB_ORDER.length) % this.TAB_ORDER.length];
+      if (next) this.handleTabChange(next);
+    }
   }
 }
