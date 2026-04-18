@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expiry.service';
@@ -12,10 +12,18 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
       <div class="section-eyebrow">Points Expiry Tracker</div>
       <h2 class="section-title">Don't let your <em>points die</em></h2>
 
-      <!-- Sync status pill -->
-      <div class="sync-pill" [class]="expiry.syncState()">
-        <span class="sync-dot"></span>
-        <span class="sync-text">{{ syncLabel(expiry.syncState()) }}</span>
+      <!-- Sync status pill + bulk action row -->
+      <div class="pill-row">
+        <div class="sync-pill" [class]="expiry.syncState()">
+          <span class="sync-dot"></span>
+          <span class="sync-text">{{ syncLabel(expiry.syncState()) }}</span>
+        </div>
+        <button class="bulk-today-btn"
+          *ngIf="expiry.syncState() !== 'loading'"
+          (click)="markAllToday()"
+          [class.done]="bulkDone()">
+          {{ bulkDone() ? '✓ All updated' : 'Mark all today' }}
+        </button>
       </div>
 
       <!-- Loading shimmer -->
@@ -135,13 +143,27 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
     </div>
   `,
   styles: [`
+    .pill-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .pill-row .sync-pill { margin-bottom: 0; }
+
+    .bulk-today-btn {
+      background: none; border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.1em; padding: 4px 12px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .bulk-today-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
+    .bulk-today-btn.done { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
+
     /* Sync status pill */
     .sync-pill {
       display: inline-flex; align-items: center; gap: 6px;
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.08em; text-transform: uppercase;
       padding: 4px 10px; border-radius: 20px;
-      border: 1px solid var(--border); margin-bottom: 16px;
+      border: 1px solid var(--border);
       color: var(--text3); background: var(--surface);
       transition: all 0.3s;
     }
@@ -302,6 +324,7 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
 export class ExpiryComponent {
   expiry = inject(ExpiryService);
   todayStr = this.formatLocalDate(new Date());
+  bulkDone = signal(false);
 
   syncLabel(state: SyncState): string {
     switch (state) {
@@ -343,6 +366,17 @@ export class ExpiryComponent {
 
   markToday(cardId: string): void {
     this.expiry.setLastActivity(cardId, this.todayStr);
+  }
+
+  markAllToday(): void {
+    // Mark all non-never programs as active today
+    for (const status of this.expiry.statuses()) {
+      if (status.urgency !== 'never') {
+        this.expiry.setLastActivity(status.cardId, this.todayStr);
+      }
+    }
+    this.bulkDone.set(true);
+    setTimeout(() => this.bulkDone.set(false), 3000);
   }
 
   private formatLocalDate(date: Date): string {
