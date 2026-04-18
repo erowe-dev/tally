@@ -80,6 +80,14 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
             </div>
           </div>
 
+          <!-- Urgency progress bar -->
+          <div class="ec-urgency-bar" *ngIf="status.urgency !== 'never'">
+            <div class="ec-ub-fill"
+              [class]="status.urgency"
+              [style.width]="urgencyBarPct(status) + '%'">
+            </div>
+          </div>
+
           <div class="ec-action">{{ status.actionNeeded }}</div>
 
           <div class="ec-note" *ngIf="status.urgency !== 'never'">{{ status.note }}</div>
@@ -205,6 +213,20 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
 
     .never-icon { font-size: 24px; color: var(--text3); line-height: 1; }
 
+    .ec-urgency-bar {
+      height: 3px; background: var(--border); border-radius: 99px;
+      overflow: hidden; margin-bottom: 12px;
+    }
+    .ec-ub-fill {
+      height: 100%; border-radius: 99px;
+      transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .ec-ub-fill.safe     { background: var(--tally-green); }
+    .ec-ub-fill.warning  { background: var(--tally-amber, #d97706); }
+    .ec-ub-fill.critical { background: var(--tally-red); animation: pulse-bar 1.5s ease-in-out infinite; }
+    .ec-ub-fill.expired  { background: var(--tally-red); }
+    @keyframes pulse-bar { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
     .ec-action { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 8px; }
     .ec-note { font-size: 11px; color: var(--text3); line-height: 1.5; font-style: italic; margin-bottom: 12px; }
 
@@ -284,6 +306,16 @@ export class ExpiryComponent {
   onDateChange(cardId: string, event: Event): void {
     const val = (event.target as HTMLInputElement).value;
     if (val) this.expiry.setLastActivity(cardId, val);
+  }
+
+  /** Returns 0–100 for the urgency bar fill based on days remaining */
+  urgencyBarPct(status: ExpiryStatus): number {
+    if (status.urgency === 'expired') return 100;
+    if (status.daysRemaining === null) return 0;
+    const d = status.daysRemaining;
+    if (d <= 30)  return Math.round((d / 30) * 100);
+    if (d <= 90)  return Math.round((d / 90) * 100);
+    return 100; // safe
   }
 
   markToday(cardId: string): void {
