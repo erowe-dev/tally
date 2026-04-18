@@ -25,12 +25,21 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
 
       <ng-container *ngIf="expiry.syncState() !== 'loading'">
 
-      <!-- Summary banner if warnings exist -->
+      <!-- Critical alert banner -->
       <div class="alert-banner critical" *ngIf="expiry.criticalCount() > 0">
         <span class="alert-icon">⚠️</span>
         <div>
           <div class="alert-title">{{ expiry.criticalCount() }} program{{ expiry.criticalCount() > 1 ? 's' : '' }} need immediate attention</div>
           <div class="alert-sub">Points may expire within 30 days. Act now.</div>
+        </div>
+      </div>
+
+      <!-- Warning banner (when no critical but have warnings) -->
+      <div class="alert-banner warning" *ngIf="expiry.criticalCount() === 0 && expiry.warningCount() > 0">
+        <span class="alert-icon">🔔</span>
+        <div>
+          <div class="alert-title">{{ expiry.warningCount() }} program{{ expiry.warningCount() > 1 ? 's' : '' }} expiring in 60–90 days</div>
+          <div class="alert-sub">Plan your next qualifying activity soon.</div>
         </div>
       </div>
 
@@ -132,6 +141,9 @@ import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expi
       padding: 14px 16px; border-radius: 12px; margin-bottom: 20px;
     }
     .alert-banner.critical { background: var(--tally-red-light); border: 1px solid rgba(220,38,38,0.2); }
+    .alert-banner.warning { background: rgba(251,191,36,0.1); border: 1px solid rgba(217,119,6,0.2); }
+    .alert-banner.warning .alert-title { color: var(--tally-amber, #d97706); }
+    .alert-banner.warning .alert-sub { color: var(--tally-amber, #d97706); }
     .alert-icon { font-size: 20px; flex-shrink: 0; }
     .alert-title { font-size: 14px; font-weight: 600; color: var(--tally-red); margin-bottom: 2px; }
     .alert-sub { font-size: 12px; color: var(--tally-red); opacity: 0.8; }

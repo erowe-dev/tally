@@ -218,6 +218,36 @@ export class DataService {
       { program: 'American AAdvantage',    partner: 'on AA domestic',             cpp: 1.5, ptsBase: 12500, cards: ['bilt','aa_aadvantage'], note: 'Web specials go low' },
       { program: 'United MileagePlus',     partner: 'on United domestic',         cpp: 1.4, ptsBase: 12500, cards: ['chase_ur','bilt','united_mp'], note: 'Saver awards on off-peak routes' },
     ],
+    latin_america: [
+      { program: 'Air Canada Aeroplan',    partner: 'on Star Alliance to Brazil/Andean', cpp: 1.8, ptsBase: 30000, cards: ['amex_mr','chase_ur','cap1_miles','bilt'], note: 'No fuel surcharges, flexible routing' },
+      { program: 'Avianca LifeMiles',      partner: 'on Avianca/Star Alliance',          cpp: 1.7, ptsBase: 28000, cards: ['citi_ty','cap1_miles'], note: 'Great South America coverage' },
+      { program: 'American AAdvantage',    partner: 'on AA to LatAm',                    cpp: 1.6, ptsBase: 30000, cards: ['bilt','aa_aadvantage'], note: 'Decent south of border awards' },
+      { program: 'Air France Flying Blue', partner: 'on Air France to Brazil',           cpp: 1.5, ptsBase: 37500, cards: ['amex_mr','chase_ur','citi_ty','cap1_miles'], note: 'Promo awards often apply here' },
+    ],
+    caribbean: [
+      { program: 'American AAdvantage',    partner: 'on AA to Caribbean',         cpp: 1.8, ptsBase: 20000, cards: ['bilt','aa_aadvantage'], note: 'Excellent Caribbean network' },
+      { program: 'JetBlue TrueBlue',       partner: 'on JetBlue to Caribbean',    cpp: 1.5, ptsBase: 18000, cards: ['citi_ty'], note: 'Great for Barbados, Jamaica routes' },
+      { program: 'Alaska MileagePlan',     partner: 'on AA/BA/oneworld',           cpp: 1.6, ptsBase: 17500, cards: ['bilt','alaska_mp'], note: 'Consistent award pricing' },
+      { program: 'British Airways Avios',  partner: 'on AA to Caribbean short hops', cpp: 1.8, ptsBase: 9000, cards: ['amex_mr','chase_ur','cap1_miles'], note: 'Distance-based — very cheap for short hops' },
+    ],
+    middle_east: [
+      { program: 'Turkish Miles&Smiles',  partner: 'on Turkish to Middle East',   cpp: 2.2, ptsBase: 42500, cards: ['citi_ty','cap1_miles'], note: 'Amazing Business Class pricing' },
+      { program: 'Air Canada Aeroplan',   partner: 'on Star Alliance to Gulf',    cpp: 1.8, ptsBase: 55000, cards: ['amex_mr','chase_ur','cap1_miles','bilt'], note: 'No fuel surcharges' },
+      { program: 'ANA Mileage Club',      partner: 'on Lufthansa to Israel/ME',   cpp: 2.0, ptsBase: 60000, cards: ['amex_mr'], note: 'Avoid Lufthansa fuel surcharges via ANA awards' },
+      { program: 'British Airways Avios', partner: 'on AA/BA to UAE',             cpp: 1.7, ptsBase: 80000, cards: ['amex_mr','chase_ur','cap1_miles'], note: 'Check partner award space on aa.com' },
+    ],
+    africa: [
+      { program: 'Air Canada Aeroplan',   partner: 'on Star Alliance to Africa',  cpp: 1.9, ptsBase: 75000, cards: ['amex_mr','chase_ur','cap1_miles','bilt'], note: 'Ethiopian, South African partners' },
+      { program: 'Turkish Miles&Smiles',  partner: 'on Turkish/Star Alliance',    cpp: 2.1, ptsBase: 70000, cards: ['citi_ty','cap1_miles'], note: 'Turkish flies to 60+ African cities' },
+      { program: 'Air France Flying Blue', partner: 'on Air France to W/N Africa', cpp: 1.7, ptsBase: 75000, cards: ['amex_mr','chase_ur','citi_ty','cap1_miles'], note: 'Best network for West Africa' },
+      { program: 'American AAdvantage',   partner: 'on oneworld to S. Africa',    cpp: 1.5, ptsBase: 80000, cards: ['bilt','aa_aadvantage'], note: 'British Airways to JNB via LHR' },
+    ],
+    eurasia: [
+      { program: 'Turkish Miles&Smiles',  partner: 'on Turkish across Eurasia',   cpp: 2.3, ptsBase: 42500, cards: ['citi_ty','cap1_miles'], note: 'Incredible Star Alliance pricing Europe↔Asia' },
+      { program: 'Air Canada Aeroplan',   partner: 'on Star Alliance EU↔Asia',    cpp: 1.8, ptsBase: 72500, cards: ['amex_mr','chase_ur','cap1_miles','bilt'], note: 'No fuel surcharges on most partners' },
+      { program: 'Singapore KrisFlyer',   partner: 'on Singapore EU routes',      cpp: 2.0, ptsBase: 91000, cards: ['amex_mr','chase_ur','citi_ty','cap1_miles'], note: 'Great for Europe↔Singapore/India' },
+      { program: 'ANA Mileage Club',      partner: 'on Lufthansa/United EU↔Asia', cpp: 2.2, ptsBase: 85000, cards: ['amex_mr'], note: 'Round-the-world style routing possible' },
+    ],
     default: [
       { program: 'Air Canada Aeroplan',          partner: 'on Star Alliance worldwide',  cpp: 1.8, ptsBase: 35000, cards: ['amex_mr','chase_ur','cap1_miles','bilt'], note: 'Most flexible, no fuel surcharges' },
       { program: 'Turkish Miles&Smiles',         partner: 'on Star Alliance',            cpp: 2.3, ptsBase: 45000, cards: ['citi_ty','cap1_miles'], note: 'Incredible Business pricing' },

@@ -168,15 +168,27 @@ export class ExpiryService {
   readonly records = this._records.asReadonly();
   readonly syncState = this._syncState.asReadonly();
 
+  private static readonly URGENCY_ORDER: Record<ExpiryStatus['urgency'], number> = {
+    expired: 0, critical: 1, warning: 2, safe: 3, never: 4,
+  };
+
   readonly statuses = computed<ExpiryStatus[]>(() => {
     const records = this._records();
-    return EXPIRY_RULES.map(rule => this.computeStatus(rule, records[rule.cardId]));
+    return EXPIRY_RULES
+      .map(rule => this.computeStatus(rule, records[rule.cardId]))
+      .sort((a, b) =>
+        ExpiryService.URGENCY_ORDER[a.urgency] - ExpiryService.URGENCY_ORDER[b.urgency],
+      );
   });
 
   readonly hasWarnings = computed(() =>
     this.statuses().some(
       s => s.urgency === 'warning' || s.urgency === 'critical' || s.urgency === 'expired',
     ),
+  );
+
+  readonly warningCount = computed(() =>
+    this.statuses().filter(s => s.urgency === 'warning').length,
   );
 
   readonly criticalCount = computed(() =>
