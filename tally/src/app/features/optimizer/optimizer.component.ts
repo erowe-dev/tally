@@ -196,6 +196,9 @@ const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
           <div>
             <span class="section-eyebrow">{{ filteredResults().length }} of {{ results().length }} Options</span>
             <span class="route-label" *ngIf="routeLabel()">{{ routeLabel() }}</span>
+            <span class="route-unrecognized" *ngIf="showUnrecognizedNote()">
+              ℹ Airport codes not in our database — showing worldwide recommendations
+            </span>
           </div>
         </div>
 
@@ -520,6 +523,10 @@ const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
       display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px;
     }
+    .route-unrecognized {
+      display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--tally-amber, #b45309); letter-spacing: 0.05em; margin-top: 2px;
+    }
 
     .result-card {
       background: var(--white); border: 1px solid var(--border);
@@ -832,6 +839,17 @@ export class OptimizerComponent implements OnChanges {
       });
     }
     return recs;
+  });
+
+  /** True when user entered airport codes but they didn't match any route category */
+  readonly showUnrecognizedNote = computed(() => {
+    if (this.tripType() !== 'flight') return false;
+    if (!this.analyzed() || !this.results().length) return false;
+    const from = this.fromCity.trim().toUpperCase();
+    const to   = this.toCity.trim().toUpperCase();
+    if (!from || !to) return false;
+    // If route label is empty (default category) and user entered codes, note it
+    return !this.routeLabel() || this.routeLabel() === 'Worldwide';
   });
 
   private static readonly ROUTE_LABELS: Record<string, string> = {

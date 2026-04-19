@@ -7,32 +7,44 @@ const US_AIRPORTS = new Set([
   'LAS','MCO','MSP','DTW','PHL','CLT','IAH','EWR','IAD','DCA',
   'MDW','AUS','PHX','SAN','TPA','PDX','SLC','BWI','RDU','OAK',
   'FLL','HOU','ABQ','RSW','PBI','SAT','SMF','SNA','ONT','LGB',
+  'BNA','MSY','MCI','CLE','CVG','CMH','IND','PIT','BDL','MKE',
+  'BUF','ALB','ROC','OMA','TUL','OKC','LIT','BHM','HSV','JAX',
 ]);
 const EU_AIRPORTS = new Set([
   'LHR','CDG','AMS','FRA','MAD','FCO','ZRH','MUC','IST','DUB',
   'CPH','VIE','ARN','HEL','BCN','LIS','BRU','ATH','PRG','WAW',
-  'MXP','FCO','NCE','GVA','OSL','KEF','TXL','BER','HAM','DUS',
+  'MXP','NCE','GVA','OSL','KEF','BER','HAM','DUS',
   'STN','LGW','LTN','MAN','EDI','GLA',
+  'BUD','OPO','AGP','VCE','NAP','BOD','LYS','TLS','SVQ','PMI',
+  'SKG','OTP','SOF','ZAG','LJU','BEG','SAW','AYT',
 ]);
 const ASIA_AIRPORTS = new Set([
   'NRT','HND','ICN','PEK','PVG','HKG','SIN','BKK','KUL',
   'CGK','DEL','BOM','SYD','MEL','NAN','AKL','MNL','SGN','HAN',
   'KIX','NGO','CTS','TPE','TAO','CTU','XIY','KMG',
+  'MLE','DPS','CMB','CNX','DXR','PNH','REP','RGN','DAC','KTM',
+  'CHC','WLG','OOL','BNE','PER','ADL','CBR','CEB','DVO',
 ]);
 const LATAM_AIRPORTS = new Set([
   'GRU','GIG','BOG','LIM','SCL','EZE','CCS','MEX','CUN','SJO',
   'PTY','UIO','ASU','MVD','MDE','VVI','HAV',
+  'BSB','SSA','FOR','POA','VCP','AEP','GDL','MTY','TIJ',
+  'CLO','MED','ADZ','BAQ','SMR','CTG',
 ]);
 const CARIBBEAN_AIRPORTS = new Set([
   'SJU','STT','STX','NAS','BGI','MBJ','KIN','POS','GEO','ANU',
   'SKB','SXM','EIS','UVF','GND','PTP','FDF','SFG','TAB',
+  'AUA','BON','CUR','PUJ','STI','HAV','SDQ','BZE',
 ]);
 const MIDEAST_AIRPORTS = new Set([
   'DXB','AUH','DOH','RUH','AMM','BEY','TLV','CAI','KWI','BAH','MCT','ADE',
+  'MED','JED','GYD','ISU','BGW','EVN','TBS','SKD',
 ]);
 const AFRICA_AIRPORTS = new Set([
   'JNB','CPT','NBO','LOS','ACC','CMN','ALG','TUN','ADD','DAR',
   'RAK','MRU','SEZ','HRE','LUN',
+  'ABV','KAN','PHC','ROB','ABJ','DKR','FNA','OUA','CKY',
+  'MPM','LAD','DLA','NSI','MBA','ZNZ',
 ]);
 const HAWAII_AIRPORTS = new Set([
   'HNL','OGG','KOA','LIH','ITO','MKK','LNY',
