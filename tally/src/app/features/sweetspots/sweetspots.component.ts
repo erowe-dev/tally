@@ -137,6 +137,10 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
           <div class="spot-covered-badge" *ngIf="canAfford(s)">
             ✓ You can book this
           </div>
+          <!-- Bonus-assisted affordability badge -->
+          <div class="spot-bonus-afford-badge" *ngIf="!canAfford(s) && getAffordableViaBonus(s) as bonusLabel">
+            ⚡ Affordable with {{ bonusLabel }}
+          </div>
           <!-- Active bonus badge — shows when any source card has an active transfer bonus -->
           <div class="spot-bonus-badge" *ngIf="getActiveBonusForSpot(s) as bonus">
             ⚡ {{ bonus.from }} → {{ bonus.to }} — {{ bonus.bonus }}
@@ -374,6 +378,15 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .spot-share-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .spot-share-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
 
+    /* Bonus-assisted affordability badge */
+    .spot-bonus-afford-badge {
+      display: inline-block; margin: 4px 0;
+      background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.25);
+      border-radius: 20px; padding: 2px 10px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.06em; color: var(--tally-amber, #b45309);
+    }
+
     /* CPP min filter */
     .cpp-filter-row {
       display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
@@ -468,9 +481,12 @@ export class SweetspotsComponent {
     else if (f === 'all') spots = [...this.data.sweetSpots];
     else spots = this.data.sweetSpots.filter(s => s.category === f);
 
-    // CPP minimum filter
+    // CPP minimum filter — treat '∞' or unparseable values as infinite (always pass)
     if (minCpp > 0) {
-      spots = spots.filter(s => parseFloat(s.cpp) >= minCpp);
+      spots = spots.filter(s => {
+        const parsed = parseFloat(s.cpp);
+        return isNaN(parsed) || parsed >= minCpp;
+      });
     }
 
     // Text search across route, detail, note, programs, cards
@@ -601,15 +617,63 @@ export class SweetspotsComponent {
     if (!this.wallet.hasAnyPoints()) return false;
     const needed = this.parsePts(spot.ptsNeeded);
     if (needed === 0) return true; // free cert / promo
+    const today = new Date().toISOString().slice(0, 10);
     // Map spot.cards (short names like "Amex MR") to card ids
     for (const card of this.data.cards) {
       const shortMatch = spot.cards.some(c =>
         c.toLowerCase().includes(card.short?.toLowerCase() ?? '') ||
         card.name.toLowerCase().includes(c.toLowerCase())
       );
-      if (shortMatch && this.wallet.getBalance(card.id) >= needed) return true;
+      if (!shortMatch) continue;
+      const balance = this.wallet.getBalance(card.id);
+      if (balance <= 0) continue;
+      // Direct affordability check
+      if (balance >= needed) return true;
+      // Check if an active transfer bonus to a matching program makes it affordable
+      const activeBonus = this.data.transferBonuses.find(b =>
+        b.fromId === card.id && b.expires >= today &&
+        spot.programs.some(p =>
+          p.toLowerCase().includes(b.to.toLowerCase().split('/')[0].trim()) ||
+          b.to.toLowerCase().includes(p.toLowerCase().split('/')[0].trim())
+        )
+      );
+      if (activeBonus) {
+        const pct = parseInt(activeBonus.bonus) / 100; // '30% bonus' → 0.3
+        if (Math.floor(balance * (1 + pct)) >= needed) return true;
+      }
     }
     return false;
+  }
+
+  /** Returns the active bonus that makes a spot affordable (when direct balance isn't enough) */
+  getAffordableViaBonus(spot: SweetSpot): string | null {
+    if (!this.wallet.hasAnyPoints()) return null;
+    const needed = this.parsePts(spot.ptsNeeded);
+    if (needed === 0) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    for (const card of this.data.cards) {
+      const shortMatch = spot.cards.some(c =>
+        c.toLowerCase().includes(card.short?.toLowerCase() ?? '') ||
+        card.name.toLowerCase().includes(c.toLowerCase())
+      );
+      if (!shortMatch) continue;
+      const balance = this.wallet.getBalance(card.id);
+      if (balance <= 0 || balance >= needed) continue; // skip if can afford directly
+      const activeBonus = this.data.transferBonuses.find(b =>
+        b.fromId === card.id && b.expires >= today &&
+        spot.programs.some(p =>
+          p.toLowerCase().includes(b.to.toLowerCase().split('/')[0].trim()) ||
+          b.to.toLowerCase().includes(p.toLowerCase().split('/')[0].trim())
+        )
+      );
+      if (activeBonus) {
+        const pct = parseInt(activeBonus.bonus) / 100;
+        if (Math.floor(balance * (1 + pct)) >= needed) {
+          return `${activeBonus.bonus} on ${card.short}`;
+        }
+      }
+    }
+    return null;
   }
 
   /** Count of spots the user can currently afford — drives the filter badge */
