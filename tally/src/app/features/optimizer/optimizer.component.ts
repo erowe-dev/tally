@@ -177,6 +177,16 @@ const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
       <div class="empty-state" *ngIf="!results().length && !analyzed() && !showQuickWins()">
         <div class="empty-icon">⚡</div>
         <p>Enter your trip details<br>to see the best transfers</p>
+        <!-- Quick destination chips (shown when home airport is set) -->
+        <div class="quick-dest-section" *ngIf="homeAirport() && tripType() === 'flight'">
+          <div class="qd-label">Popular routes from {{ homeAirport() }}</div>
+          <div class="qd-chips">
+            <button *ngFor="let d of quickDestinations()" class="qd-chip"
+              (click)="applyQuickDest(d)">
+              {{ d.flag }} {{ d.to }} <span class="qd-type">{{ d.label }}</span>
+            </button>
+          </div>
+        </div>
         <!-- Wallet-aware suggestion: surfaces when user has points -->
         <div class="wallet-hint" *ngIf="walletSuggestion() as hint">
           <div class="wh-label">Suggested for your wallet</div>
@@ -501,6 +511,29 @@ const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
       font-family: 'Instrument Serif', serif;
       font-style: italic; font-size: 18px; line-height: 1.5; color: var(--text2);
     }
+    /* Quick destinations */
+    .quick-dest-section { margin-top: 18px; text-align: left; }
+    .qd-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--text3); margin-bottom: 8px;
+    }
+    .qd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .qd-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--white); border: 1.5px solid var(--border2);
+      border-radius: 20px; padding: 6px 12px;
+      font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 500;
+      color: var(--text); cursor: pointer;
+      transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+    }
+    .qd-chip:hover { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
+    .qd-type {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.06em; color: var(--text3);
+    }
+    .qd-chip:hover .qd-type { color: var(--tally-green); opacity: 0.8; }
+
     .wallet-hint { margin-top: 20px; text-align: left; }
     .wh-label {
       font-family: 'Geist Mono', monospace; font-size: 9px;
@@ -1205,6 +1238,38 @@ export class OptimizerComponent implements OnChanges {
       programCat: 'flight',
     };
   });
+
+  /**
+   * Suggest popular destination airports based on the home airport's region.
+   * Hawaii residents get mainland suggestions; mainland US gets international + Hawaii.
+   */
+  readonly quickDestinations = computed((): { to: string; flag: string; label: string }[] => {
+    const home = this.homeAirport();
+    if (!home) return [];
+    const HAWAII = new Set(['HNL','OGG','KOA','LIH','ITO','MKK','LNY']);
+    if (HAWAII.has(home)) {
+      return [
+        { to: 'LAX', flag: '🌴', label: 'West Coast' },
+        { to: 'ORD', flag: '🏙', label: 'Midwest' },
+        { to: 'JFK', flag: '🗽', label: 'East Coast' },
+        { to: 'LHR', flag: '🇬🇧', label: 'Europe' },
+      ];
+    }
+    return [
+      { to: 'LHR', flag: '🇬🇧', label: 'Europe' },
+      { to: 'NRT', flag: '🎌', label: 'Japan' },
+      { to: 'HNL', flag: '🌺', label: 'Hawaii' },
+      { to: 'CUN', flag: '🌴', label: 'Caribbean' },
+      { to: 'CDG', flag: '🇫🇷', label: 'Paris' },
+      { to: 'DXB', flag: '🇦🇪', label: 'Dubai' },
+    ];
+  });
+
+  applyQuickDest(d: { to: string; flag: string; label: string }): void {
+    this.toCity = d.to;
+    this.showQuickWins.set(false);
+    this.analyze();
+  }
 
   applyWalletSuggestion(hint: { tripType: 'flight' | 'hotel'; programCat: string }): void {
     this.tripType.set(hint.tripType);
