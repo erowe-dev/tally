@@ -15,6 +15,7 @@ interface RouteHistoryEntry {
 }
 const ROUTE_HISTORY_KEY = 'tally_route_history_v1';
 const MAX_ROUTE_HISTORY = 5;
+const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
 
 @Component({
   selector: 'tally-optimizer',
@@ -43,6 +44,13 @@ const MAX_ROUTE_HISTORY = 5;
             <label class="field-label">From</label>
             <input class="field-input" [(ngModel)]="fromCity" placeholder="ORD"
                    maxlength="3" (input)="fromCity = fromCity.toUpperCase()">
+            <div class="home-airport-hint" *ngIf="homeAirport() || fromCity.length === 3">
+              <span class="home-badge" *ngIf="fromCity.length === 3 && fromCity === homeAirport()">📍 Home</span>
+              <button class="home-set-btn" *ngIf="fromCity.length === 3 && fromCity !== homeAirport()"
+                (click)="setHomeAirport()" title="Save as your default departure airport">📍 Set as home</button>
+              <button class="home-use-btn" *ngIf="homeAirport() && fromCity.length !== 3"
+                (click)="useHomeAirport()">📍 {{ homeAirport() }}</button>
+            </div>
           </div>
           <div class="field">
             <label class="field-label">To</label>
@@ -401,6 +409,28 @@ const MAX_ROUTE_HISTORY = 5;
       color: var(--text3);
       line-height: 1.45;
     }
+    .home-airport-hint {
+      display: flex; align-items: center; margin-top: 5px; min-height: 18px;
+    }
+    .home-badge {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.1em; color: var(--tally-green); font-weight: 500;
+    }
+    .home-set-btn {
+      background: none; border: none; padding: 0;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.08em; color: var(--text3);
+      cursor: pointer; transition: color 0.15s;
+    }
+    .home-set-btn:hover { color: var(--tally-green); }
+    .home-use-btn {
+      background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.25);
+      border-radius: 20px; padding: 2px 9px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.08em; color: var(--tally-green);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .home-use-btn:hover { background: rgba(26,122,74,0.12); border-color: var(--tally-green); }
 
     .btn-analyze {
       width: 100%; background: var(--tally-green); color: white;
@@ -772,6 +802,15 @@ export class OptimizerComponent implements OnChanges {
   // Route history
   private _routeHistory = signal<RouteHistoryEntry[]>(this.loadRouteHistory());
   readonly recentRoutes = this._routeHistory.asReadonly();
+  // Home airport preference
+  private _homeAirport = signal<string>('');
+  readonly homeAirport = this._homeAirport.asReadonly();
+
+  constructor() {
+    const stored = this._loadHomeAirport();
+    this._homeAirport.set(stored);
+    if (stored && !this.fromCity) this.fromCity = stored;
+  }
 
   readonly quickWins = computed(() => {
     return this._allRecs.filter(r =>
@@ -1032,6 +1071,22 @@ export class OptimizerComponent implements OnChanges {
     }
     this.showQuickWins.set(false);
     this.analyze();
+  }
+
+  // ── Home airport ────────────────────────────────────────────────────────────
+  private _loadHomeAirport(): string {
+    try { return localStorage.getItem(HOME_AIRPORT_KEY) ?? ''; } catch { return ''; }
+  }
+
+  setHomeAirport(): void {
+    const code = this.fromCity.trim();
+    if (code.length !== 3) return;
+    try { localStorage.setItem(HOME_AIRPORT_KEY, code); } catch {}
+    this._homeAirport.set(code);
+  }
+
+  useHomeAirport(): void {
+    this.fromCity = this._homeAirport();
   }
 
   copyTopResult(rec: Recommendation): void {
