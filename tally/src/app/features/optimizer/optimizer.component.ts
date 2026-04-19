@@ -262,6 +262,14 @@ const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
               {{ (rec.ptsRequired ?? rec.ptsBase) | number }} pts
             </span>
           </div>
+          <!-- Points gap nudge: shown when user has partial coverage but not full -->
+          <div class="rc-gap-row" *ngIf="getPointsGap(rec) as gap">
+            <span class="rc-gap-icon">⚡</span>
+            <span class="rc-gap-text">
+              {{ gap | number }} more pts to unlock
+              <span class="rc-gap-hint">· earn via top spend category on a linked card</span>
+            </span>
+          </div>
 
           <div class="rc-chips">
             <span class="chip" *ngFor="let cid of rec.cards">{{ getShort(cid) }}</span>
@@ -596,6 +604,21 @@ const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
     .rc-cov-label.covered { color: var(--tally-green); }
     .rc-cov-sep { margin: 0 2px; opacity: 0.5; }
 
+    /* Points gap nudge */
+    .rc-gap-row {
+      display: flex; align-items: flex-start; gap: 6px;
+      margin-top: 4px; margin-bottom: 4px;
+      padding: 5px 8px;
+      background: rgba(217,119,6,0.06); border-radius: 7px;
+      border-left: 2px solid var(--tally-amber, #d97706);
+    }
+    .rc-gap-icon { font-size: 11px; flex-shrink: 0; line-height: 1.4; }
+    .rc-gap-text {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--tally-amber, #b45309); line-height: 1.45;
+    }
+    .rc-gap-hint { color: var(--text3); }
+
     /* No results */
     .no-results { text-align: center; padding: 32px 16px; }
     .no-results-icon { font-size: 32px; margin-bottom: 10px; }
@@ -927,6 +950,18 @@ export class OptimizerComponent implements OnChanges {
     const required = rec.ptsRequired ?? rec.ptsBase;
     if (!required) return 0;
     return Math.min(100, Math.round((this.getBestBalance(rec) / required) * 100));
+  }
+
+  /**
+   * Returns the shortfall (points gap) when the user has some coverage but not full.
+   * Returns null when: no wallet data, already fully covered, or zero coverage.
+   */
+  getPointsGap(rec: Recommendation): number | null {
+    if (!this.wallet.hasAnyPoints()) return null;
+    const required = rec.ptsRequired ?? rec.ptsBase;
+    const best = this.getBestBalance(rec);
+    if (best <= 0 || best >= required) return null;
+    return required - best;
   }
 
   getShort(cardId: string): string {

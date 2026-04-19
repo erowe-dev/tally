@@ -10,6 +10,15 @@ type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'saved' | 'covered';
 type SortMode = 'default' | 'cpp' | 'pts';
 const FAV_KEY = 'tally_sweetspot_favs_v1';
 
+interface CppTier { val: number; label: string }
+const CPP_TIERS: CppTier[] = [
+  { val: 0,   label: 'Any' },
+  { val: 1.0, label: '>1¢' },
+  { val: 1.5, label: '>1.5¢' },
+  { val: 2.0, label: '>2¢' },
+  { val: 2.5, label: '>2.5¢' },
+];
+
 /** Award booking URLs by program name */
 const BOOKING_URLS: Partial<Record<string, string>> = {
   'ANA Mileage Club':            'anamileageclub.com',
@@ -84,6 +93,18 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
           (click)="activeSort.set(s.id)">
           {{ s.label }}
         </button>
+      </div>
+
+      <!-- CPP min filter -->
+      <div class="cpp-filter-row">
+        <span class="cpp-filter-label">Min CPP:</span>
+        <div class="cpp-tiers">
+          <button *ngFor="let t of cppTiers" class="cpp-tier-btn"
+            [class.active]="minCppFilter() === t.val"
+            (click)="minCppFilter.set(t.val)">
+            {{ t.label }}
+          </button>
+        </div>
       </div>
 
       <div class="count-line">{{ filtered().length }} spot{{ filtered().length !== 1 ? 's' : '' }}</div>
@@ -353,6 +374,26 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .spot-share-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .spot-share-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
 
+    /* CPP min filter */
+    .cpp-filter-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .cpp-filter-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
+      flex-shrink: 0;
+    }
+    .cpp-tiers { display: flex; gap: 4px; flex-wrap: wrap; }
+    .cpp-tier-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 4px 10px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.06em; color: var(--text3); cursor: pointer;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .cpp-tier-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
+    .cpp-tier-btn.active { background: var(--tally-green); border-color: var(--tally-green); color: white; }
+
     .empty-filter { text-align: center; padding: 32px 16px; color: var(--text3); font-size: 14px; }
     .spot-clear-btn {
       background: none; border: none; color: var(--tally-green); font-size: 13px;
@@ -391,8 +432,11 @@ export class SweetspotsComponent {
   searchRaw = '';
   activeFilter = signal<Filter>('all');
   activeSort = signal<SortMode>('default');
+  minCppFilter = signal<number>(0);
   private _favs = signal<Set<string>>(this.loadFavs());
   copiedSpotKey = signal<string | null>(null);
+
+  readonly cppTiers: CppTier[] = CPP_TIERS;
 
   readonly sortModes: { id: SortMode; label: string }[] = [
     { id: 'default', label: 'Default' },
@@ -416,12 +460,18 @@ export class SweetspotsComponent {
     const favs = this._favs();
     const sort = this.activeSort();
     const q = this.searchRaw.toLowerCase().trim();
+    const minCpp = this.minCppFilter();
 
     let spots: SweetSpot[];
     if (f === 'saved')   spots = this.data.sweetSpots.filter(s => favs.has(this.spotKey(s)));
     else if (f === 'covered') spots = this.data.sweetSpots.filter(s => this.canAfford(s));
     else if (f === 'all') spots = [...this.data.sweetSpots];
     else spots = this.data.sweetSpots.filter(s => s.category === f);
+
+    // CPP minimum filter
+    if (minCpp > 0) {
+      spots = spots.filter(s => parseFloat(s.cpp) >= minCpp);
+    }
 
     // Text search across route, detail, note, programs, cards
     if (q) {
