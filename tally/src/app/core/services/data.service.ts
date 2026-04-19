@@ -268,29 +268,32 @@ export class DataService {
 
   readonly hotelRecs: Record<string, Recommendation[]> = {
     luxury: [
-      { program: 'World of Hyatt',   partner: 'Park Hyatt / Alila / Andaz',           cpp: 2.1, ptsBase: 30000, cards: ['chase_ur','bilt','hyatt'], note: 'Best CPP of any hotel program' },
-      { program: 'Marriott Bonvoy',  partner: 'St. Regis / Ritz-Carlton',             cpp: 1.0, ptsBase: 85000, cards: ['amex_mr','chase_ur','bilt','marriott_bonvoy'], note: '5th night free on 5-night stays' },
-      { program: 'IHG One Rewards',  partner: 'InterContinental / Kimpton',            cpp: 0.8, ptsBase: 70000, cards: ['chase_ur','ihg_rewards'], note: 'Combine with annual free night cert' },
+      { program: 'World of Hyatt',   partner: 'Park Hyatt / Alila / Andaz',           cpp: 2.1, ptsBase: 30000, cards: ['chase_ur','bilt','hyatt'],                     note: 'Best CPP of any hotel program. Book 13 months out.' },
+      { program: 'World of Hyatt',   partner: 'Small Luxury Hotels (SLH)',            cpp: 2.0, ptsBase: 25000, cards: ['chase_ur','bilt','hyatt'],                     note: 'Hyatt members can book 500+ SLH boutique hotels with points — often Cat 1–4.' },
+      { program: 'IHG One Rewards',  partner: 'Six Senses Resorts',                  cpp: 1.5, ptsBase: 60000, cards: ['chase_ur','ihg_rewards'],                     note: 'IHG acquired Six Senses. Maldives, Fiji, and Oman properties bookable with points.' },
+      { program: 'Marriott Bonvoy',  partner: 'St. Regis / Ritz-Carlton',            cpp: 1.0, ptsBase: 85000, cards: ['amex_mr','chase_ur','bilt','marriott_bonvoy'], note: '5th night free on 5-night stays boosts effective CPP.' },
     ],
     mid: [
-      { program: 'World of Hyatt',   partner: 'Hyatt Place / Hyatt House',            cpp: 2.0, ptsBase: 15000, cards: ['chase_ur','bilt','hyatt'], note: 'Category 4 properties sweet spot' },
-      { program: 'Marriott Bonvoy',  partner: 'Westin / Sheraton / JW',               cpp: 0.9, ptsBase: 35000, cards: ['amex_mr','chase_ur','bilt','marriott_bonvoy'], note: 'Off-peak pricing helps value' },
-      { program: 'Hilton Honors',    partner: 'DoubleTree / Embassy Suites',           cpp: 0.6, ptsBase: 40000, cards: ['amex_mr','hilton_honors'], note: '5th night free with Amex Hilton cards' },
+      { program: 'World of Hyatt',   partner: 'Hyatt Place / Hyatt House',           cpp: 2.0, ptsBase: 15000, cards: ['chase_ur','bilt','hyatt'],                     note: 'Category 4 properties are the sweet spot — cities + resorts.' },
+      { program: 'World of Hyatt',   partner: 'Joie de Vivre / Thompson Hotels',     cpp: 1.9, ptsBase: 18000, cards: ['chase_ur','bilt','hyatt'],                     note: 'Boutique brands at mid-tier Hyatt points rates. NYC, Chicago, Nashville, LA.' },
+      { program: 'Marriott Bonvoy',  partner: 'Westin / Sheraton / JW',              cpp: 0.9, ptsBase: 35000, cards: ['amex_mr','chase_ur','bilt','marriott_bonvoy'], note: 'Off-peak pricing helps. 5th night free is automatic.' },
+      { program: 'Hilton Honors',    partner: 'DoubleTree / Embassy Suites',         cpp: 0.6, ptsBase: 40000, cards: ['amex_mr','hilton_honors'],                     note: '5th night free with Amex Hilton cards.' },
     ],
     budget: [
-      { program: 'Wyndham Rewards',  partner: 'La Quinta / Travelodge',               cpp: 1.1, ptsBase: 7500,  cards: ['citi_ty','cap1_miles'], note: 'Consistent value in budget tiers' },
-      { program: 'Hilton Honors',    partner: 'Hampton / Hilton Garden Inn',           cpp: 0.6, ptsBase: 30000, cards: ['amex_mr','hilton_honors'], note: 'Use 5th night free benefit' },
-      { program: 'IHG One Rewards',  partner: 'Holiday Inn / Staybridge',              cpp: 0.7, ptsBase: 25000, cards: ['chase_ur','ihg_rewards'], note: 'Reliable mid-budget choice' },
+      { program: 'Wyndham Rewards',  partner: 'La Quinta / Travelodge',              cpp: 1.1, ptsBase: 7500,  cards: ['citi_ty','cap1_miles'],                       note: 'Consistent value in budget tiers. No fuel surcharges, flat pricing.' },
+      { program: 'IHG One Rewards',  partner: 'Holiday Inn / Staybridge',            cpp: 0.7, ptsBase: 25000, cards: ['chase_ur','ihg_rewards'],                     note: 'IHG Premier card annual free night cert alone pays for itself here.' },
+      { program: 'Hilton Honors',    partner: 'Hampton / Hilton Garden Inn',         cpp: 0.6, ptsBase: 30000, cards: ['amex_mr','hilton_honors'],                     note: '5th night free benefit available. Amex Hilton card earns 3–7× on spending.' },
     ],
     top: [
-      { program: 'World of Hyatt',   partner: 'Park Hyatt Tokyo / Maldives',          cpp: 2.4, ptsBase: 45000, cards: ['chase_ur','bilt','hyatt'], note: 'Cat 7–8 worth $800+/night' },
-      { program: 'Marriott Bonvoy',  partner: 'St. Regis / Ritz-Carlton',             cpp: 1.0, ptsBase: 85000, cards: ['amex_mr','chase_ur','bilt','marriott_bonvoy'], note: '5th night free on 5-night redemption' },
-      { program: 'Hilton Honors',    partner: 'Conrad / Waldorf Astoria',             cpp: 0.6, ptsBase: 95000, cards: ['amex_mr','hilton_honors'], note: 'Watch for 5th night free' },
+      { program: 'World of Hyatt',   partner: 'Park Hyatt Maldives / Tokyo / Paris', cpp: 2.4, ptsBase: 45000, cards: ['chase_ur','bilt','hyatt'],                     note: 'Cat 7–8 worth $800–3,000/night. The best hotel points deal in existence.' },
+      { program: 'IHG One Rewards',  partner: 'Six Senses Maldives / Laamu',        cpp: 1.8, ptsBase: 80000, cards: ['chase_ur','ihg_rewards'],                     note: 'Six Senses all-inclusives are some of the world\'s most expensive hotels — bookable with IHG points.' },
+      { program: 'Marriott Bonvoy',  partner: 'St. Regis Maldives / Bora Bora',    cpp: 1.0, ptsBase: 100000,cards: ['amex_mr','chase_ur','bilt','marriott_bonvoy'], note: '5th night free — critical on 5-night stays at $2,000+/night properties.' },
+      { program: 'Hilton Honors',    partner: 'Conrad / Waldorf Astoria',           cpp: 0.6, ptsBase: 95000, cards: ['amex_mr','hilton_honors'],                     note: 'Conrad Bora Bora is a standout. Use 5th night free on a 5-night stay.' },
     ],
     default: [
-      { program: 'World of Hyatt',   partner: 'Hyatt portfolio worldwide',            cpp: 2.0, ptsBase: 25000, cards: ['chase_ur','bilt','hyatt'], note: 'Highest consistent value in hotels' },
-      { program: 'Marriott Bonvoy',  partner: 'Marriott / Westin / Sheraton',         cpp: 0.9, ptsBase: 45000, cards: ['amex_mr','chase_ur','bilt','marriott_bonvoy'], note: 'Largest portfolio' },
-      { program: 'Hilton Honors',    partner: 'Conrad / Waldorf Astoria',             cpp: 0.6, ptsBase: 95000, cards: ['amex_mr','hilton_honors'], note: 'Watch for 5th night free' },
+      { program: 'World of Hyatt',   partner: 'Hyatt portfolio worldwide',          cpp: 2.0, ptsBase: 25000, cards: ['chase_ur','bilt','hyatt'],                     note: 'Highest consistent hotel CPP. Best for flexible travelers.' },
+      { program: 'IHG One Rewards',  partner: 'Six Senses / InterContinental',     cpp: 1.2, ptsBase: 60000, cards: ['chase_ur','ihg_rewards'],                     note: 'IHG annual free night cert is often worth $300+ on its own.' },
+      { program: 'Marriott Bonvoy',  partner: 'Marriott / Westin / Sheraton',      cpp: 0.9, ptsBase: 45000, cards: ['amex_mr','chase_ur','bilt','marriott_bonvoy'], note: 'Largest hotel portfolio worldwide. 5th night free is automatic.' },
     ]
   };
 
