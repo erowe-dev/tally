@@ -318,6 +318,12 @@ const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
           ¢/pt values are estimates. Actual value varies by route and availability.
           Add balances in Wallet for coverage indicators.
         </p>
+
+        <!-- Route-specific insider tip -->
+        <div class="route-tip" *ngIf="routeTip()">
+          <span class="rt-icon">💡</span>
+          <span class="rt-text">{{ routeTip() }}</span>
+        </div>
       </div>
 
       <!-- No results state -->
@@ -679,6 +685,14 @@ const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
       color: var(--text3); line-height: 1.6;
       letter-spacing: 0.05em; margin-top: 12px;
     }
+    .route-tip {
+      display: flex; align-items: flex-start; gap: 8px;
+      margin-top: 10px; padding: 10px 12px;
+      background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.15);
+      border-radius: 10px;
+    }
+    .rt-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .rt-text { font-size: 11px; color: var(--tally-green-mid, #2d8a5a); line-height: 1.55; }
 
     .card-action-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
 
@@ -894,6 +908,30 @@ export class OptimizerComponent implements OnChanges {
       });
     }
     return recs;
+  });
+
+  private static readonly ROUTE_TIPS: Partial<Record<string, string>> = {
+    transatlantic: 'Book transatlantic Business Class awards 330–355 days out for the widest selection. Most programs open exactly 11 months from departure.',
+    transpacific:  'ANA awards require round-trip bookings — plan your return itinerary before searching. Japan award space opens at midnight JST.',
+    hawaii:        'Alaska MileagePlan is the best deal for Hawaii (only Bilt transfers). Avios distance-based pricing can be ultra-cheap for short Mainland hops.',
+    domestic:      'British Airways Avios is distance-based — short hops under 650 miles can be as low as 4,500 Avios. Great for ORD→BOS, LAX→SFO, etc.',
+    latin_america: 'LifeMiles prices South American routes well. Watch for periodic 30% transfer bonuses from Citi/Cap1 — stack the bonus for maximum value.',
+    caribbean:     'Avios Web Specials from AA drop Tuesdays — check aa.com/awardmaps weekly. Caribbean routes are often just 15K Avios economy.',
+    middle_east:   'Aeroplan books Emirates and Qatar without fuel surcharges — a rare privilege. Open-jaw DXB/DOH works on the same ticket.',
+    africa:        'Aeroplan prices Star Alliance to Africa without surcharges. Ethiopian Airlines (Star Alliance) serves most of sub-Saharan Africa.',
+    eurasia:       'Turkish Miles&Smiles prices Europe→Asia Star Alliance Business at some of the lowest rates available. Call Turkish to book if the site shows no space.',
+    default:       'Transfer bonuses can boost your miles by 20–40% — always check transferbonus.com before moving any points.',
+  };
+
+  /** Route-specific insider tip shown below results */
+  readonly routeTip = computed((): string | null => {
+    if (!this.analyzed() || !this.results().length) return null;
+    // Find the raw category key from the route label
+    const label = this.routeLabel();
+    for (const [key, lbl] of Object.entries(OptimizerComponent.ROUTE_LABELS)) {
+      if (lbl === label) return OptimizerComponent.ROUTE_TIPS[key] ?? null;
+    }
+    return OptimizerComponent.ROUTE_TIPS['default'] ?? null;
   });
 
   /** True when user entered airport codes but they didn't match any route category */
