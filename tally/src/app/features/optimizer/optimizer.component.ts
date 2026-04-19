@@ -1314,6 +1314,51 @@ export class OptimizerComponent implements OnChanges {
       ],
       url: 'lifemiles.com',
     },
+    'United MileagePlus': {
+      steps: [
+        'Transfer Chase UR or Bilt → United MileagePlus (1:1 — instant)',
+        'Go to united.com → Find Award Travel',
+        'For Lufthansa First Class: book 14 days before departure (inventory holds back until then)',
+        'United Excursionist Perk: get a free one-way within a region on round-trip itineraries',
+      ],
+      url: 'united.com/en/us/book/award-travel',
+    },
+    'American AAdvantage': {
+      steps: [
+        'Transfer Bilt → AAdvantage (1:1 — instant); no other transferable currency partners AA',
+        'Go to aa.com → Book Award Travel',
+        'Web Special awards (discounted) drop on Tuesdays — check aa.com/awardmaps weekly',
+        'For Qantas Business: search "Q class" on AA.com or call 1-800-882-8880',
+      ],
+      url: 'aa.com/loyalty/home.do',
+    },
+    'Southwest Rapid Rewards': {
+      steps: [
+        'Transfer Chase UR → Southwest Rapid Rewards (1:1)',
+        'Go to southwest.com → Book → Reward travel',
+        'All fares are bookable with points — price in points tracks cash price',
+        'Companion Pass (135K points in a year) makes every booking 2-for-1',
+      ],
+      url: 'southwest.com/rapidrewards/rapid-rewards-member-benefits',
+    },
+    'Hilton Honors': {
+      steps: [
+        'Transfer Amex MR → Hilton Honors (1:2 ratio)',
+        'Go to hilton.com → Book → Use points toggle',
+        'Book 5 nights with points to get the 5th night free (20% effective discount)',
+        'Best value: Conrad and Waldorf properties in aspirational destinations',
+      ],
+      url: 'hilton.com/en/hilton-honors/redeem',
+    },
+    'IHG One Rewards': {
+      steps: [
+        'Transfer Chase UR → IHG One Rewards (1:1)',
+        'Go to ihg.com → Book → Pay with points',
+        'IHG Premier cardholders get a free night cert every anniversary — use it first',
+        'Best value: InterContinental and Kimpton boutique properties',
+      ],
+      url: 'ihg.com/rewardsclub/gb/en/redeem',
+    },
   };
 
   getHowToSteps(program: string): string[] {
