@@ -217,6 +217,13 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
               <span class="pro-tip-icon">💡</span>
               <span class="pro-tip-text">{{ tip }}</span>
             </div>
+            <!-- Earn rate mini-row -->
+            <div class="earn-rate-row" *ngIf="getEarnRates(card.id).length > 0">
+              <span class="earn-rate-chip" *ngFor="let r of getEarnRates(card.id)"
+                [class.earn-best]="r.best">
+                {{ r.icon }} {{ r.rate }}×
+              </span>
+            </div>
             <div class="partner-wrap"
               *ngFor="let p of visiblePartners(card)"
               [class.dimmed]="greatOnly() && p.quality !== 'great'">
@@ -480,6 +487,21 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     }
 
     .partners { padding: 12px 18px; display: flex; flex-direction: column; gap: 4px; }
+
+    /* Earn rate chips */
+    .earn-rate-row {
+      display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px;
+    }
+    .earn-rate-chip {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 3px 9px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.06em; color: var(--text3);
+    }
+    .earn-rate-chip.earn-best {
+      background: var(--tally-green-light); border-color: rgba(26,122,74,0.3);
+      color: var(--tally-green); font-weight: 600;
+    }
 
     /* Strategic program tip */
     .pro-tip {
@@ -907,6 +929,20 @@ export class CardsComponent {
 
   getProTip(cardId: string): string | null {
     return this.PRO_TIPS[cardId] ?? null;
+  }
+
+  /** Returns earn rate chips for all spending categories for a given card */
+  getEarnRates(cardId: string): { icon: string; rate: number; best: boolean }[] {
+    const rates = EARN_RATES[cardId];
+    if (!rates) return [];
+    const catIcons: Record<SpendCat, string> = {
+      travel: '✈', dining: '🍽', groceries: '🛒', gas: '⛽', online: '🛍', general: '💳',
+    };
+    const entries = (Object.entries(rates) as [SpendCat, number][])
+      .map(([cat, rate]) => ({ icon: catIcons[cat], rate, best: false }));
+    const maxRate = Math.max(...entries.map(e => e.rate));
+    entries.forEach(e => { e.best = e.rate === maxRate && maxRate > 1; });
+    return entries;
   }
 
   clearAll(): void {
