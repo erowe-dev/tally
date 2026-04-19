@@ -229,9 +229,15 @@ export class ExpiryService {
     const records = this._records();
     return EXPIRY_RULES
       .map(rule => this.computeStatus(rule, records[rule.cardId]))
-      .sort((a, b) =>
-        ExpiryService.URGENCY_ORDER[a.urgency] - ExpiryService.URGENCY_ORDER[b.urgency],
-      );
+      .sort((a, b) => {
+        // Primary: urgency tier (expired → critical → warning → safe → never)
+        const urgDiff = ExpiryService.URGENCY_ORDER[a.urgency] - ExpiryService.URGENCY_ORDER[b.urgency];
+        if (urgDiff !== 0) return urgDiff;
+        // Secondary: soonest-expiring first within each tier (nulls/never last)
+        const da = a.daysRemaining ?? Infinity;
+        const db = b.daysRemaining ?? Infinity;
+        return da - db;
+      });
   });
 
   readonly hasWarnings = computed(() =>
