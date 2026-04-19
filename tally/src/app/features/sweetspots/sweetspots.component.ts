@@ -10,6 +10,26 @@ type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'saved' | 'covered';
 type SortMode = 'default' | 'cpp' | 'pts';
 const FAV_KEY = 'tally_sweetspot_favs_v1';
 
+/** Award booking URLs by program name */
+const BOOKING_URLS: Partial<Record<string, string>> = {
+  'ANA Mileage Club':            'anamileageclub.com',
+  'Air Canada Aeroplan':         'aircanada.com',
+  'Singapore KrisFlyer':         'singaporeair.com',
+  'Virgin Atlantic Flying Club': 'virginatlantic.com',
+  'Air France/KLM Flying Blue':  'airfranceklm.com',
+  'British Airways Avios':       'britishairways.com/travel/redeem/execclub',
+  'Turkish Miles&Smiles':        'turkishairlines.com/en-us/miles-and-smiles/miles-award-tickets',
+  'American AAdvantage':         'aa.com/loyalty/home.do',
+  'Alaska MileagePlan':          'alaskaair.com/content/flights/award-travel',
+  'Southwest Rapid Rewards':     'southwest.com/rapidrewards/rapid-rewards-member-benefits',
+  'World of Hyatt':              'hyatt.com/shop/usertrack/rewards/redeem',
+  'Marriott Bonvoy':             'marriott.com/loyalty/redeem/hotels/list',
+  'Hilton Honors':               'hilton.com/en/hilton-honors/redeem',
+  'Avianca LifeMiles':           'lifemiles.com/shop/redeem',
+  'United MileagePlus':          'united.com/en/us/book/award-travel',
+  'IHG One Rewards':             'ihg.com/rewardsclub/gb/en/redeem',
+};
+
 @Component({
   selector: 'tally-sweetspots',
   standalone: true,
@@ -106,6 +126,11 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
               (click)="openInOptimizer(s)">
               Find in Optimizer →
             </button>
+            <a *ngIf="getBookingUrl(s) as url"
+              class="spot-book-link" [href]="'https://' + url"
+              target="_blank" rel="noopener noreferrer">
+              🔗 Book →
+            </a>
             <button class="spot-share-btn"
               (click)="shareSpot(s)"
               [class.copied]="copiedSpotKey() === spotKey(s)">
@@ -311,6 +336,14 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
       transition: all 0.15s;
     }
     .spot-optimizer-btn:hover { background: var(--tally-green); color: white; }
+    .spot-book-link {
+      display: inline-flex; align-items: center;
+      background: none; border: 1px solid rgba(26,122,74,0.3); border-radius: 8px;
+      color: var(--tally-green); font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.06em; padding: 5px 10px;
+      text-decoration: none; transition: all 0.15s;
+    }
+    .spot-book-link:hover { background: var(--tally-green-light); }
     .spot-share-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
@@ -475,6 +508,15 @@ export class SweetspotsComponent {
     return this.data.transferBonuses.find(b =>
       b.expires >= today && spot.cards.some(c => c === b.from)
     ) ?? null;
+  }
+
+  /** Returns the award booking URL for the first matching program on a spot */
+  getBookingUrl(spot: SweetSpot): string | null {
+    for (const prog of spot.programs) {
+      const url = BOOKING_URLS[prog];
+      if (url) return url;
+    }
+    return null;
   }
 
   /** Parse a sweet spot and navigate to the Optimizer tab pre-filled */
