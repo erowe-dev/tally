@@ -4,6 +4,21 @@ import { FormsModule } from '@angular/forms';
 import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expiry.service';
 import { WalletService } from '../../core/services/wallet.service';
 
+/** Direct links to the fastest activity-reset action for each program */
+const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>>> = {
+  citi_ty:        [{ label: 'Citi ThankYou Mall', url: 'https://shop.thankyou.com' }],
+  bilt:           [{ label: 'Bilt Rewards App', url: 'https://biltrewards.com' }],
+  united_mp:      [{ label: 'MileagePlus Shopping', url: 'https://shopping.mileageplus.com' }],
+  aa_aadvantage:  [{ label: 'AAdvantage eShopping', url: 'https://aadvantageeshopping.com' }],
+  southwest_rr:   [{ label: 'Rapid Rewards Shopping', url: 'https://rapidrewardsshopping.com' }],
+  alaska_mp:      [{ label: 'MileagePlan Shopping', url: 'https://mileageplanshop.com' }],
+  hyatt:          [{ label: 'Book a Hyatt stay', url: 'https://hyatt.com/awards' }],
+  marriott_bonvoy:[{ label: 'Book a Marriott stay', url: 'https://marriott.com' }],
+  hilton_honors:  [{ label: 'Book a Hilton stay', url: 'https://hilton.com' }],
+  ihg_rewards:    [{ label: 'Book an IHG stay', url: 'https://ihg.com' }],
+  singapore_kf:   [{ label: 'KrisFlyer Portal', url: 'https://www.singaporeair.com/en_UK/sg/ppsclub-krisflyer/krisflyer-spends/' }],
+};
+
 @Component({
   selector: 'tally-expiry',
   standalone: true,
@@ -112,6 +127,12 @@ import { WalletService } from '../../core/services/wallet.service';
             <ul class="qa-list">
               <li *ngFor="let qa of status.quickActions">{{ qa }}</li>
             </ul>
+            <div class="qa-links" *ngIf="getPortalLinks(status.cardId).length > 0">
+              <a *ngFor="let link of getPortalLinks(status.cardId)"
+                class="qa-link" [href]="link.url" target="_blank" rel="noopener noreferrer">
+                🔗 {{ link.label }} →
+              </a>
+            </div>
           </div>
 
           <!-- Date setter for activity-based programs -->
@@ -300,6 +321,15 @@ import { WalletService } from '../../core/services/wallet.service';
       margin: 0; padding-left: 14px; display: flex; flex-direction: column; gap: 3px;
     }
     .qa-list li { font-size: 12px; color: var(--text2); line-height: 1.4; }
+    .qa-links { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .qa-link {
+      display: inline-flex; align-items: center;
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.04em; color: var(--tally-green);
+      text-decoration: none; padding: 3px 0;
+      transition: opacity 0.15s;
+    }
+    .qa-link:hover { opacity: 0.75; text-decoration: underline; }
 
     .date-setter { border-top: 1px solid var(--border); padding-top: 12px; }
     .date-setter-top {
@@ -452,6 +482,10 @@ export class ExpiryComponent {
       today.setHours(0, 0, 0, 0);
       return Math.max(0, Math.round((today.getTime() - activity.getTime()) / (1000 * 60 * 60 * 24)));
     } catch { return 0; }
+  }
+
+  getPortalLinks(cardId: string): Array<{ label: string; url: string }> {
+    return PORTAL_LINKS[cardId] ?? [];
   }
 
   private formatLocalDate(date: Date): string {
