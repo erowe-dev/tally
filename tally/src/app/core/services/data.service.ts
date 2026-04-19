@@ -548,6 +548,37 @@ export class DataService {
       cards: ['Bilt'], programs: ['Bilt Rewards'], category: 'promo',
       note: 'Every month on the 1st, Bilt offers 3× points on all purchases (normally 1×). Combined with Hyatt transfers, this is one of the best recurring earn opportunities.'
     },
+    // ── Additional iconic sweet spots ─────────────────────────────────────
+    {
+      route: 'US → Frankfurt (First)', detail: 'Lufthansa First Class via United MileagePlus',
+      ptsNeeded: '110,000', estCash: '$15,000+', cpp: '13.6¢',
+      cards: ['Chase UR', 'Bilt'], programs: ['United MileagePlus'], category: 'flight',
+      note: 'Lufthansa First with private terminal access in Frankfurt. Book on United.com up to 14 days before departure. United miles don\'t pass surcharges.'
+    },
+    {
+      route: 'US → Australia (Business)', detail: 'Qantas Business via AAdvantage',
+      ptsNeeded: '70,000', estCash: '$7,000+', cpp: '10.0¢',
+      cards: ['Bilt'], programs: ['American AAdvantage'], category: 'flight',
+      note: 'AAdvantage prices Qantas Business one-way at 70K. Only Bilt transfers to AA from a transferable currency. Check AA.com for Qantas Q class availability.'
+    },
+    {
+      route: 'US / EU → Abu Dhabi (First)', detail: 'Etihad First Apartment via LifeMiles',
+      ptsNeeded: '90,000', estCash: '$20,000+', cpp: '22.2¢',
+      cards: ['Citi TY', 'Cap1 Miles'], programs: ['Avianca LifeMiles'], category: 'flight',
+      note: 'The Etihad First Apartment is a private cabin-within-a-cabin. LifeMiles prices it without fuel surcharges — one of the best premium redemptions available.'
+    },
+    {
+      route: 'Europe → Asia (Business)', detail: 'Ethiopian Star Alliance Business via Aeroplan',
+      ptsNeeded: '57,500', estCash: '$4,000+', cpp: '7.0¢',
+      cards: ['Amex MR', 'Chase UR', 'Cap1 Miles', 'Bilt'], programs: ['Air Canada Aeroplan'], category: 'flight',
+      note: 'Aeroplan prices Europe → Asia Star Alliance business at 57.5K. Great for LHR/CDG → SIN/BKK/NRT. No fuel surcharges on most carriers.'
+    },
+    {
+      route: 'US → Paris (First)', detail: 'Air France La Première via Flying Blue',
+      ptsNeeded: '300,000', estCash: '$25,000+', cpp: '8.3¢',
+      cards: ['Amex MR', 'Chase UR', 'Citi TY', 'Cap1 Miles'], programs: ['Air France/KLM Flying Blue'], category: 'flight',
+      note: 'Air France La Première is the world\'s most exclusive cabin. Flying Blue occasionally releases last-minute award space. Watch for Flying Blue Promo Awards for 30–40% off.'
+    },
   ];
 
   // ── Transfer bonuses ─────────────────────────────────────────────────────

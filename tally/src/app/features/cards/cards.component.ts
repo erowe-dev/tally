@@ -198,6 +198,10 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
               <div class="cc-balance" *ngIf="wallet.getBalance(card.id) > 0">
                 {{ wallet.getBalance(card.id) | number }} pts
               </div>
+              <!-- Active transfer bonus pill -->
+              <div class="cc-bonus-pill" *ngIf="hasActiveBonus(card.id)">
+                ⚡ Active bonus
+              </div>
             </div>
             <div class="cc-right">
               <div class="cc-partner-count" *ngIf="card.category === 'transferable'">
@@ -471,6 +475,13 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .cc-balance {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--tally-green); letter-spacing: 0.04em; margin-top: 2px;
+    }
+    .cc-bonus-pill {
+      display: inline-block; margin-top: 3px;
+      background: rgba(217,119,6,0.1); border: 1px solid rgba(217,119,6,0.3);
+      border-radius: 20px; padding: 1px 7px;
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      letter-spacing: 0.06em; color: var(--tally-amber, #b45309);
     }
 
     .cc-partner-count {
@@ -804,6 +815,20 @@ export class CardsComponent {
       .sort((a, b) => b.rate - a.rate)
       .slice(0, 3);
   });
+
+  /** Set of card IDs that currently have at least one active transfer bonus */
+  private readonly _activeBonusIds = (() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return new Set(
+      this.data.transferBonuses
+        .filter(b => b.expires >= today)
+        .map(b => b.fromId)
+    );
+  })();
+
+  hasActiveBonus(cardId: string): boolean {
+    return this._activeBonusIds.has(cardId);
+  }
 
   // Accordion: set of manually expanded card ids
   expandedCards = signal<Set<string>>(new Set());
