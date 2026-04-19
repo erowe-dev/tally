@@ -589,8 +589,13 @@ export class SweetspotsComponent {
   openInOptimizer(s: SweetSpot): void {
     // Try to extract airport codes from route like "JFK → SIN" or "US → Europe"
     const parts = s.route.split('→').map(p => p.trim());
-    const fromCity = parts[0]?.match(/\b([A-Z]{3})\b/)?.[1] ?? '';
-    const toCity   = parts[1]?.match(/\b([A-Z]{3})\b/)?.[1] ?? '';
+    let fromCity = parts[0]?.match(/\b([A-Z]{3})\b/)?.[1] ?? '';
+    const toCity = parts[1]?.match(/\b([A-Z]{3})\b/)?.[1] ?? '';
+
+    // Fall back to saved home airport when route doesn't include a departure code
+    if (!fromCity) {
+      try { fromCity = localStorage.getItem('tally_home_airport_v1') ?? ''; } catch {}
+    }
 
     // Infer cabin from detail field (e.g. "BUSINESS CLASS" / "FIRST CLASS")
     const detail = s.detail.toUpperCase();

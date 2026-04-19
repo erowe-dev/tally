@@ -1275,6 +1275,11 @@ export class OptimizerComponent implements OnChanges {
     this.tripType.set(hint.tripType);
     if (hint.tripType === 'hotel') {
       this.hotelCategory = 'mid';
+    } else {
+      // Pre-fill home airport if the From field is empty
+      if (!this.fromCity && this.homeAirport()) {
+        this.fromCity = this.homeAirport();
+      }
     }
     this.showQuickWins.set(false);
     this.analyze();
