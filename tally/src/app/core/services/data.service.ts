@@ -218,6 +218,13 @@ export class DataService {
       { program: 'American AAdvantage',    partner: 'on AA domestic',             cpp: 1.5, ptsBase: 12500, cards: ['bilt','aa_aadvantage'], note: 'Web specials go low' },
       { program: 'United MileagePlus',     partner: 'on United domestic',         cpp: 1.4, ptsBase: 12500, cards: ['chase_ur','bilt','united_mp'], note: 'Saver awards on off-peak routes' },
     ],
+    hawaii: [
+      { program: 'Alaska MileagePlan',      partner: 'on Alaska/AA from mainland US', cpp: 2.1, ptsBase: 12500, cards: ['bilt','alaska_mp'], note: 'Best mainland↔Hawaii deal — Saver awards from 12,500 pts one-way' },
+      { program: 'British Airways Avios',    partner: 'on Alaska codeshares',          cpp: 1.9, ptsBase: 7500,  cards: ['amex_mr','chase_ur','cap1_miles'], note: 'Distance-based pricing — as low as 7,500 Avios one-way on Alaska codeshares' },
+      { program: 'Southwest Rapid Rewards',  partner: 'on Southwest to Hawaii',        cpp: 1.5, ptsBase: 18000, cards: ['chase_ur','southwest_rr'], note: 'HNL, OGG, KOA, LIH all served. Best with the Companion Pass' },
+      { program: 'American AAdvantage',      partner: 'on AA to Honolulu/Maui',        cpp: 1.5, ptsBase: 17500, cards: ['bilt','aa_aadvantage'], note: 'Web Specials drop Tuesdays — Hawaii routes included seasonally' },
+      { program: 'United MileagePlus',       partner: 'on United to Hawaii',           cpp: 1.4, ptsBase: 15000, cards: ['chase_ur','bilt','united_mp'], note: 'Saver awards on off-peak dates — check United.com for Economy Saver space' },
+    ],
     latin_america: [
       { program: 'Air Canada Aeroplan',    partner: 'on Star Alliance to Brazil/Andean', cpp: 1.8, ptsBase: 30000, cards: ['amex_mr','chase_ur','cap1_miles','bilt'], note: 'No fuel surcharges, flexible routing' },
       { program: 'Avianca LifeMiles',      partner: 'on Avianca/Star Alliance',          cpp: 1.7, ptsBase: 28000, cards: ['citi_ty','cap1_miles'], note: 'Great South America coverage' },

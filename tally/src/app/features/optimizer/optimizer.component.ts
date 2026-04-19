@@ -837,6 +837,7 @@ export class OptimizerComponent implements OnChanges {
   private static readonly ROUTE_LABELS: Record<string, string> = {
     transatlantic: 'US ↔ Europe',
     transpacific:  'US ↔ Asia/Pacific',
+    hawaii:        'Mainland US ↔ Hawaii',
     domestic:      'US Domestic',
     latin_america: 'US ↔ Latin America',
     caribbean:     'US ↔ Caribbean',

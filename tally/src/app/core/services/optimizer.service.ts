@@ -34,6 +34,9 @@ const AFRICA_AIRPORTS = new Set([
   'JNB','CPT','NBO','LOS','ACC','CMN','ALG','TUN','ADD','DAR',
   'RAK','MRU','SEZ','HRE','LUN',
 ]);
+const HAWAII_AIRPORTS = new Set([
+  'HNL','OGG','KOA','LIH','ITO','MKK','LNY',
+]);
 
 const CABIN_MULT: Record<CabinClass, number> = {
   economy: 0.5, premium: 0.75, business: 1.0, first: 1.6
@@ -114,10 +117,14 @@ export class OptimizerService {
     const toAfric = AFRICA_AIRPORTS.has(to);
     const fromAfric = AFRICA_AIRPORTS.has(from);
 
-    if ((fromUS && toEU) || (fromEU && toUS))           return 'transatlantic';
-    if ((fromUS && toAsia) || (fromAsia && toUS))        return 'transpacific';
-    if (fromUS && toUS)                                  return 'domestic';
-    if ((fromUS && toLatam) || (fromLatam && toUS))      return 'latin_america';
+    const toHawaii   = HAWAII_AIRPORTS.has(to);
+    const fromHawaii = HAWAII_AIRPORTS.has(from);
+
+    if ((fromUS && toEU) || (fromEU && toUS))             return 'transatlantic';
+    if ((fromUS && toAsia) || (fromAsia && toUS))          return 'transpacific';
+    if ((fromUS && toHawaii) || (fromHawaii && toUS))      return 'hawaii';
+    if (fromUS && toUS)                                    return 'domestic';
+    if ((fromUS && toLatam) || (fromLatam && toUS))        return 'latin_america';
     if ((fromUS && toCarib) || (fromCarib && toUS))      return 'caribbean';
     if ((fromUS && toMid) || (fromMid && toUS))          return 'middle_east';
     if ((fromUS && toAfric) || (fromAfric && toUS))      return 'africa';
