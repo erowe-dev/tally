@@ -5,6 +5,7 @@ import { OptimizerService } from '../../core/services/optimizer.service';
 import { WalletService } from '../../core/services/wallet.service';
 import { DataService } from '../../core/services/data.service';
 import { TripsService } from '../../core/services/trips.service';
+import { ExpiryService, ExpiryStatus } from '../../core/services/expiry.service';
 import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
 
 interface RouteHistoryEntry {
@@ -268,6 +269,17 @@ const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
             <span class="rc-gap-text">
               {{ gap | number }} more pts to unlock
               <span class="rc-gap-hint">· earn via top spend category on a linked card</span>
+            </span>
+          </div>
+          <!-- Expiry cross-reference: warn when a linked program's points are at risk -->
+          <div class="rc-expiry-warn" *ngIf="getExpiryWarning(rec) as exp"
+            [class.critical]="exp.urgency === 'critical' || exp.urgency === 'expired'">
+            <span class="rce-icon">{{ exp.urgency === 'expired' ? '🚨' : exp.urgency === 'critical' ? '⚠️' : '🔔' }}</span>
+            <span class="rce-text">
+              <strong>{{ exp.programName }}</strong>
+              {{ exp.urgency === 'expired' ? 'points have expired.' :
+                 'points expire in ' + exp.daysRemaining + ' day' + (exp.daysRemaining === 1 ? '' : 's') + '.' }}
+              Transfer or redeem soon.
             </span>
           </div>
 
@@ -619,6 +631,25 @@ const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
     }
     .rc-gap-hint { color: var(--text3); }
 
+    /* Expiry cross-reference warning */
+    .rc-expiry-warn {
+      display: flex; align-items: flex-start; gap: 6px;
+      margin-top: 4px; margin-bottom: 4px;
+      padding: 5px 8px; border-radius: 7px;
+      background: rgba(217,119,6,0.06);
+      border-left: 2px solid var(--tally-amber, #d97706);
+    }
+    .rc-expiry-warn.critical {
+      background: rgba(220,38,38,0.06);
+      border-left-color: var(--tally-red, #dc2626);
+    }
+    .rce-icon { font-size: 11px; flex-shrink: 0; line-height: 1.45; }
+    .rce-text {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--tally-amber, #b45309); line-height: 1.45;
+    }
+    .rc-expiry-warn.critical .rce-text { color: var(--tally-red, #dc2626); }
+
     /* No results */
     .no-results { text-align: center; padding: 32px 16px; }
     .no-results-icon { font-size: 32px; margin-bottom: 10px; }
@@ -798,6 +829,7 @@ export class OptimizerComponent implements OnChanges {
   private data = inject(DataService);
   wallet = inject(WalletService);
   trips = inject(TripsService);
+  private expiry = inject(ExpiryService);
 
   tripType = signal<'flight' | 'hotel'>('flight');
   fromCity = '';
@@ -962,6 +994,24 @@ export class OptimizerComponent implements OnChanges {
     const best = this.getBestBalance(rec);
     if (best <= 0 || best >= required) return null;
     return required - best;
+  }
+
+  /**
+   * Returns the most urgent ExpiryStatus for any card that feeds this recommendation,
+   * so the optimizer can warn the user their points are at risk.
+   * Only surfaces 'critical', 'expired', or 'warning' states.
+   */
+  getExpiryWarning(rec: Recommendation): ExpiryStatus | null {
+    const statuses = this.expiry.statuses();
+    const urgencyRank: Record<string, number> = { expired: 3, critical: 2, warning: 1 };
+    let best: ExpiryStatus | null = null;
+    for (const s of statuses) {
+      if (!rec.cards.includes(s.cardId)) continue;
+      const rank = urgencyRank[s.urgency] ?? 0;
+      if (rank === 0) continue;
+      if (!best || rank > (urgencyRank[best.urgency] ?? 0)) best = s;
+    }
+    return best;
   }
 
   getShort(cardId: string): string {
