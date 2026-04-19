@@ -9,6 +9,81 @@ type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
 type CardSortMode = 'default' | 'cpp' | 'balance';
 type SpendCat = 'travel' | 'dining' | 'groceries' | 'gas' | 'online' | 'general';
 
+/** Typical transfer processing times per source program → partner name */
+const TRANSFER_TIMES: Partial<Record<string, Record<string, string>>> = {
+  amex_mr: {
+    'Air Canada Aeroplan':        'Instant',
+    'British Airways Avios':       'Instant',
+    'Air France/KLM Flying Blue':  'Instant',
+    'Singapore KrisFlyer':         '1–3 days',
+    'ANA Mileage Club':            '3–5 business days',
+    'Virgin Atlantic Flying Club': 'Instant',
+    'Delta SkyMiles':              'Instant',
+    'Hilton Honors':               'Instant',
+    'Marriott Bonvoy':             '1–5 days',
+  },
+  chase_ur: {
+    'Air Canada Aeroplan':         'Instant',
+    'British Airways Avios':        'Instant',
+    'United MileagePlus':           'Instant',
+    'Air France/KLM Flying Blue':   'Instant',
+    'Virgin Atlantic Flying Club':  'Instant',
+    'Singapore KrisFlyer':          'Instant',
+    'Southwest Rapid Rewards':      'Instant',
+    'World of Hyatt':               'Instant',
+    'IHG One Rewards':              'Instant',
+    'Marriott Bonvoy':              '1–5 days',
+  },
+  citi_ty: {
+    'Air France/KLM Flying Blue':  '2–4 days',
+    'Virgin Atlantic Flying Club':  '2–4 days',
+    'Singapore KrisFlyer':          '2–4 days',
+    'Turkish Miles&Smiles':         '2–4 days',
+    'Air Canada Aeroplan':          '2–4 days',
+    'Avianca LifeMiles':            '2–4 days',
+    'JetBlue TrueBlue':            'Instant',
+    'Wyndham Rewards':             '2–4 days',
+  },
+  cap1_miles: {
+    'Air Canada Aeroplan':          'Instant',
+    'British Airways Avios':         'Instant',
+    'Air France/KLM Flying Blue':   'Instant',
+    'Turkish Miles&Smiles':          '2–4 days',
+    'Singapore KrisFlyer':           'Instant',
+    'Avianca LifeMiles':             '2–4 days',
+    'Wyndham Rewards':              'Instant',
+  },
+  bilt: {
+    'Air Canada Aeroplan':          'Instant',
+    'American AAdvantage':           'Instant',
+    'United MileagePlus':            'Instant',
+    'Alaska MileagePlan':            'Instant',
+    'Emirates Skywards':             '1–2 days',
+    'World of Hyatt':                'Instant',
+    'IHG One Rewards':               'Instant',
+    'Marriott Bonvoy':               '1–5 days',
+  },
+  delta_skymiles: {
+    'Air France/KLM Flying Blue': '1–3 days',
+    'Korean Air SkyPass':         '1–3 days',
+    'Virgin Atlantic Flying Club':'1–3 days',
+    'Aeromexico Club Premier':    '1–3 days',
+  },
+  united_mp: {
+    'Air Canada':         '1–3 days',
+    'Lufthansa':           '1–3 days',
+    'ANA':                 '1–3 days',
+    'Singapore Airlines':  '1–3 days',
+  },
+  aa_aadvantage: {
+    'British Airways':    '1–3 days',
+    'Iberia':             '1–3 days',
+    'Japan Airlines':     '1–3 days',
+    'Cathay Pacific':     '1–3 days',
+    'Finnair Plus':       '1–3 days',
+  },
+};
+
 const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
   amex_mr:        { travel: 5, dining: 4, groceries: 4, gas: 1, online: 1, general: 2 },
   chase_ur:       { travel: 3, dining: 3, groceries: 3, gas: 1, online: 1, general: 1 },
@@ -172,6 +247,10 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
                 <ng-template #noBalance>
                   <div class="td-no-bal">Add your {{ card.short }} balance in Wallet to see transfer math.</div>
                 </ng-template>
+                <div class="td-timing" [class.td-timing-instant]="isInstantTransfer(card.id, p.name)">
+                  <span class="td-timing-icon">⏱</span>
+                  Transfer posts: <strong>{{ getTransferTime(card.id, p.name) }}</strong>
+                </div>
               </div>
             </div>
             <div class="no-partners" *ngIf="visiblePartners(card).length === 0">
@@ -441,6 +520,16 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .td-arrow { color: var(--tally-green); font-size: 13px; }
     .td-value { font-size: 11px; color: var(--text2); line-height: 1.4; }
     .td-no-bal { font-size: 11px; color: var(--text3); font-style: italic; }
+    .td-timing {
+      display: flex; align-items: center; gap: 5px; margin-top: 6px;
+      padding-top: 6px; border-top: 1px solid var(--border);
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--text3); letter-spacing: 0.04em;
+    }
+    .td-timing strong { color: var(--text2); }
+    .td-timing-icon { flex-shrink: 0; }
+    .td-timing.td-timing-instant { color: var(--tally-green); }
+    .td-timing.td-timing-instant strong { color: var(--tally-green); }
 
     .no-partners {
       font-family: 'Geist Mono', monospace; font-size: 10px;
@@ -850,6 +939,15 @@ export class CardsComponent {
   /** Estimated dollar value after transfer */
   transferValue(balance: number, ratio: string, cpp: number): number {
     return Math.round(this.transferResult(balance, ratio) * cpp / 100);
+  }
+
+  /** Typical transfer posting time for a given source → partner pair */
+  getTransferTime(cardId: string, partnerName: string): string {
+    return TRANSFER_TIMES[cardId]?.[partnerName] ?? 'Typically 1–5 business days';
+  }
+
+  isInstantTransfer(cardId: string, partnerName: string): boolean {
+    return this.getTransferTime(cardId, partnerName) === 'Instant';
   }
 
   // Rate My Redemption
