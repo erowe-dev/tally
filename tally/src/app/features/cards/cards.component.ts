@@ -186,6 +186,31 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         </div>
       </div>
 
+      <!-- Reachable Partners panel — only when user has wallet points -->
+      <div class="reach-section" *ngIf="wallet.hasAnyPoints()">
+        <button class="reach-toggle" (click)="showReachable.set(!showReachable())">
+          <span>🗺 My reachable partners</span>
+          <span class="reach-badge">{{ reachablePartners().length }}</span>
+          <span class="reach-chevron">{{ showReachable() ? '▲' : '▼' }}</span>
+        </button>
+        <div class="reach-body" *ngIf="showReachable()">
+          <p class="reach-note">All airline & hotel partners you can transfer to with your current balances.</p>
+          <div class="reach-list">
+            <div class="reach-row" *ngFor="let p of reachablePartners(); let i = index"
+              [class.reach-top]="i === 0">
+              <span class="reach-icon">{{ p.icon }}</span>
+              <div class="reach-info">
+                <div class="reach-name">{{ p.name }}</div>
+                <div class="reach-via">via {{ p.via }}</div>
+              </div>
+              <div class="reach-cpp" [class.great]="p.cpp >= 2.0">
+                {{ p.cpp }}¢<small>/pt</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="cards-list">
         <div class="cc-card" *ngFor="let card of filteredCards()"
           [class.expanded]="isExpanded(card.id)">
@@ -631,6 +656,53 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       color: var(--text3); line-height: 1.5; margin-top: 10px; letter-spacing: 0.04em;
     }
 
+    /* Reachable Partners */
+    .reach-section {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden; margin-bottom: 14px;
+    }
+    .reach-toggle {
+      width: 100%; background: none; border: none; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      padding: 13px 16px; text-align: left;
+      font-family: 'Geist', sans-serif; font-size: 13px;
+      font-weight: 500; color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .reach-badge {
+      background: var(--tally-green); color: white;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      border-radius: 20px; padding: 1px 7px; letter-spacing: 0.06em;
+    }
+    .reach-chevron { font-size: 8px; color: var(--text3); margin-left: auto; }
+    .reach-body { padding: 0 14px 14px; }
+    .reach-note {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--text3); letter-spacing: 0.04em; margin-bottom: 10px;
+    }
+    .reach-list { display: flex; flex-direction: column; gap: 6px; }
+    .reach-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 8px; border-radius: 8px;
+      border: 1px solid transparent; transition: border-color 0.15s;
+    }
+    .reach-row.reach-top {
+      background: var(--tally-green-light); border-color: rgba(26,122,74,0.2);
+    }
+    .reach-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+    .reach-info { flex: 1; min-width: 0; }
+    .reach-name { font-size: 12px; font-weight: 500; color: var(--text); }
+    .reach-via {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--text3); letter-spacing: 0.04em; margin-top: 1px;
+    }
+    .reach-cpp {
+      font-family: 'Geist Mono', monospace; font-size: 14px;
+      color: var(--text2); text-align: right; flex-shrink: 0;
+    }
+    .reach-cpp small { font-size: 9px; color: var(--text3); }
+    .reach-cpp.great { color: var(--tally-green); font-weight: 600; }
+
     /* Transfer Route Finder */
     .tf-inputs { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
     .tf-results { display: flex; flex-direction: column; gap: 8px; }
@@ -776,6 +848,27 @@ export class CardsComponent {
     { id: 'online',    icon: '🛍',  label: 'Online'    },
     { id: 'general',   icon: '💳',  label: 'General'   },
   ];
+
+  // Reachable partners panel
+  showReachable = signal(false);
+
+  /**
+   * All unique airline + hotel partners reachable from the user's held programs,
+   * at the best available CPP, sorted descending.
+   */
+  readonly reachablePartners = computed((): { name: string; icon: string; cpp: number; via: string }[] => {
+    const seen = new Map<string, { name: string; icon: string; cpp: number; via: string }>();
+    for (const card of this.data.cards) {
+      if (this.wallet.getBalance(card.id) <= 0) continue;
+      for (const p of card.partners) {
+        const existing = seen.get(p.name);
+        if (!existing || p.cpp > existing.cpp) {
+          seen.set(p.name, { name: p.name, icon: p.icon, cpp: p.cpp, via: card.short ?? card.name });
+        }
+      }
+    }
+    return Array.from(seen.values()).sort((a, b) => b.cpp - a.cpp);
+  });
 
   // Transfer Route Finder
   showTransferFinder = signal(false);
