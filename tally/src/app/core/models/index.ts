@@ -42,6 +42,8 @@ export interface SweetSpot {
   programs: string[];
   note: string;
   category: 'flight' | 'hotel' | 'promo';
+  /** Flag for spots added recently — shown with a ✦ New badge */
+  isNew?: boolean;
 }
 
 /** A time-limited transfer bonus promotion */

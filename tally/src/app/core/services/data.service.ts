@@ -582,6 +582,35 @@ export class DataService {
       cards: ['Amex MR', 'Chase UR', 'Citi TY', 'Cap1 Miles'], programs: ['Air France/KLM Flying Blue'], category: 'flight',
       note: 'Air France La Première is the world\'s most exclusive cabin. Flying Blue occasionally releases last-minute award space. Watch for Flying Blue Promo Awards for 30–40% off.'
     },
+    // ── New additions ───────────────────────────────────────────────────────
+    {
+      route: 'US → Europe (Business)', detail: 'Lufthansa / United Business via Turkish Miles&Smiles',
+      ptsNeeded: '45,000', estCash: '$4,500+', cpp: '10.0¢',
+      cards: ['Citi TY', 'Cap1 Miles'], programs: ['Turkish Miles&Smiles'], category: 'flight',
+      note: 'Turkish prices transatlantic Star Alliance business at just 45K miles one-way — a fraction of what United or Lufthansa charge their own members. No fuel surcharges. Search on turkishairlines.com.',
+      isNew: true,
+    },
+    {
+      route: 'US → Hong Kong (Business)', detail: 'Cathay Pacific Business via Alaska MileagePlan',
+      ptsNeeded: '50,000', estCash: '$5,000+', cpp: '10.0¢',
+      cards: ['Amex MR', 'Chase UR', 'Cap1 Miles'], programs: ['Alaska MileagePlan'], category: 'flight',
+      note: 'Alaska MileagePlan prices Cathay Pacific Business from the US West Coast to HKG at only 50K miles one-way. No fuel surcharges. Book via alaska.com with Cathay availability.',
+      isNew: true,
+    },
+    {
+      route: 'US → Tokyo (First)', detail: 'JAL First Class via American AAdvantage',
+      ptsNeeded: '60,000', estCash: '$10,000+', cpp: '16.7¢',
+      cards: ['Bilt'], programs: ['American AAdvantage'], category: 'flight',
+      note: 'JAL First Class is one of the most sought-after products in the sky. AAdvantage prices it at 60K one-way from the US West Coast. Release is very limited — search up to 11 months out.',
+      isNew: true,
+    },
+    {
+      route: 'US → Taipei / SE Asia (Business)', detail: 'EVA Royal Laureate via Air Canada Aeroplan',
+      ptsNeeded: '55,000', estCash: '$5,500+', cpp: '10.0¢',
+      cards: ['Amex MR', 'Chase UR', 'Cap1 Miles', 'Bilt'], programs: ['Air Canada Aeroplan'], category: 'flight',
+      note: 'EVA\'s Royal Laureate Business is a hidden gem — lie-flat seats with excellent service and great availability. Aeroplan prices it without fuel surcharges at 55K from North America.',
+      isNew: true,
+    },
   ];
 
   // ── Transfer bonuses ─────────────────────────────────────────────────────
@@ -623,6 +652,24 @@ export class DataService {
       to: 'Air Canada Aeroplan', toIcon: '🍁',
       bonus: '25% bonus', expires: '2026-08-31',
       note: 'Aeroplan is the most flexible Star Alliance program. This bonus gives extra leverage on every redemption.',
+    },
+    {
+      from: 'Chase UR', fromId: 'chase_ur',
+      to: 'World of Hyatt', toIcon: '🏨',
+      bonus: '25% bonus', expires: '2026-07-31',
+      note: 'Chase → Hyatt bonus boosts your hotel redemption value. Great timing before summer travel season.',
+    },
+    {
+      from: 'Bilt', fromId: 'bilt',
+      to: 'Air Canada Aeroplan', toIcon: '🍁',
+      bonus: '20% bonus', expires: '2026-09-15',
+      note: 'Bilt → Aeroplan bonus adds extra value on top of Aeroplan\'s already partner-rich award chart.',
+    },
+    {
+      from: 'Citi TY', fromId: 'citi_ty',
+      to: 'Air France/KLM Flying Blue', toIcon: '🇫🇷',
+      bonus: '20% bonus', expires: '2026-06-15',
+      note: 'Citi ThankYou → Flying Blue bonus pairs perfectly with Flying Blue Promo Awards for maximum value.',
     },
   ];
 }

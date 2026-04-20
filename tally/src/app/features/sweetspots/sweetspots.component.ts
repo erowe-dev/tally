@@ -6,7 +6,7 @@ import { WalletService } from '../../core/services/wallet.service';
 import { SweetSpot, TransferBonus } from '../../core/models';
 import { NavigationService } from '../../core/services/navigation.service';
 
-type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'saved' | 'covered';
+type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'new' | 'saved' | 'covered';
 type SortMode = 'default' | 'cpp' | 'pts';
 const FAV_KEY = 'tally_sweetspot_favs_v1';
 
@@ -117,6 +117,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
             {{ isFav(spotKey(s)) ? '★' : '☆' }}
           </button>
           <div class="category-badge">{{ categoryLabel(s.category) }}</div>
+          <div class="new-badge" *ngIf="s.isNew">✦ New</div>
           <div class="spot-route" [innerHTML]="formatRoute(s.route)"></div>
           <div class="spot-detail">{{ s.detail.toUpperCase() }}</div>
           <div class="spot-stats">
@@ -173,6 +174,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
         <p>{{
           activeFilter() === 'saved' ? 'No saved spots yet — star a spot to save it.' :
           activeFilter() === 'covered' ? 'Add balances in Wallet to see which spots you can afford.' :
+          activeFilter() === 'new' ? 'No new spots at the moment — check back soon.' :
           searchRaw ? 'No spots match your search.' :
           'No spots match this filter.'
         }}</p>
@@ -413,6 +415,15 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       cursor: pointer; text-decoration: underline; padding: 8px; margin-top: 4px;
     }
 
+    /* "New" badge on recently added spots */
+    .new-badge {
+      position: absolute; top: 36px; right: 14px;
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2);
+      color: var(--tally-green); border-radius: 4px; padding: 2px 6px;
+    }
+
     /* Favorites button on each card */
     .fav-btn {
       position: absolute; top: 12px; left: 14px;
@@ -464,6 +475,7 @@ export class SweetspotsComponent {
     { id: 'flight',  label: '✈ Flights' },
     { id: 'hotel',   label: '🏨 Hotels' },
     { id: 'promo',   label: '⚡ Promos' },
+    { id: 'new',     label: '✦ New' },
     { id: 'covered', label: '✓ Can Afford' },
     { id: 'saved',   label: '★ Saved' },
   ];
@@ -478,6 +490,7 @@ export class SweetspotsComponent {
     let spots: SweetSpot[];
     if (f === 'saved')   spots = this.data.sweetSpots.filter(s => favs.has(this.spotKey(s)));
     else if (f === 'covered') spots = this.data.sweetSpots.filter(s => this.canAfford(s));
+    else if (f === 'new') spots = this.data.sweetSpots.filter(s => s.isNew);
     else if (f === 'all') spots = [...this.data.sweetSpots];
     else spots = this.data.sweetSpots.filter(s => s.category === f);
 
