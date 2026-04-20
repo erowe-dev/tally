@@ -26,7 +26,7 @@ import { CreditCard, TransferBonus } from '../../core/models';
       <!-- Loading shimmer -->
       <ng-container *ngIf="wallet.syncState() === 'loading'">
         <div class="wallet-list">
-          <div class="shimmer-row" *ngFor="let n of [1,2,3,4,5]"></div>
+          <div class="shimmer-row shimmer-skeleton" *ngFor="let n of [1,2,3,4,5]"></div>
         </div>
       </ng-container>
 
@@ -334,29 +334,11 @@ import { CreditCard, TransferBonus } from '../../core/models';
     </div>
   `,
   styles: [`
-    /* Sync status pill */
-    .sync-pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-family: 'Geist Mono', monospace; font-size: 10px;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      padding: 4px 10px; border-radius: 20px;
-      border: 1px solid var(--border); margin-bottom: 20px;
-      color: var(--text3); background: var(--surface);
-      transition: all 0.3s;
-    }
-    .sync-pill.synced { border-color: rgba(26,122,74,0.3); color: var(--tally-green); background: var(--tally-green-light); }
-    .sync-pill.error  { border-color: rgba(220,38,38,0.3); color: var(--tally-red); background: var(--tally-red-light); }
-    .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-    .sync-pill.loading .sync-dot { animation: pulse 1.2s ease-in-out infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+    /* Sync status pill — base in styles.scss */
+    .sync-pill { margin-bottom: 20px; }
 
-    /* Shimmer */
-    .shimmer-row {
-      height: 64px; border-radius: 14px; margin-bottom: 10px;
-      background: linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%);
-      background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite;
-    }
-    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    /* Shimmer — base animation in styles.scss .shimmer-skeleton */
+    .shimmer-row { height: 64px; margin-bottom: 10px; }
 
     /* Program groups */
     .program-group { margin-bottom: 20px; }

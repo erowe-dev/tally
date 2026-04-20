@@ -49,7 +49,7 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
 
       <!-- Loading shimmer -->
       <div *ngIf="expiry.syncState() === 'loading'" class="shimmer-list">
-        <div class="shimmer-card" *ngFor="let n of [1,2,3]"></div>
+        <div class="shimmer-card shimmer-skeleton" *ngFor="let n of [1,2,3]"></div>
       </div>
 
       <ng-container *ngIf="expiry.syncState() !== 'loading'">
@@ -229,31 +229,9 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
     }
     .filter-held-btn.active { border-color: var(--tally-amber, #d97706); color: var(--tally-amber, #d97706); background: rgba(217,119,6,0.07); }
 
-    /* Sync status pill */
-    .sync-pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-family: 'Geist Mono', monospace; font-size: 10px;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      padding: 4px 10px; border-radius: 20px;
-      border: 1px solid var(--border);
-      color: var(--text3); background: var(--surface);
-      transition: all 0.3s;
-    }
-    .sync-pill.synced { border-color: rgba(26,122,74,0.3); color: var(--tally-green); background: var(--tally-green-light); }
-    .sync-pill.error  { border-color: rgba(220,38,38,0.3); color: var(--tally-red); background: var(--tally-red-light); }
-    .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-    .sync-pill.loading .sync-dot { animation: pulse 1.2s ease-in-out infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
-
-    /* Shimmer loading */
+    /* Shimmer loading — base animation in styles.scss .shimmer-skeleton */
     .shimmer-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-    .shimmer-card {
-      height: 100px; border-radius: 14px;
-      background: linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%);
-      background-size: 200% 100%;
-      animation: shimmer 1.4s ease-in-out infinite;
-    }
-    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .shimmer-card { height: 100px; }
 
     .alert-banner {
       display: flex; align-items: flex-start; gap: 12px;

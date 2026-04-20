@@ -57,3 +57,30 @@ body { font-family: 'Geist', system-ui, sans-serif; background: var(--off); colo
   line-height: 1.15; color: var(--text); margin-bottom: 24px;
 }
 .section-title em { font-style: italic; color: var(--tally-green); }
+
+/* ── Shared sync-state pill ─────────────────────────────────────────────── */
+.sync-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'Geist Mono', monospace; font-size: 10px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 20px;
+  border: 1px solid var(--border);
+  color: var(--text3); background: var(--surface);
+  transition: all 0.3s;
+}
+.sync-pill.synced { border-color: rgba(26,122,74,0.3); color: var(--tally-green); background: var(--tally-green-light); }
+.sync-pill.error  { border-color: rgba(220,38,38,0.3); color: var(--tally-red); background: var(--tally-red-light); }
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.sync-pill.loading .sync-dot { animation: tally-pulse 1.2s ease-in-out infinite; }
+
+/* ── Shared animations ──────────────────────────────────────────────────── */
+@keyframes tally-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+@keyframes tally-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── Shared shimmer skeleton ────────────────────────────────────────────── */
+.shimmer-skeleton {
+  border-radius: 14px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: tally-shimmer 1.4s ease-in-out infinite;
+}

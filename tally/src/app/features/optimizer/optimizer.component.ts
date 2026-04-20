@@ -18,6 +18,180 @@ const ROUTE_HISTORY_KEY = 'tally_route_history_v1';
 const MAX_ROUTE_HISTORY = 5;
 const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
 
+const ROUTE_LABELS: Record<string, string> = {
+  transatlantic: 'US ↔ Europe',
+  transpacific:  'US ↔ Asia/Pacific',
+  hawaii:        'Mainland US ↔ Hawaii',
+  domestic:      'US Domestic',
+  latin_america: 'US ↔ Latin America',
+  caribbean:     'US ↔ Caribbean',
+  middle_east:   'US ↔ Middle East',
+  africa:        'US ↔ Africa',
+  eurasia:       'Europe ↔ Asia',
+  default:       'Worldwide',
+};
+
+const ROUTE_TIPS: Partial<Record<string, string>> = {
+  transatlantic: 'Book transatlantic Business Class 330–355 days out. Most programs open exactly 11 months from departure.',
+  transpacific:  'ANA awards require round-trip bookings. Japan award space opens at midnight JST.',
+  hawaii:        'Alaska MileagePlan is the best deal for Hawaii (only Bilt transfers). Avios distance-based pricing helps for short Mainland hops.',
+  domestic:      'British Airways Avios is distance-based — short hops under 650 miles can be as low as 4,500 Avios.',
+  latin_america: 'LifeMiles prices South American routes well. Watch for 30% transfer bonuses from Citi/Cap1.',
+  caribbean:     'Avios Web Specials from AA drop Tuesdays. Caribbean routes are often just 15K Avios economy.',
+  middle_east:   'Aeroplan books Emirates and Qatar without fuel surcharges. Open-jaw DXB/DOH works on the same ticket.',
+  africa:        'Aeroplan prices Star Alliance to Africa without surcharges. Ethiopian Airlines serves most of sub-Saharan Africa.',
+  eurasia:       'Turkish Miles&Smiles prices Europe→Asia Star Alliance Business at some of the lowest rates available.',
+  default:       'Transfer bonuses can boost your miles by 20–40% — always check before moving any points.',
+};
+
+/** Module-level const — no per-instance allocation */
+const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
+  'ANA Mileage Club': {
+    steps: [
+      'Transfer Amex MR → ANA at 1:1 (allow 3–5 business days to post)',
+      'Go to anamileageclub.com → Book Award Travel',
+      'Enter round-trip route — ANA requires round-trip for partner awards',
+      'Call ANA at 1-800-235-9262 for award space not shown online',
+    ],
+    url: 'anamileageclub.com',
+  },
+  'Turkish Miles&Smiles': {
+    steps: [
+      'Transfer Citi TY or Capital One → Turkish Miles&Smiles (1:1)',
+      'Go to turkishairlines.com → Miles&Smiles → Search Award Tickets',
+      'Try at midnight Turkey time (UTC+3) — inventory often refreshes then',
+      'Call Turkish at 1-800-874-8875 if online booking fails',
+    ],
+    url: 'turkishairlines.com/en-us/miles-and-smiles/miles-award-tickets',
+  },
+  'Air Canada Aeroplan': {
+    steps: [
+      'Transfer Amex MR, Chase UR, Cap1, or Bilt → Aeroplan (1:1)',
+      'Book at aircanada.com or the Air Canada app',
+      'Select "Aeroplan Points" as payment when searching flights',
+      'Aeroplan allows open-jaws and stopovers across all Star Alliance carriers',
+    ],
+    url: 'aircanada.com',
+  },
+  'Singapore KrisFlyer': {
+    steps: [
+      'Transfer Amex MR, Chase UR, Citi TY, or Cap1 → KrisFlyer (1:1)',
+      'Log in at singaporeair.com → Book with KrisFlyer miles',
+      'For Suites: search 3.5 days before departure for last-minute releases',
+      'No fuel surcharges when flying Singapore Airlines metal',
+    ],
+    url: 'singaporeair.com',
+  },
+  'Virgin Atlantic Flying Club': {
+    steps: [
+      'Transfer Amex MR, Chase UR, or Citi TY → Virgin Atlantic (1:1)',
+      'Log in at virginatlantic.com → Redeem Miles → Flights',
+      'For ANA awards: call Virgin at 1-800-862-8621 (online booking unavailable)',
+      'For Delta One: search on virgin\'s site — online booking works',
+    ],
+    url: 'virginatlantic.com',
+  },
+  'Air France/KLM Flying Blue': {
+    steps: [
+      'Transfer Amex MR, Chase UR, Citi TY, or Cap1 → Flying Blue (1:1)',
+      'Go to airfranceklm.com → Flying Blue → Search Award Tickets',
+      'Promo Awards (25–50% off) publish on the 1st of each month',
+      'No change fees on award tickets — very flexible program',
+    ],
+    url: 'airfranceklm.com',
+  },
+  'British Airways Avios': {
+    steps: [
+      'Transfer Amex MR, Chase UR, or Cap1 → British Airways (1:1)',
+      'Go to britishairways.com → Spend Avios → Flights',
+      'Distance-based pricing: short hops can be as low as 4,500 Avios one-way',
+      'Works on AA, Iberia, Alaska, and BA metal',
+    ],
+    url: 'britishairways.com',
+  },
+  'Alaska MileagePlan': {
+    steps: [
+      'Transfer Bilt → Alaska MileagePlan (1:1) — only Bilt transfers to Alaska',
+      'Search at alaskaair.com → Find Award Flights → partner airlines',
+      'Cathay Pacific and JAL: search on Alaska\'s site for partner availability',
+      'JAL First/Business opens 11 days before departure — set a reminder',
+    ],
+    url: 'alaskaair.com',
+  },
+  'World of Hyatt': {
+    steps: [
+      'Transfer Chase UR or Bilt → Hyatt (1:1 — instant)',
+      'Go to hyatt.com → Find & Book → toggle Use Points',
+      'Book 13 months ahead for best availability at top properties',
+      'Park Hyatt and Alila properties offer the best CPP',
+    ],
+    url: 'hyatt.com',
+  },
+  'Marriott Bonvoy': {
+    steps: [
+      'Transfer Amex MR, Chase UR, or Bilt → Bonvoy (Amex: 1:3 + 5K bonus per 60K)',
+      'Book at marriott.com → Redeem Points',
+      'Book 5-night stays to get the 5th night free (20% effective discount)',
+      'Off-peak pricing applies — check the calendar for cheaper windows',
+    ],
+    url: 'marriott.com',
+  },
+  'Avianca LifeMiles': {
+    steps: [
+      'Transfer Citi TY or Capital One → Avianca LifeMiles (1:1)',
+      'Go to lifemiles.com → Redeem → Flights',
+      'Watch for transfer bonuses — Avianca runs them several times per year',
+      'Star Alliance Business to South America is priced well here',
+    ],
+    url: 'lifemiles.com',
+  },
+  'United MileagePlus': {
+    steps: [
+      'Transfer Chase UR or Bilt → United MileagePlus (1:1 — instant)',
+      'Find awards at united.com → Find Award Travel',
+      'Lufthansa First Class: book 14 days before departure (inventory holds)',
+      'United Excursionist Perk: free one-way within a region on round-trips',
+    ],
+    url: 'united.com/en/us/book/award-travel',
+  },
+  'American AAdvantage': {
+    steps: [
+      'Transfer Bilt → AAdvantage (1:1 — instant); only Bilt partners with AA',
+      'Book at aa.com → Book Award Travel',
+      'Web Special awards (discounted) drop on Tuesdays — check aa.com/awardmaps',
+      'For Qantas Business: search "Q class" or call 1-800-882-8880',
+    ],
+    url: 'aa.com/loyalty/home.do',
+  },
+  'Southwest Rapid Rewards': {
+    steps: [
+      'Transfer Chase UR → Southwest Rapid Rewards (1:1)',
+      'Book at southwest.com → Reward travel',
+      'All fares are bookable with points — price in points tracks cash price',
+      'Companion Pass (135K points/year) makes every booking 2-for-1',
+    ],
+    url: 'southwest.com/rapidrewards/rapid-rewards-member-benefits',
+  },
+  'Hilton Honors': {
+    steps: [
+      'Transfer Amex MR → Hilton Honors (1:2 ratio)',
+      'Book at hilton.com → toggle Use points',
+      'Book 5 nights with points to get the 5th night free (20% discount)',
+      'Best value: Conrad and Waldorf properties in aspirational destinations',
+    ],
+    url: 'hilton.com/en/hilton-honors/redeem',
+  },
+  'IHG One Rewards': {
+    steps: [
+      'Transfer Chase UR → IHG One Rewards (1:1)',
+      'Book at ihg.com → Pay with points',
+      'IHG Premier card annual free night cert is worth $200–400 — use it first',
+      'Best value: InterContinental and Kimpton boutique properties',
+    ],
+    url: 'ihg.com/rewardsclub/gb/en/redeem',
+  },
+};
+
 @Component({
   selector: 'tally-optimizer',
   standalone: true,
@@ -943,28 +1117,14 @@ export class OptimizerComponent implements OnChanges {
     return recs;
   });
 
-  private static readonly ROUTE_TIPS: Partial<Record<string, string>> = {
-    transatlantic: 'Book transatlantic Business Class awards 330–355 days out for the widest selection. Most programs open exactly 11 months from departure.',
-    transpacific:  'ANA awards require round-trip bookings — plan your return itinerary before searching. Japan award space opens at midnight JST.',
-    hawaii:        'Alaska MileagePlan is the best deal for Hawaii (only Bilt transfers). Avios distance-based pricing can be ultra-cheap for short Mainland hops.',
-    domestic:      'British Airways Avios is distance-based — short hops under 650 miles can be as low as 4,500 Avios. Great for ORD→BOS, LAX→SFO, etc.',
-    latin_america: 'LifeMiles prices South American routes well. Watch for periodic 30% transfer bonuses from Citi/Cap1 — stack the bonus for maximum value.',
-    caribbean:     'Avios Web Specials from AA drop Tuesdays — check aa.com/awardmaps weekly. Caribbean routes are often just 15K Avios economy.',
-    middle_east:   'Aeroplan books Emirates and Qatar without fuel surcharges — a rare privilege. Open-jaw DXB/DOH works on the same ticket.',
-    africa:        'Aeroplan prices Star Alliance to Africa without surcharges. Ethiopian Airlines (Star Alliance) serves most of sub-Saharan Africa.',
-    eurasia:       'Turkish Miles&Smiles prices Europe→Asia Star Alliance Business at some of the lowest rates available. Call Turkish to book if the site shows no space.',
-    default:       'Transfer bonuses can boost your miles by 20–40% — always check transferbonus.com before moving any points.',
-  };
-
   /** Route-specific insider tip shown below results */
   readonly routeTip = computed((): string | null => {
     if (!this.analyzed() || !this.results().length) return null;
-    // Find the raw category key from the route label
     const label = this.routeLabel();
-    for (const [key, lbl] of Object.entries(OptimizerComponent.ROUTE_LABELS)) {
-      if (lbl === label) return OptimizerComponent.ROUTE_TIPS[key] ?? null;
+    for (const [key, lbl] of Object.entries(ROUTE_LABELS)) {
+      if (lbl === label) return ROUTE_TIPS[key] ?? null;
     }
-    return OptimizerComponent.ROUTE_TIPS['default'] ?? null;
+    return ROUTE_TIPS['default'] ?? null;
   });
 
   /** True when user entered airport codes but they didn't match any route category */
@@ -974,29 +1134,15 @@ export class OptimizerComponent implements OnChanges {
     const from = this.fromCity.trim().toUpperCase();
     const to   = this.toCity.trim().toUpperCase();
     if (!from || !to) return false;
-    // If route label is empty (default category) and user entered codes, note it
     return !this.routeLabel() || this.routeLabel() === 'Worldwide';
   });
-
-  private static readonly ROUTE_LABELS: Record<string, string> = {
-    transatlantic: 'US ↔ Europe',
-    transpacific:  'US ↔ Asia/Pacific',
-    hawaii:        'Mainland US ↔ Hawaii',
-    domestic:      'US Domestic',
-    latin_america: 'US ↔ Latin America',
-    caribbean:     'US ↔ Caribbean',
-    middle_east:   'US ↔ Middle East',
-    africa:        'US ↔ Africa',
-    eurasia:       'Europe ↔ Asia',
-    default:       'Worldwide',
-  };
 
   analyze(): void {
     let recs: Recommendation[];
     if (this.tripType() === 'flight') {
       const result = this.optimizer.getFlightRecs(this.fromCity, this.toCity, this.cabin, this.passengers);
       recs = result.recs;
-      this.routeLabel.set(OptimizerComponent.ROUTE_LABELS[result.category] ?? '');
+      this.routeLabel.set(ROUTE_LABELS[result.category] ?? '');
     } else {
       recs = this.optimizer.getHotelRecs(this.hotelCategory, this.hotelNights);
       this.routeLabel.set('');
@@ -1322,160 +1468,8 @@ export class OptimizerComponent implements OnChanges {
     }).catch(() => {/* silent fail */});
   }
 
-  private readonly HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
-    'ANA Mileage Club': {
-      steps: [
-        'Transfer Amex MR → ANA at 1:1 (allow 3–5 business days to post)',
-        'Go to anamileageclub.com → Book Award Travel',
-        'Enter round-trip route — ANA requires round-trip for partner awards',
-        'If online is sold out, call ANA at 1-800-235-9262 and ask for Star Alliance award space',
-      ],
-      url: 'anamileageclub.com',
-    },
-    'Turkish Miles&Smiles': {
-      steps: [
-        'Transfer Citi TY or Capital One → Turkish Airlines Miles&Smiles (1:1)',
-        'Go to turkishairlines.com → Miles&Smiles → Search Award Tickets',
-        'Tip: Try at midnight Turkey time (UTC+3) — inventory often refreshes then',
-        'If online booking fails, call Turkish at 1-800-874-8875 and request the award',
-      ],
-      url: 'turkishairlines.com/en-us/miles-and-smiles/miles-award-tickets',
-    },
-    'Air Canada Aeroplan': {
-      steps: [
-        'Transfer points from any linked program (Amex MR, Chase UR, Cap1, Bilt) at 1:1',
-        'Go to aircanada.com or open the Air Canada app',
-        'Select "Aeroplan Points" as payment method when searching flights',
-        'Aeroplan allows open-jaw and stopovers — mix airlines freely (Star Alliance + partners)',
-      ],
-      url: 'aircanada.com',
-    },
-    'Singapore KrisFlyer': {
-      steps: [
-        'Transfer Amex MR, Chase UR, Citi TY, or Cap1 → KrisFlyer (1:1)',
-        'Log in at singaporeair.com → Book with KrisFlyer miles',
-        'For Suites class: search 3.5 days before departure — last-minute inventory often drops',
-        'No fuel surcharges when booking on Singapore Airlines metal',
-      ],
-      url: 'singaporeair.com',
-    },
-    'Virgin Atlantic Flying Club': {
-      steps: [
-        'Transfer Amex MR, Chase UR, or Citi TY → Virgin Atlantic (1:1)',
-        'Log in at virginatlantic.com → Redeem Miles → Flights',
-        'For ANA bookings: call Virgin at 1-800-862-8621 (cannot book ANA online)',
-        'For Delta One: search on virgin\'s site — online booking works for Delta',
-      ],
-      url: 'virginatlantic.com',
-    },
-    'Air France/KLM Flying Blue': {
-      steps: [
-        'Transfer Amex MR, Chase UR, Citi TY, or Cap1 → Flying Blue (1:1)',
-        'Go to airfranceklm.com → Flying Blue → Search Award Tickets',
-        'Promo Awards (25–50% off) publish monthly — check on the 1st of each month',
-        'No change fees on award tickets — very flexible program',
-      ],
-      url: 'airfranceklm.com',
-    },
-    'British Airways Avios': {
-      steps: [
-        'Transfer Amex MR, Chase UR, or Cap1 → British Airways (1:1)',
-        'Go to britishairways.com → Spend Avios → Flights',
-        'For AA/Iberia/Alaska metal: pricing is distance-based — calculate at ba.com',
-        'Short-haul hops (e.g., ORD→BOS) can cost as little as 4,500 Avios one-way',
-      ],
-      url: 'britishairways.com',
-    },
-    'Alaska MileagePlan': {
-      steps: [
-        'Transfer Bilt → Alaska MileagePlan (1:1) — only Bilt transfers to Alaska',
-        'Go to alaskaair.com → Find Award Flights',
-        'For Cathay Pacific and JAL: search on alaskaair.com → partner airlines',
-        'JAL First/Business awards open 11 days before departure — set a reminder',
-      ],
-      url: 'alaskaair.com',
-    },
-    'World of Hyatt': {
-      steps: [
-        'Transfer Chase UR or Bilt → Hyatt (1:1 — instant transfer)',
-        'Go to hyatt.com → Find & Book → Use Points toggle',
-        'Book exactly 13 months ahead for best availability at top properties',
-        'Park Hyatt and Alila properties have the best CPP in the portfolio',
-      ],
-      url: 'hyatt.com',
-    },
-    'Marriott Bonvoy': {
-      steps: [
-        'Transfer Amex MR, Chase UR, or Bilt → Bonvoy (Amex: 1:3 including a 5K bonus every 60K)',
-        'Go to marriott.com → Redeem Points',
-        'Always book 5-night stays to get the 5th night free (effective 20% discount)',
-        'Off-peak pricing applies — check calendar for cheaper point windows',
-      ],
-      url: 'marriott.com',
-    },
-    'Avianca LifeMiles': {
-      steps: [
-        'Transfer Citi TY or Capital One → Avianca LifeMiles (1:1)',
-        'Go to lifemiles.com → Redeem → Flights',
-        'Watch for transfer bonuses — Avianca runs them several times per year',
-        'Star Alliance Business Class to South America is priced well here',
-      ],
-      url: 'lifemiles.com',
-    },
-    'United MileagePlus': {
-      steps: [
-        'Transfer Chase UR or Bilt → United MileagePlus (1:1 — instant)',
-        'Go to united.com → Find Award Travel',
-        'For Lufthansa First Class: book 14 days before departure (inventory holds back until then)',
-        'United Excursionist Perk: get a free one-way within a region on round-trip itineraries',
-      ],
-      url: 'united.com/en/us/book/award-travel',
-    },
-    'American AAdvantage': {
-      steps: [
-        'Transfer Bilt → AAdvantage (1:1 — instant); no other transferable currency partners AA',
-        'Go to aa.com → Book Award Travel',
-        'Web Special awards (discounted) drop on Tuesdays — check aa.com/awardmaps weekly',
-        'For Qantas Business: search "Q class" on AA.com or call 1-800-882-8880',
-      ],
-      url: 'aa.com/loyalty/home.do',
-    },
-    'Southwest Rapid Rewards': {
-      steps: [
-        'Transfer Chase UR → Southwest Rapid Rewards (1:1)',
-        'Go to southwest.com → Book → Reward travel',
-        'All fares are bookable with points — price in points tracks cash price',
-        'Companion Pass (135K points in a year) makes every booking 2-for-1',
-      ],
-      url: 'southwest.com/rapidrewards/rapid-rewards-member-benefits',
-    },
-    'Hilton Honors': {
-      steps: [
-        'Transfer Amex MR → Hilton Honors (1:2 ratio)',
-        'Go to hilton.com → Book → Use points toggle',
-        'Book 5 nights with points to get the 5th night free (20% effective discount)',
-        'Best value: Conrad and Waldorf properties in aspirational destinations',
-      ],
-      url: 'hilton.com/en/hilton-honors/redeem',
-    },
-    'IHG One Rewards': {
-      steps: [
-        'Transfer Chase UR → IHG One Rewards (1:1)',
-        'Go to ihg.com → Book → Pay with points',
-        'IHG Premier cardholders get a free night cert every anniversary — use it first',
-        'Best value: InterContinental and Kimpton boutique properties',
-      ],
-      url: 'ihg.com/rewardsclub/gb/en/redeem',
-    },
-  };
-
-  getHowToSteps(program: string): string[] {
-    return this.HOW_TO_BOOK[program]?.steps ?? [];
-  }
-
-  getBookingUrl(program: string): string | null {
-    return this.HOW_TO_BOOK[program]?.url ?? null;
-  }
+  getHowToSteps(program: string): string[] { return HOW_TO_BOOK[program]?.steps ?? []; }
+  getBookingUrl(program: string): string | null { return HOW_TO_BOOK[program]?.url ?? null; }
 
   toggleHowTo(program: string): void {
     this.expandedHowTo.update(cur => cur === program ? null : program);
