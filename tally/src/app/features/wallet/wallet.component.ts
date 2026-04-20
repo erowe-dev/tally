@@ -6,7 +6,7 @@ import { DataService } from '../../core/services/data.service';
 import { OptimizerService } from '../../core/services/optimizer.service';
 import { ExpiryService } from '../../core/services/expiry.service';
 import { NavigationService } from '../../core/services/navigation.service';
-import { CreditCard } from '../../core/models';
+import { CreditCard, TransferBonus } from '../../core/models';
 
 @Component({
   selector: 'tally-wallet',
@@ -247,6 +247,64 @@ import { CreditCard } from '../../core/models';
             <polyline [attr.points]="sparklinePoints()!" fill="none" stroke="currentColor"
               stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
+        </div>
+
+        <!-- Transfer Value Calculator -->
+        <div class="transfer-calc" *ngIf="heldCards().length > 0">
+          <div class="tc-header">
+            <span class="tc-label">Transfer Calculator</span>
+            <button class="goal-toggle" (click)="showTransferCalc.set(!showTransferCalc())">
+              {{ showTransferCalc() ? 'Hide' : 'Show' }}
+            </button>
+          </div>
+          <ng-container *ngIf="showTransferCalc()">
+            <div class="tc-row">
+              <div class="tc-field">
+                <label class="field-label-sm">From</label>
+                <select class="sim-input tc-select" [(ngModel)]="tcSourceCardId"
+                  (ngModelChange)="tcDestPartner = ''">
+                  <option value="">— select —</option>
+                  <option *ngFor="let c of heldCards()" [value]="c.id">{{ c.name }}</option>
+                </select>
+              </div>
+              <div class="tc-field" *ngIf="tcSourceCardId">
+                <label class="field-label-sm">To partner</label>
+                <select class="sim-input tc-select" [(ngModel)]="tcDestPartner">
+                  <option value="">— select —</option>
+                  <option *ngFor="let p of tcSourcePartners()" [value]="p.name">
+                    {{ p.icon }} {{ p.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="tc-field" *ngIf="tcDestPartner">
+                <label class="field-label-sm">Points to transfer</label>
+                <input class="sim-input" type="number" inputmode="numeric"
+                  [(ngModel)]="tcAmount" placeholder="{{ wallet.getBalance(tcSourceCardId) | number }}"
+                  min="0" step="1000">
+              </div>
+            </div>
+            <div class="tc-result" *ngIf="tcCalcResult() as r">
+              <div class="tc-res-bonus" *ngIf="r.bonus">
+                ⚡ {{ r.bonus.bonus }} transfer bonus active → {{ r.bonus.to }}
+              </div>
+              <div class="tc-res-row">
+                <div class="tc-res-block">
+                  <span class="tc-res-val">{{ r.finalPoints | number }}</span>
+                  <span class="tc-res-key">{{ r.partner.name }} miles</span>
+                </div>
+                <div class="tc-res-sep">≈</div>
+                <div class="tc-res-block">
+                  <span class="tc-res-val tc-cash">\${{ r.cashValue | number }}</span>
+                  <span class="tc-res-key">est. cash value</span>
+                </div>
+                <div class="tc-res-block" *ngIf="r.bonusPct > 0">
+                  <span class="tc-res-val tc-bonus">+{{ r.bonusExtra | number }}</span>
+                  <span class="tc-res-key">bonus miles</span>
+                </div>
+              </div>
+              <div class="tc-res-cpp">at {{ r.partner.cpp }}¢/pt</div>
+            </div>
+          </ng-container>
         </div>
 
         <div class="maximize-btn-row">
@@ -661,6 +719,48 @@ import { CreditCard } from '../../core/models';
       font-family: 'Instrument Serif', serif; font-style: italic;
       font-size: 17px; color: var(--text2); line-height: 1.5;
     }
+
+    /* Transfer Calculator */
+    .transfer-calc { margin-bottom: 20px; }
+    .tc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .tc-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3);
+    }
+    .tc-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .tc-field { display: flex; flex-direction: column; gap: 4px; }
+    .tc-select { width: 100%; }
+    .tc-result {
+      background: var(--surface); border-radius: 12px;
+      padding: 14px 16px; animation: fadeIn 0.2s ease;
+    }
+    .tc-res-bonus {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.06em; color: var(--tally-amber, #d97706);
+      background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.2);
+      border-radius: 6px; padding: 4px 10px; margin-bottom: 12px;
+      display: inline-block;
+    }
+    .tc-res-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .tc-res-block { display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 1; min-width: 70px; }
+    .tc-res-sep { font-family: 'Geist Mono', monospace; font-size: 14px; color: var(--text3); }
+    .tc-res-val {
+      font-family: 'Geist Mono', monospace; font-size: 18px;
+      color: var(--tally-green); font-weight: 600;
+    }
+    .tc-res-val.tc-cash { color: var(--text); }
+    .tc-res-val.tc-bonus { color: var(--tally-amber, #d97706); font-size: 14px; }
+    .tc-res-key {
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      color: var(--text3); letter-spacing: 0.08em; text-align: center;
+    }
+    .tc-res-cpp {
+      margin-top: 8px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--text3); letter-spacing: 0.06em; text-align: center;
+    }
   `]
 })
 export class WalletComponent {
@@ -1020,4 +1120,52 @@ export class WalletComponent {
       default:         return null;
     }
   }
+
+  // ── Transfer Calculator ────────────────────────────────────────────────────
+  showTransferCalc = signal(false);
+  tcSourceCardId = '';
+  tcDestPartner = '';
+  tcAmount = 0;
+
+  /** Cards the user actually holds (non-zero balance) */
+  readonly heldCards = computed(() =>
+    this.data.cards.filter(c => this.wallet.getBalance(c.id) > 0)
+  );
+
+  /** Transfer partners for the currently selected source card */
+  readonly tcSourcePartners = computed(() => {
+    const card = this.data.cards.find(c => c.id === this.tcSourceCardId);
+    return card?.partners ?? [];
+  });
+
+  /** Full transfer calculation result, or null when inputs are incomplete */
+  readonly tcCalcResult = computed((): {
+    basePoints: number; bonusPct: number; bonusExtra: number;
+    finalPoints: number; cashValue: number;
+    partner: { name: string; icon: string; cpp: number };
+    bonus: TransferBonus | undefined;
+  } | null => {
+    const card = this.data.cards.find(c => c.id === this.tcSourceCardId);
+    const partnerName = this.tcDestPartner;
+    const amount = Number(this.tcAmount) || this.wallet.getBalance(this.tcSourceCardId);
+    if (!card || !partnerName || amount <= 0) return null;
+
+    const partner = card.partners.find(p => p.name === partnerName);
+    if (!partner) return null;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const bonus = this.data.transferBonuses?.find(b =>
+      b.fromId === card.id &&
+      b.expires >= today &&
+      (b.to.toLowerCase().includes(partnerName.toLowerCase().split('/')[0].trim()) ||
+       partnerName.toLowerCase().includes(b.to.toLowerCase().split('/')[0].trim()))
+    );
+
+    const bonusPct = bonus ? parseInt(bonus.bonus) / 100 : 0;
+    const bonusExtra = Math.floor(amount * bonusPct);
+    const finalPoints = amount + bonusExtra;
+    const cashValue = Math.round(finalPoints * partner.cpp / 100);
+
+    return { basePoints: amount, bonusPct, bonusExtra, finalPoints, cashValue, partner, bonus };
+  });
 }

@@ -81,6 +81,31 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
         </div>
       </div>
 
+      <!-- Activity stats bar -->
+      <div class="activity-stats" *ngIf="activityStats() as st">
+        <div class="as-item">
+          <span class="as-val">{{ st.total }}</span>
+          <span class="as-key">programs</span>
+        </div>
+        <div class="as-sep">·</div>
+        <div class="as-item">
+          <span class="as-val">{{ st.tracked }}</span>
+          <span class="as-key">with dates</span>
+        </div>
+        <div class="as-sep">·</div>
+        <div class="as-item">
+          <span class="as-val" [class.warn]="st.coveragePct < 50" [class.good]="st.coveragePct >= 80">
+            {{ st.coveragePct }}%
+          </span>
+          <span class="as-key">tracked</span>
+        </div>
+        <div class="as-sep" *ngIf="st.avgWindowMonths">·</div>
+        <div class="as-item" *ngIf="st.avgWindowMonths">
+          <span class="as-val">~{{ st.avgWindowMonths }}mo</span>
+          <span class="as-key">avg window</span>
+        </div>
+      </div>
+
       <!-- Status cards -->
       <div class="expiry-list">
         <div
@@ -403,6 +428,25 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
       border: 1px solid var(--border);
     }
     .expiry-footer p { font-size: 11px; color: var(--text3); line-height: 1.6; }
+
+    /* Activity stats bar */
+    .activity-stats {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 16px;
+    }
+    .as-item { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    .as-sep { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--border2); }
+    .as-val {
+      font-family: 'Geist Mono', monospace; font-size: 16px;
+      color: var(--text); font-weight: 600; line-height: 1;
+    }
+    .as-val.warn { color: var(--tally-amber, #d97706); }
+    .as-val.good { color: var(--tally-green); }
+    .as-key {
+      font-family: 'Geist Mono', monospace; font-size: 7px;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
+    }
   `]
 })
 export class ExpiryComponent {
@@ -499,6 +543,37 @@ export class ExpiryComponent {
   readonly calExportCount = computed(() =>
     this.expiry.statuses().filter(s => s.expiryDate !== null && s.urgency !== 'never').length
   );
+
+  /** Summary stats for the activity stats bar */
+  readonly activityStats = computed((): {
+    total: number; tracked: number; coveragePct: number; avgWindowMonths: number | null;
+  } | null => {
+    const statuses = this.expiry.statuses();
+    const records = this.expiry.records();
+    // Only count programs that actually expire (not 'never')
+    const expirable = statuses.filter(s => s.urgency !== 'never');
+    if (expirable.length === 0) return null;
+    const tracked = expirable.filter(s => s.daysRemaining !== null).length;
+    const coveragePct = Math.round((tracked / expirable.length) * 100);
+
+    // Infer average inactivity window from (expiryDate − lastActivityDate) for programs with dates
+    const windows: number[] = [];
+    for (const s of expirable) {
+      if (!s.expiryDate) continue;
+      const record = records[s.cardId];
+      if (!record) continue;
+      const [y, m, d] = record.lastActivityDate.split('-').map(Number);
+      const actDate = new Date(y, m - 1, d);
+      const months = (s.expiryDate.getFullYear() - actDate.getFullYear()) * 12
+        + (s.expiryDate.getMonth() - actDate.getMonth());
+      if (months > 0 && months <= 36) windows.push(months);
+    }
+    const avgWindowMonths = windows.length > 0
+      ? Math.round(windows.reduce((a, b) => a + b, 0) / windows.length)
+      : null;
+
+    return { total: expirable.length, tracked, coveragePct, avgWindowMonths };
+  });
 
   exportCalendar(): void {
     const lines: string[] = [
