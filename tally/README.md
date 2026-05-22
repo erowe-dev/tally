@@ -174,6 +174,8 @@ Production API responses include `X-Request-Id`; use that value to correlate bro
 
 Wallet and Expiry API reads also keep a one-hour localStorage read-through cache (`tally_cache_balances`, `tally_cache_expiry`) so first authenticated loads can fall back cleanly if the cross-origin API is temporarily unavailable.
 
+Wallet and Expiry writes keep pending-sync queues (`tally_wallet_pending_v1`, `tally_expiry_pending_v1`) so offline or failed edits are retried instead of being overwritten by older server data.
+
 ---
 
 ## Roadmap

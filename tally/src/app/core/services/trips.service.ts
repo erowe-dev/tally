@@ -40,8 +40,18 @@ export class TripsService {
             const localTrips = this.loadLocal();
             const localHasData = localTrips.length > 0;
             const apiIsEmpty = trips.length === 0;
+            const localOnlyTrips = localTrips.filter(t => t.id.startsWith('local_'));
 
-            if (apiIsEmpty && localHasData) {
+            if (localOnlyTrips.length > 0) {
+              const merged = [
+                ...localOnlyTrips,
+                ...trips.filter(apiTrip => !localTrips.some(localTrip => localTrip.id === apiTrip.id)),
+              ];
+              this._trips.set(merged);
+              this.saveLocal(merged);
+              this._syncState.set('synced');
+              this.pushLocalToApi(localOnlyTrips);
+            } else if (apiIsEmpty && localHasData) {
               this._trips.set(localTrips);
               this._syncState.set('synced');
               this.pushLocalToApi(localTrips);
@@ -87,7 +97,10 @@ export class TripsService {
           this._trips.set(current);
           this.saveLocal(current);
         },
-        error: _err => this.toast.error('Trip not saved — will retry when online'),
+        error: _err => {
+          this._apiLoaded = false;
+          this.toast.error('Trip not saved — will retry when online');
+        },
       });
     }
   }
@@ -170,7 +183,10 @@ export class TripsService {
           this._trips.set(current);
           this.saveLocal(current);
         },
-        error: err => console.error('[TripsService] Failed to push local trip to API:', err),
+        error: _err => {
+          this._apiLoaded = false;
+          this.toast.error('Trip not saved — will retry when online');
+        },
       });
     }
   }

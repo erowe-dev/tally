@@ -8,6 +8,7 @@ import { AnalyticsService } from './analytics.service';
 
 const STORAGE_KEY = 'tally_wallet_v1';
 const HISTORY_KEY = 'tally_wallet_history_v1';
+const PENDING_KEY = 'tally_wallet_pending_v1';
 const MAX_HISTORY = 30; // days
 
 export interface HistoryEntry { date: string; total: number; }
@@ -84,15 +85,23 @@ export class WalletService {
         this.api.getBalancesWithCache().subscribe({
           next: apiBalances => {
             const localBalances = this.loadLocal();
+            const pendingBalances = this.loadPending();
             const localHasData = Object.keys(localBalances).some(k => (localBalances[k] ?? 0) > 0);
             const apiIsEmpty = Object.keys(apiBalances).length === 0;
+            const hasPending = Object.keys(pendingBalances).length > 0;
 
-            if (apiIsEmpty && localHasData) {
+            if (hasPending) {
+              const merged = { ...apiBalances, ...pendingBalances };
+              this._balances.set(merged);
+              this.saveLocal(merged);
+              this._syncState.set('synced');
+              this._pushLocalToApi(pendingBalances, true);
+            } else if (apiIsEmpty && localHasData) {
               // First login with existing local data — push local state up to
               // the API rather than silently wiping the user's saved balances.
               this._balances.set(localBalances);
               this._syncState.set('synced');
-              this._pushLocalToApi(localBalances);
+              this._pushLocalToApi(localBalances, false);
             } else {
               // API has data (or both are empty) — API is source of truth.
               this._balances.set(apiBalances);
@@ -128,10 +137,12 @@ export class WalletService {
     this.saveLocal(updated);
     this.recordSnapshot(Object.values(updated).reduce((a, b) => a + b, 0));
     this.analytics.track('balance_updated', { card_id: cardId, non_zero: amount > 0 });
+    this.savePending(cardId, amount);
 
     // Fire-and-forget sync to API only after provisioning is confirmed and online
     if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.setBalance(cardId, amount).subscribe({
+        next: () => this.clearPending(cardId),
         error: _err => this.toast.error('Balance not saved — will retry when online'),
       });
     }
@@ -146,10 +157,15 @@ export class WalletService {
     return cardIds.some(id => (this._balances()[id] ?? 0) >= ptsRequired);
   }
 
-  private _pushLocalToApi(balances: Record<string, number>): void {
-    const entries = Object.entries(balances).filter(([, v]) => v > 0);
+  private _pushLocalToApi(balances: Record<string, number>, clearOnSuccess: boolean): void {
+    const entries = clearOnSuccess
+      ? Object.entries(balances)
+      : Object.entries(balances).filter(([, v]) => v > 0);
     for (const [cardId, amount] of entries) {
       this.api.setBalance(cardId, amount).subscribe({
+        next: () => {
+          if (clearOnSuccess) this.clearPending(cardId);
+        },
         error: _err => this.toast.error('Balance not saved — will retry when online'),
       });
     }
@@ -185,6 +201,33 @@ export class WalletService {
     } catch {
       // Storage unavailable — not a fatal error
     }
+  }
+
+  private loadPending(): Record<string, number> {
+    try {
+      const raw = localStorage.getItem(PENDING_KEY);
+      return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private savePending(cardId: string, amount: number): void {
+    try {
+      localStorage.setItem(PENDING_KEY, JSON.stringify({ ...this.loadPending(), [cardId]: amount }));
+    } catch {}
+  }
+
+  private clearPending(cardId: string): void {
+    try {
+      const pending = this.loadPending();
+      delete pending[cardId];
+      if (Object.keys(pending).length === 0) {
+        localStorage.removeItem(PENDING_KEY);
+      } else {
+        localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+      }
+    } catch {}
   }
 
   private loadHistory(): HistoryEntry[] {

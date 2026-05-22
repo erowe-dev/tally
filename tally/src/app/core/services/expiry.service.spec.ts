@@ -19,6 +19,7 @@ class MockNetworkService {
 
 describe('ExpiryService', () => {
   const STORAGE_KEY = 'tally_expiry_v1';
+  const PENDING_KEY = 'tally_expiry_pending_v1';
   let auth: MockAuthService;
   let network: MockNetworkService;
   let api: jasmine.SpyObj<ApiService>;
@@ -134,5 +135,33 @@ describe('ExpiryService', () => {
     expect(status?.expiryDate?.getFullYear()).toBe(2027);
     expect(status?.expiryDate?.getMonth()).toBe(10);
     expect(status?.expiryDate?.getDate()).toBe(18);
+  });
+
+  it('merges pending expiry writes over API data and clears them after sync', () => {
+    localStorage.setItem(PENDING_KEY, JSON.stringify({
+      upserts: {
+        citi_ty: { cardId: 'citi_ty', lastActivityDate: '2026-05-18' },
+      },
+      deletes: ['united_mp'],
+    }));
+    api.getExpiryRecordsWithCache.and.returnValue(of({
+      united_mp: { cardId: 'united_mp', lastActivityDate: '2026-04-01' },
+    }));
+    api.setExpiryRecord.and.returnValue(of({}));
+    api.deleteExpiryRecord.and.returnValue(of({}));
+    auth.isResolved.set(true);
+    auth.isAuthenticated.set(true);
+    auth.isProvisioned.set(true);
+
+    const service = createService();
+    TestBed.flushEffects();
+
+    expect(service.syncState()).toBe('synced');
+    expect(service.records()).toEqual({
+      citi_ty: { cardId: 'citi_ty', lastActivityDate: '2026-05-18' },
+    });
+    expect(api.setExpiryRecord).toHaveBeenCalledWith('citi_ty', '2026-05-18');
+    expect(api.deleteExpiryRecord).toHaveBeenCalledWith('united_mp');
+    expect(localStorage.getItem(PENDING_KEY)).toBeNull();
   });
 });

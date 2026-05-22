@@ -108,6 +108,7 @@ api/                                     ← Express API (Vercel API root dir)
 - `sweetSpots: SweetSpot[]` — 16 curated sweet spots with category filter
 - `transferBonuses: TransferBonus[]` — active time-limited transfer bonus promos (manually updated)
 - `localStorage` keys: `tally_wallet_v1`, `tally_expiry_v1`, `tally_trips_v1`
+- Pending sync keys: `tally_wallet_pending_v1`, `tally_expiry_pending_v1`; local-only saved trips use `local_` IDs until promoted
 - API read-through cache keys: `tally_cache_balances`, `tally_cache_expiry`
 - Always wrap `localStorage` in try/catch
 

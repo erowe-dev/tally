@@ -20,6 +20,7 @@ class MockNetworkService {
 
 describe('WalletService', () => {
   const STORAGE_KEY = 'tally_wallet_v1';
+  const PENDING_KEY = 'tally_wallet_pending_v1';
   let auth: MockAuthService;
   let network: MockNetworkService;
   let api: jasmine.SpyObj<ApiService>;
@@ -109,5 +110,22 @@ describe('WalletService', () => {
     expect(service.syncState()).toBe('synced');
     expect(service.balances()).toEqual({ chase_ur: 5000 });
     expect(api.getBalancesWithCache).toHaveBeenCalledTimes(2);
+  });
+
+  it('merges pending local balance writes over API data and clears them after sync', () => {
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ amex_mr: 0 }));
+    api.getBalancesWithCache.and.returnValue(of({ amex_mr: 12000, chase_ur: 5000 }));
+    api.setBalance.and.returnValue(of({}));
+    auth.isResolved.set(true);
+    auth.isAuthenticated.set(true);
+    auth.isProvisioned.set(true);
+
+    const service = createService();
+    TestBed.flushEffects();
+
+    expect(service.syncState()).toBe('synced');
+    expect(service.balances()).toEqual({ amex_mr: 0, chase_ur: 5000 });
+    expect(api.setBalance).toHaveBeenCalledWith('amex_mr', 0);
+    expect(localStorage.getItem(PENDING_KEY)).toBeNull();
   });
 });

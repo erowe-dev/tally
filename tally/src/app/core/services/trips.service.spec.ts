@@ -84,7 +84,7 @@ describe('TripsService', () => {
     expect(service.trips().length).toBe(1);
   });
 
-  it('uses API trips as source of truth when remote trips exist', () => {
+  it('keeps and promotes local-only trips when remote trips exist', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([
       {
         id: 'local_1',
@@ -110,6 +110,16 @@ describe('TripsService', () => {
         createdAt: '2026-05-18T00:00:00.000Z',
       },
     ]));
+    api.createTrip.and.returnValue(of({
+      id: 'server_2',
+      tripType: 'hotel',
+      destination: 'Tokyo',
+      hotelCat: 'mid',
+      nights: 3,
+      programName: 'World of Hyatt',
+      ptsRequired: 45000,
+      createdAt: '2026-05-18T00:00:00.000Z',
+    }));
     auth.isResolved.set(true);
     auth.isAuthenticated.set(true);
     auth.isProvisioned.set(true);
@@ -118,8 +128,8 @@ describe('TripsService', () => {
     TestBed.flushEffects();
 
     expect(service.syncState()).toBe('synced');
-    expect(service.trips()[0].id).toBe('server_1');
-    expect(api.createTrip).not.toHaveBeenCalled();
+    expect(service.trips().some(trip => trip.id === 'server_1')).toBeTrue();
+    expect(api.createTrip).toHaveBeenCalled();
   });
 
   it('keeps optimistic local trips when offline without calling the API', () => {
