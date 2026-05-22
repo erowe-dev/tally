@@ -99,16 +99,30 @@ export class OnboardingComponent {
   private wallet = inject(WalletService);
   private expiry = inject(ExpiryService);
 
-  dismissed = signal(!!localStorage.getItem(ONBOARDED_KEY));
+  dismissed = signal(!!this.safeLocalStorageGet(ONBOARDED_KEY));
 
   step1 = computed(() => this.wallet.hasAnyPoints());
   step2 = computed(() => Object.keys(this.expiry.records()).length > 0);
-  step3 = computed(() => !!localStorage.getItem(OPTIMIZER_KEY));
+  step3 = computed(() => !!this.safeLocalStorageGet(OPTIMIZER_KEY));
 
   allDone = computed(() => this.step1() && this.step2() && this.step3());
 
   dismiss(): void {
-    try { localStorage.setItem(ONBOARDED_KEY, '1'); } catch {}
+    this.safeLocalStorageSet(ONBOARDED_KEY, '1');
     this.dismissed.set(true);
+  }
+
+  private safeLocalStorageGet(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  private safeLocalStorageSet(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value);
+    } catch {}
   }
 }

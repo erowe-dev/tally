@@ -34,7 +34,11 @@ describe('WalletService', () => {
     localStorage.clear();
     auth = new MockAuthService();
     network = new MockNetworkService();
-    api = jasmine.createSpyObj<ApiService>('ApiService', ['getBalancesWithCache', 'setBalance']);
+    api = jasmine.createSpyObj<ApiService>('ApiService', [
+      'getBalancesWithCache',
+      'setBalance',
+      'cacheBalances',
+    ]);
     toast = jasmine.createSpyObj<ToastService>('ToastService', ['error']);
 
     TestBed.configureTestingModule({

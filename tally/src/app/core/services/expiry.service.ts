@@ -113,14 +113,8 @@ const EXPIRY_RULES: ExpiryRule[] = [
   {
     cardId: 'united_mp',
     programName: 'United MileagePlus',
-    expiryType: 'activity',
-    inactivityMonths: 18,
-    note: 'Miles expire after 18 months of account inactivity. Any earning or redemption resets the clock.',
-    quickActions: [
-      'Make a purchase on the United MileagePlus card',
-      'Shop via the MileagePlus Shopping portal',
-      'Book a hotel or car rental via United',
-    ],
+    expiryType: 'never',
+    note: 'United MileagePlus miles do not expire.',
   },
   {
     cardId: 'aa_aadvantage',
@@ -137,14 +131,8 @@ const EXPIRY_RULES: ExpiryRule[] = [
   {
     cardId: 'southwest_rr',
     programName: 'Southwest Rapid Rewards',
-    expiryType: 'activity',
-    inactivityMonths: 24,
-    note: 'Points expire after 24 months of inactivity. Any purchase on the Southwest card resets the clock.',
-    quickActions: [
-      'Make any purchase on the Southwest Rapid Rewards card',
-      'Shop via the Southwest Rapid Rewards Shopping portal',
-      'Book a hotel or car rental through Southwest',
-    ],
+    expiryType: 'never',
+    note: 'Southwest Rapid Rewards points do not expire.',
   },
   {
     cardId: 'alaska_mp',
@@ -211,7 +199,7 @@ const EXPIRY_RULES: ExpiryRule[] = [
 ];
 
 // Programs where expiry is "never" or tied to card-open status (no date needed)
-const SAFE_CARDS = new Set(['amex_mr', 'chase_ur', 'cap1_miles', 'delta_skymiles']);
+const SAFE_CARDS = new Set(['amex_mr', 'chase_ur', 'cap1_miles', 'delta_skymiles', 'united_mp', 'southwest_rr']);
 
 @Injectable({ providedIn: 'root' })
 export class ExpiryService {
@@ -290,6 +278,7 @@ export class ExpiryService {
               for (const cardId of pending.deletes) delete merged[cardId];
               this._records.set(merged);
               this.saveLocal(merged);
+              this.api.cacheExpiryRecords(merged);
               this._syncState.set('synced');
               this._pushPendingToApi(pending);
             } else if (apiIsEmpty && localHasData) {
@@ -334,13 +323,16 @@ export class ExpiryService {
     };
     this._records.set(updated);
     this.saveLocal(updated);
+    this.api.cacheExpiryRecords(updated);
     this.markPendingUpsert(cardId, date);
 
     if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.setExpiryRecord(cardId, date).subscribe({
         next: () => this.clearPendingUpsert(cardId),
-        error: _err => this.toast.error('Expiry date not saved — will retry when online'),
+        error: _err => this.markForRetry('Expiry date not saved — will retry when online'),
       });
+    } else if (this.auth.isProvisioned()) {
+      this.markForRetry();
     }
   }
 
@@ -349,20 +341,23 @@ export class ExpiryService {
     delete updated[cardId];
     this._records.set(updated);
     this.saveLocal(updated);
+    this.api.cacheExpiryRecords(updated);
     this.markPendingDelete(cardId);
 
     if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.deleteExpiryRecord(cardId).subscribe({
         next: () => this.clearPendingDelete(cardId),
-        error: _err => this.toast.error('Expiry date not deleted — will retry when online'),
+        error: _err => this.markForRetry('Expiry date not deleted — will retry when online'),
       });
+    } else if (this.auth.isProvisioned()) {
+      this.markForRetry();
     }
   }
 
   private _pushLocalToApi(records: Record<string, ExpiryRecord>): void {
     for (const { cardId, lastActivityDate } of Object.values(records)) {
       this.api.setExpiryRecord(cardId, lastActivityDate).subscribe({
-        error: _err => this.toast.error('Expiry date not saved — will retry when online'),
+        error: _err => this.markForRetry('Expiry date not saved — will retry when online'),
       });
     }
   }
@@ -371,16 +366,22 @@ export class ExpiryService {
     for (const { cardId, lastActivityDate } of Object.values(pending.upserts)) {
       this.api.setExpiryRecord(cardId, lastActivityDate).subscribe({
         next: () => this.clearPendingUpsert(cardId),
-        error: _err => this.toast.error('Expiry date not saved — will retry when online'),
+        error: _err => this.markForRetry('Expiry date not saved — will retry when online'),
       });
     }
 
     for (const cardId of pending.deletes) {
       this.api.deleteExpiryRecord(cardId).subscribe({
         next: () => this.clearPendingDelete(cardId),
-        error: _err => this.toast.error('Expiry date not deleted — will retry when online'),
+        error: _err => this.markForRetry('Expiry date not deleted — will retry when online'),
       });
     }
+  }
+
+  private markForRetry(message?: string): void {
+    this._apiLoaded = false;
+    this._syncState.set('error');
+    if (message) this.toast.error(message);
   }
 
   private computeStatus(rule: ExpiryRule, record: ExpiryRecord | undefined): ExpiryStatus {

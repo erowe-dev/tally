@@ -71,8 +71,8 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
       <div class="alert-banner warning" *ngIf="expiry.criticalCount() === 0 && expiry.warningCount() > 0">
         <span class="alert-icon">🔔</span>
         <div>
-          <div class="alert-title">{{ expiry.warningCount() }} program{{ expiry.warningCount() > 1 ? 's' : '' }} expiring in 60–90 days</div>
-          <div class="alert-sub">Plan your next qualifying activity soon.</div>
+          <div class="alert-title">{{ expiry.warningCount() }} program{{ expiry.warningCount() > 1 ? 's' : '' }} need expiry review</div>
+          <div class="alert-sub">Set missing dates or plan qualifying activity for programs expiring within 90 days.</div>
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { WalletService } from '../../core/services/wallet.service';
 import { SweetSpot, TransferBonus } from '../../core/models';
 import { NavigationService } from '../../core/services/navigation.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
+import { ToastService } from '../../core/services/toast.service';
 
 type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'new' | 'saved' | 'covered';
 type SortMode = 'default' | 'cpp' | 'pts';
@@ -56,8 +57,8 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       <div class="spot-search-wrap">
         <span class="spot-search-icon">🔍</span>
         <input class="spot-search-input" type="search" placeholder="Search sweet spots…"
-          [(ngModel)]="searchRaw" autocomplete="off">
-        <button class="spot-search-clear" *ngIf="searchRaw" (click)="searchRaw = ''">✕</button>
+          [ngModel]="searchRaw()" (ngModelChange)="searchRaw.set($event)" autocomplete="off">
+        <button class="spot-search-clear" *ngIf="searchRaw()" (click)="searchRaw.set('')">✕</button>
       </div>
 
       <!-- Transfer Bonuses strip -->
@@ -117,7 +118,8 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
         <div class="spot-card" *ngFor="let s of filtered()" [class]="'cat-' + s.category">
           <button class="fav-btn" (click)="toggleFav(s)"
             [class.active]="isFav(spotKey(s))"
-            [title]="isFav(spotKey(s)) ? 'Remove from saved' : 'Save this spot'">
+            [title]="isFav(spotKey(s)) ? 'Remove from saved' : 'Save this spot'"
+            [attr.aria-label]="isFav(spotKey(s)) ? 'Remove saved sweet spot' : 'Save sweet spot'">
             {{ isFav(spotKey(s)) ? '★' : '☆' }}
           </button>
           <div class="category-badge">{{ categoryLabel(s.category) }}</div>
@@ -179,10 +181,10 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
           activeFilter() === 'saved' ? 'No saved spots yet — star a spot to save it.' :
           activeFilter() === 'covered' ? 'Add balances in Wallet to see which spots you can afford.' :
           activeFilter() === 'new' ? 'No new spots at the moment — check back soon.' :
-          searchRaw ? 'No spots match your search.' :
+          searchRaw() ? 'No spots match your search.' :
           'No spots match this filter.'
         }}</p>
-        <button class="spot-clear-btn" *ngIf="searchRaw" (click)="searchRaw = ''">Clear search</button>
+        <button class="spot-clear-btn" *ngIf="searchRaw()" (click)="searchRaw.set('')">Clear search</button>
       </div>
     </div>
   `,
@@ -457,8 +459,9 @@ export class SweetspotsComponent {
   wallet = inject(WalletService);
   private nav = inject(NavigationService);
   private analytics = inject(AnalyticsService);
+  private toast = inject(ToastService);
 
-  searchRaw = '';
+  searchRaw = signal('');
   activeFilter = signal<Filter>(this.loadInitialFilter());
   activeSort = signal<SortMode>('default');
   minCppFilter = signal<number>(0);
@@ -489,7 +492,7 @@ export class SweetspotsComponent {
     const f = this.activeFilter();
     const favs = this._favs();
     const sort = this.activeSort();
-    const q = this.searchRaw.toLowerCase().trim();
+    const q = this.searchRaw().toLowerCase().trim();
     const minCpp = this.minCppFilter();
 
     let spots: SweetSpot[];
@@ -523,8 +526,8 @@ export class SweetspotsComponent {
     } else if (sort === 'pts') {
       // parse "88,000" → 88000 for comparison
       spots = [...spots].sort((a, b) => {
-        const pA = parseInt(a.ptsNeeded.replace(/[^0-9]/g, '')) || 0;
-        const pB = parseInt(b.ptsNeeded.replace(/[^0-9]/g, '')) || 0;
+        const pA = this.parsePts(a.ptsNeeded);
+        const pB = this.parsePts(b.ptsNeeded);
         return pA - pB;
       });
     } else if (f === 'all' && this.wallet.hasAnyPoints()) {
@@ -539,7 +542,7 @@ export class SweetspotsComponent {
   });
 
   spotKey(s: SweetSpot): string {
-    return `${s.category}|${s.route}`;
+    return [s.category, s.route, s.detail, s.ptsNeeded, s.programs.join('+')].join('|');
   }
 
   isFav(key: string): boolean {
@@ -662,10 +665,19 @@ export class SweetspotsComponent {
     this.nav.navigateTo({ tab: 'optimizer', optimizerPrefill: { fromCity, toCity, cabin } });
   }
 
-  /** Parse a ptsNeeded string like "88,000" or "40,000/night" into a number */
+  /** Parse values like "88,000", "8,000-15,000/night", or "4x 30,000". */
   private parsePts(ptsNeeded: string): number {
-    const cleaned = ptsNeeded.replace(/[^0-9]/g, '');
-    return parseInt(cleaned) || 0;
+    const multiplier = ptsNeeded.match(/(\d+)\s*[x×]\s*(\d[\d,]*)/i);
+    if (multiplier) {
+      return this.parseNumber(multiplier[1]) * this.parseNumber(multiplier[2]);
+    }
+
+    const firstNumber = ptsNeeded.match(/\d[\d,]*/)?.[0];
+    return firstNumber ? this.parseNumber(firstNumber) : 0;
+  }
+
+  private parseNumber(value: string): number {
+    return parseInt(value.replace(/,/g, ''), 10) || 0;
   }
 
   /**
@@ -755,11 +767,17 @@ export class SweetspotsComponent {
       ``,
       `Found with Tally Points Advisor`,
     ];
-    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : undefined;
+    if (!clipboard?.writeText) {
+      this.toast.error('Clipboard unavailable');
+      return;
+    }
+
+    clipboard.writeText(lines.join('\n')).then(() => {
       const key = this.spotKey(s);
       this.copiedSpotKey.set(key);
       setTimeout(() => this.copiedSpotKey.set(null), 2000);
-    }).catch(() => {/* silent fail */});
+    }).catch(() => this.toast.error('Could not copy sweet spot'));
   }
 
   formatExpiry(dateStr: string): string {

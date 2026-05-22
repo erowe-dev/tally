@@ -58,6 +58,10 @@ export class ApiService {
     );
   }
 
+  cacheBalances(balances: Record<string, number>): void {
+    this.writeCache(BALANCES_CACHE_KEY, balances);
+  }
+
   setBalance(cardId: string, amount: number): Observable<unknown> {
     return this.withAuth(headers =>
       this.http.put(
@@ -87,6 +91,10 @@ export class ApiService {
         return cached ? of(cached) : throwError(() => error);
       }),
     );
+  }
+
+  cacheExpiryRecords(records: Record<string, ApiExpiryRecord>): void {
+    this.writeCache(EXPIRY_CACHE_KEY, records);
   }
 
   setExpiryRecord(cardId: string, lastActivityDate: string): Observable<unknown> {

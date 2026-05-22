@@ -275,10 +275,10 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
           <div class="field">
             <label class="field-label">Passengers</label>
             <select class="field-input" [(ngModel)]="passengers">
-              <option [value]="1">1 Passenger</option>
-              <option [value]="2">2 Passengers</option>
-              <option [value]="3">3 Passengers</option>
-              <option [value]="4">4 Passengers</option>
+              <option [ngValue]="1">1 Passenger</option>
+              <option [ngValue]="2">2 Passengers</option>
+              <option [ngValue]="3">3 Passengers</option>
+              <option [ngValue]="4">4 Passengers</option>
             </select>
           </div>
         </div>
@@ -309,10 +309,10 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
           <div class="field">
             <label class="field-label">Nights</label>
             <select class="field-input" [(ngModel)]="hotelNights">
-              <option [value]="1">1 Night</option>
-              <option [value]="3">3 Nights</option>
-              <option [value]="5">5 Nights</option>
-              <option [value]="7">7 Nights</option>
+              <option [ngValue]="1">1 Night</option>
+              <option [ngValue]="3">3 Nights</option>
+              <option [ngValue]="5">5 Nights</option>
+              <option [ngValue]="7">7 Nights</option>
             </select>
           </div>
         </div>

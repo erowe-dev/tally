@@ -8,6 +8,9 @@ import { ExpiryService } from '../../core/services/expiry.service';
 import { NavigationService } from '../../core/services/navigation.service';
 import { CreditCard, TransferBonus } from '../../core/models';
 import { OnboardingComponent } from '../../shared/components/onboarding/onboarding.component';
+import { ToastService } from '../../core/services/toast.service';
+
+const MAX_BALANCE = 50_000_000;
 
 @Component({
   selector: 'tally-wallet',
@@ -766,6 +769,7 @@ export class WalletComponent {
   data = inject(DataService);
   private optimizer = inject(OptimizerService);
   private expiry = inject(ExpiryService);
+  private toast = inject(ToastService);
   nav = inject(NavigationService);
   private _allRecs = this.optimizer.getAllRecs();
 
@@ -902,7 +906,7 @@ export class WalletComponent {
   }
 
   quickAdd(cardId: string, amount: number): void {
-    this.wallet.setBalance(cardId, this.wallet.getBalance(cardId) + amount);
+    this.wallet.setBalance(cardId, Math.min(MAX_BALANCE, this.wallet.getBalance(cardId) + amount));
   }
 
   formatInc(n: number): string {
@@ -910,7 +914,9 @@ export class WalletComponent {
   }
 
   onInput(cardId: string, event: Event): void {
-    const val = parseInt((event.target as HTMLInputElement).value) || 0;
+    const input = event.target as HTMLInputElement;
+    const val = Math.min(MAX_BALANCE, parseInt(input.value) || 0);
+    if (String(val) !== input.value && input.value !== '') input.value = String(val);
     this.wallet.setBalance(cardId, val);
   }
 
@@ -926,10 +932,16 @@ export class WalletComponent {
     lines.push(`Est. value: ~\$${this.wallet.estimatedValue().toLocaleString()}`);
     lines.push('via Tally Points Advisor');
 
-    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const clipboard = typeof navigator !== 'undefined' ? navigator.clipboard : undefined;
+    if (!clipboard?.writeText) {
+      this.toast.error('Clipboard unavailable — export CSV instead');
+      return;
+    }
+
+    clipboard.writeText(lines.join('\n')).then(() => {
       this.copied.set(true);
       setTimeout(() => this.copied.set(false), 2000);
-    }).catch(() => {/* clipboard unavailable — silent fail */});
+    }).catch(() => this.toast.error('Could not copy wallet summary'));
   }
 
   exportCsv(): void {

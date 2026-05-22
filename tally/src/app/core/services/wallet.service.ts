@@ -9,6 +9,7 @@ import { AnalyticsService } from './analytics.service';
 const STORAGE_KEY = 'tally_wallet_v1';
 const HISTORY_KEY = 'tally_wallet_history_v1';
 const PENDING_KEY = 'tally_wallet_pending_v1';
+const MAX_BALANCE = 50_000_000;
 const MAX_HISTORY = 30; // days
 
 export interface HistoryEntry { date: string; total: number; }
@@ -94,6 +95,7 @@ export class WalletService {
               const merged = { ...apiBalances, ...pendingBalances };
               this._balances.set(merged);
               this.saveLocal(merged);
+              this.api.cacheBalances(merged);
               this._syncState.set('synced');
               this._pushLocalToApi(pendingBalances, true);
             } else if (apiIsEmpty && localHasData) {
@@ -129,12 +131,13 @@ export class WalletService {
   }
 
   setBalance(cardId: string, value: number): void {
-    const amount = Math.max(0, Math.round(value || 0));
+    const amount = Math.min(MAX_BALANCE, Math.max(0, Math.round(value || 0)));
     const updated = { ...this._balances(), [cardId]: amount };
 
     // Write locally first — instant UI response, works offline
     this._balances.set(updated);
     this.saveLocal(updated);
+    this.api.cacheBalances(updated);
     this.recordSnapshot(Object.values(updated).reduce((a, b) => a + b, 0));
     this.analytics.track('balance_updated', { card_id: cardId, non_zero: amount > 0 });
     this.savePending(cardId, amount);
@@ -143,8 +146,10 @@ export class WalletService {
     if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.setBalance(cardId, amount).subscribe({
         next: () => this.clearPending(cardId),
-        error: _err => this.toast.error('Balance not saved — will retry when online'),
+        error: _err => this.markForRetry('Balance not saved — will retry when online'),
       });
+    } else if (this.auth.isProvisioned()) {
+      this.markForRetry();
     }
   }
 
@@ -166,9 +171,15 @@ export class WalletService {
         next: () => {
           if (clearOnSuccess) this.clearPending(cardId);
         },
-        error: _err => this.toast.error('Balance not saved — will retry when online'),
+        error: _err => this.markForRetry('Balance not saved — will retry when online'),
       });
     }
+  }
+
+  private markForRetry(message?: string): void {
+    this._apiLoaded = false;
+    this._syncState.set('error');
+    if (message) this.toast.error(message);
   }
 
   /** Upserts today's total into the daily history ring-buffer */

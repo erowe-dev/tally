@@ -19,6 +19,7 @@ export class TripsService {
   private _syncState = signal<SyncState>('idle');
   private _retryTrigger = signal(0);
   private _apiLoaded = false;
+  private deletedLocalIds = new Set<string>();
 
   readonly trips = this._trips.asReadonly();
   readonly syncState = this._syncState.asReadonly();
@@ -92,16 +93,32 @@ export class TripsService {
     if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.createTrip(trip).subscribe({
         next: saved => {
-          // Replace temp entry with the real API response (gets a real id + createdAt)
-          const current = this._trips().map(t => t.id === tempId ? saved : t);
+          if (this.deletedLocalIds.has(tempId)) {
+            this.deletedLocalIds.delete(tempId);
+            this.api.deleteTrip(saved.id).subscribe({
+              error: _err => this.markForRetry('Trip could not be deleted from server'),
+            });
+            return;
+          }
+
+          const optimistic = this._trips().find(t => t.id === tempId);
+          const savedWithLocalEdits = optimistic ? { ...saved, notes: optimistic.notes } : saved;
+          const current = this._trips().map(t => t.id === tempId ? savedWithLocalEdits : t);
           this._trips.set(current);
           this.saveLocal(current);
+
+          if (optimistic?.notes !== trip.notes) {
+            this.api.updateTripNotes(saved.id, optimistic?.notes ?? '').subscribe({
+              error: _err => this.markForRetry('Note not saved — will retry when online'),
+            });
+          }
         },
         error: _err => {
-          this._apiLoaded = false;
-          this.toast.error('Trip not saved — will retry when online');
+          this.markForRetry('Trip not saved — will retry when online');
         },
       });
+    } else if (this.auth.isProvisioned()) {
+      this.markForRetry();
     }
   }
 
@@ -113,14 +130,24 @@ export class TripsService {
     this._trips.set(updated);
     this.saveLocal(updated);
 
-    if (!id.startsWith('local_') && this.auth.isProvisioned() && this.network.isOnline()) {
+    if (id.startsWith('local_')) {
+      return;
+    }
+
+    if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.updateTripNotes(id, trimmed).subscribe({
-        error: _err => this.toast.error('Note not saved — will retry when online'),
+        error: _err => this.markForRetry('Note not saved — will retry when online'),
       });
+    } else if (!id.startsWith('local_') && this.auth.isProvisioned()) {
+      this.markForRetry();
     }
   }
 
   deleteTrip(id: string): void {
+    if (id.startsWith('local_')) {
+      this.deletedLocalIds.add(id);
+    }
+
     const updated = this._trips().filter(t => t.id !== id);
     this._trips.set(updated);
     this.saveLocal(updated);
@@ -128,8 +155,10 @@ export class TripsService {
     // Only hit the API for real (non-temp) ids
     if (!id.startsWith('local_') && this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.deleteTrip(id).subscribe({
-        error: _err => this.toast.error('Trip could not be deleted from server'),
+        error: _err => this.markForRetry('Trip could not be deleted from server'),
       });
+    } else if (!id.startsWith('local_') && this.auth.isProvisioned()) {
+      this.markForRetry();
     }
   }
 
@@ -142,10 +171,12 @@ export class TripsService {
       for (const t of current) {
         if (!t.id.startsWith('local_')) {
           this.api.deleteTrip(t.id).subscribe({
-            error: _err => this.toast.error('Some trips could not be deleted from server'),
+            error: _err => this.markForRetry('Some trips could not be deleted from server'),
           });
         }
       }
+    } else if (this.auth.isProvisioned()) {
+      this.markForRetry();
     }
   }
 
@@ -179,15 +210,36 @@ export class TripsService {
         notes: trip.notes,
       }).subscribe({
         next: saved => {
-          const current = this._trips().map(t => t.id === trip.id ? saved : t);
+          if (this.deletedLocalIds.has(trip.id)) {
+            this.deletedLocalIds.delete(trip.id);
+            this.api.deleteTrip(saved.id).subscribe({
+              error: _err => this.markForRetry('Trip could not be deleted from server'),
+            });
+            return;
+          }
+
+          const optimistic = this._trips().find(t => t.id === trip.id);
+          const savedWithLocalEdits = optimistic ? { ...saved, notes: optimistic.notes } : saved;
+          const current = this._trips().map(t => t.id === trip.id ? savedWithLocalEdits : t);
           this._trips.set(current);
           this.saveLocal(current);
+
+          if (optimistic?.notes !== trip.notes) {
+            this.api.updateTripNotes(saved.id, optimistic?.notes ?? '').subscribe({
+              error: _err => this.markForRetry('Note not saved — will retry when online'),
+            });
+          }
         },
         error: _err => {
-          this._apiLoaded = false;
-          this.toast.error('Trip not saved — will retry when online');
+          this.markForRetry('Trip not saved — will retry when online');
         },
       });
     }
+  }
+
+  private markForRetry(message?: string): void {
+    this._apiLoaded = false;
+    this._syncState.set('error');
+    if (message) this.toast.error(message);
   }
 }

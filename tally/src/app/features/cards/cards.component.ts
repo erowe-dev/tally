@@ -117,10 +117,11 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
           class="search-input"
           type="search"
           placeholder="Search programs or partners…"
-          [(ngModel)]="searchRaw"
+          [ngModel]="searchRaw()"
+          (ngModelChange)="searchRaw.set($event)"
           autocomplete="off"
         />
-        <button class="search-clear" *ngIf="searchRaw" (click)="searchRaw = ''">✕</button>
+        <button class="search-clear" *ngIf="searchRaw()" (click)="searchRaw.set('')">✕</button>
       </div>
 
       <!-- Category tabs + great toggle + mine filter -->
@@ -312,12 +313,12 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
             <div class="calc-input-wrap">
               <label class="calc-label">Points used</label>
               <input class="calc-input" type="number" inputmode="numeric"
-                [(ngModel)]="raterPts" placeholder="60000" min="0" step="1000">
+                [ngModel]="raterPts()" (ngModelChange)="raterPts.set($event || 0)" placeholder="60000" min="0" step="1000">
             </div>
             <div class="calc-input-wrap">
               <label class="calc-label">Cash value received ($)</label>
               <input class="calc-input" type="number" inputmode="decimal"
-                [(ngModel)]="raterCash" placeholder="900" min="0" step="10">
+                [ngModel]="raterCash()" (ngModelChange)="raterCash.set($event || 0)" placeholder="900" min="0" step="10">
             </div>
           </div>
           <div class="rater-result" *ngIf="raterCpp() !== null">
@@ -339,9 +340,9 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
           <div class="calc-input-wrap">
             <label class="calc-label">How many points?</label>
             <input class="calc-input" type="number" inputmode="numeric"
-              [(ngModel)]="calcPts" placeholder="50000" min="0" step="1000">
+              [ngModel]="calcPts()" (ngModelChange)="calcPts.set($event || 0)" placeholder="50000" min="0" step="1000">
           </div>
-          <div class="calc-grid" *ngIf="calcPts > 0">
+          <div class="calc-grid" *ngIf="calcPts() > 0">
             <div class="calc-row" *ngFor="let tier of calcTiers"
               [class.calc-best]="tier === bestTier()">
               <span class="calc-cpp">{{ tier }}¢</span>
@@ -352,7 +353,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
               </span>
             </div>
           </div>
-          <div class="calc-note" *ngIf="calcPts > 0">
+          <div class="calc-note" *ngIf="calcPts() > 0">
             Best partners can reach 3¢+ per point. Use the Optimizer to find your specific redemption.
           </div>
         </div>
@@ -368,7 +369,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
           <div class="tf-inputs">
             <div class="calc-input-wrap">
               <label class="calc-label">Target program</label>
-              <select class="calc-input" [(ngModel)]="tfTargetPartner">
+              <select class="calc-input" [ngModel]="tfTargetPartner()" (ngModelChange)="tfTargetPartner.set($event)">
                 <option value="">-- pick a partner --</option>
                 <option *ngFor="let p of allPartnerNames" [value]="p">{{ p }}</option>
               </select>
@@ -376,10 +377,10 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
             <div class="calc-input-wrap">
               <label class="calc-label">Miles / pts needed</label>
               <input class="calc-input" type="number" inputmode="numeric"
-                [(ngModel)]="tfTargetMiles" placeholder="60000" min="0" step="5000">
+                [ngModel]="tfTargetMiles()" (ngModelChange)="tfTargetMiles.set($event || 0)" placeholder="60000" min="0" step="5000">
             </div>
           </div>
-          <div class="tf-results" *ngIf="tfTargetPartner && tfRoutes().length > 0">
+          <div class="tf-results" *ngIf="tfTargetPartner() && tfRoutes().length > 0">
             <div class="tf-row" *ngFor="let r of tfRoutes()"
               [class.tf-covered]="r.covered">
               <div class="tf-source-badge" [style.background]="r.card.color">{{ r.card.icon }}</div>
@@ -394,10 +395,10 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
               </div>
             </div>
           </div>
-          <div class="tf-empty" *ngIf="tfTargetPartner && tfRoutes().length === 0">
+          <div class="tf-empty" *ngIf="tfTargetPartner() && tfRoutes().length === 0">
             <p>No transfer paths found for this partner. It may not be a transfer partner of any tracked program.</p>
           </div>
-          <div class="tf-hint" *ngIf="!tfTargetPartner">
+          <div class="tf-hint" *ngIf="!tfTargetPartner()">
             Select a target partner to see all transfer paths and whether your wallet can cover the needed miles.
           </div>
         </div>
@@ -822,8 +823,7 @@ export class CardsComponent {
   data = inject(DataService);
   wallet = inject(WalletService);
 
-  // Two-way bound to ngModel; signal reads it via computed
-  searchRaw = '';
+  searchRaw = signal('');
 
   activeCat = signal<CatFilter>('all');
   cardSort = signal<CardSortMode>('default');
@@ -872,8 +872,8 @@ export class CardsComponent {
 
   // Transfer Route Finder
   showTransferFinder = signal(false);
-  tfTargetPartner = '';
-  tfTargetMiles = 0;
+  tfTargetPartner = signal('');
+  tfTargetMiles = signal(0);
 
   /** Deduplicated list of all partner names across all cards, sorted A-Z */
   readonly allPartnerNames: string[] = Array.from(
@@ -882,11 +882,12 @@ export class CardsComponent {
 
   /** Cards that transfer to the selected target, with computed coverage */
   readonly tfRoutes = computed(() => {
-    if (!this.tfTargetPartner) return [];
-    const needed = this.tfTargetMiles;
+    const targetPartner = this.tfTargetPartner();
+    if (!targetPartner) return [];
+    const needed = this.tfTargetMiles();
     return this.data.cards
       .flatMap(card => {
-        const partner = card.partners.find(p => p.name === this.tfTargetPartner);
+        const partner = card.partners.find(p => p.name === targetPartner);
         if (!partner) return [];
         // Parse ratio "1:1", "1:2", "2:3" → srcNeeded = needed * (from/to)
         const [from, to] = partner.ratio.split(':').map(Number);
@@ -928,7 +929,7 @@ export class CardsComponent {
 
   /** When searching by partner name, auto-expand matching program cards */
   readonly autoExpandedCards = computed<Set<string>>(() => {
-    const q = this.searchRaw.toLowerCase().trim();
+    const q = this.searchRaw().toLowerCase().trim();
     if (!q) return new Set();
     const ids = new Set<string>();
     for (const card of this.data.cards) {
@@ -950,7 +951,7 @@ export class CardsComponent {
   ];
 
   readonly filteredCards = computed<CreditCard[]>(() => {
-    const q = this.searchRaw.toLowerCase().trim();
+    const q = this.searchRaw().toLowerCase().trim();
     const cat = this.activeCat();
     const great = this.greatOnly();
     const heldOnly = this.showHeldOnly();
@@ -991,21 +992,23 @@ export class CardsComponent {
 
   /** Partners to display for a card — filtered when search targets partner names */
   visiblePartners(card: CreditCard) {
-    const q = this.searchRaw.toLowerCase().trim();
-    if (!q) return card.partners;
+    const q = this.searchRaw().toLowerCase().trim();
+    const great = this.greatOnly();
+    const partners = great ? card.partners.filter(p => p.quality === 'great') : card.partners;
+    if (!q) return partners;
 
     // If the search matches the program itself, show all partners
     const programMatch =
       card.name.toLowerCase().includes(q) ||
       card.cards.some(c => c.toLowerCase().includes(q));
-    if (programMatch) return card.partners;
+    if (programMatch) return partners;
 
     // Otherwise narrow to matching partners
-    return card.partners.filter(p => p.name.toLowerCase().includes(q));
+    return partners.filter(p => p.name.toLowerCase().includes(q));
   }
 
   getBestCpp(card: CreditCard): number {
-    return Math.max(...card.partners.map(p => p.cpp));
+    return card.partners.length ? Math.max(...card.partners.map(p => p.cpp)) : card.baseCpp;
   }
 
   greatPartnerCount(card: CreditCard): number {
@@ -1064,7 +1067,7 @@ export class CardsComponent {
   }
 
   clearAll(): void {
-    this.searchRaw = '';
+    this.searchRaw.set('');
     this.activeCat.set('all');
     this.cardSort.set('default');
     this.greatOnly.set(false);
@@ -1106,12 +1109,14 @@ export class CardsComponent {
 
   // Rate My Redemption
   showRater = signal(false);
-  raterPts = 0;
-  raterCash = 0;
+  raterPts = signal(0);
+  raterCash = signal(0);
 
   readonly raterCpp = computed((): number | null => {
-    if (!this.raterPts || !this.raterCash) return null;
-    return Math.round((this.raterCash / this.raterPts) * 10000) / 100;
+    const points = this.raterPts();
+    const cash = this.raterCash();
+    if (!points || !cash) return null;
+    return Math.round((cash / points) * 10000) / 100;
   });
 
   readonly raterGrade = computed((): 'great' | 'good' | 'bad' => {
@@ -1144,11 +1149,11 @@ export class CardsComponent {
 
   // CPP Calculator
   showCalc = signal(false);
-  calcPts = 0;
+  calcPts = signal(0);
   readonly calcTiers = [1.0, 1.5, 2.0, 2.5, 3.0];
 
   calcValue(cpp: number): number {
-    return Math.round(this.calcPts * cpp / 100);
+    return Math.round(this.calcPts() * cpp / 100);
   }
 
   readonly bestTier = computed(() => {

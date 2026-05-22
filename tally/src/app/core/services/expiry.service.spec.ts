@@ -33,7 +33,12 @@ describe('ExpiryService', () => {
     localStorage.clear();
     auth = new MockAuthService();
     network = new MockNetworkService();
-    api = jasmine.createSpyObj<ApiService>('ApiService', ['getExpiryRecordsWithCache', 'setExpiryRecord', 'deleteExpiryRecord']);
+    api = jasmine.createSpyObj<ApiService>('ApiService', [
+      'getExpiryRecordsWithCache',
+      'setExpiryRecord',
+      'deleteExpiryRecord',
+      'cacheExpiryRecords',
+    ]);
     toast = jasmine.createSpyObj<ToastService>('ToastService', ['error']);
 
     TestBed.configureTestingModule({
