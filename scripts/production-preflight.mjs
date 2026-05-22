@@ -60,7 +60,7 @@ function checkNoLegacyRenderRefs() {
 
 function checkProductionApiUrl() {
   const text = read('tally/src/environments/environment.production.ts');
-  assert(text.includes("apiUrl: 'https://tally-api.vercel.app'"), 'production apiUrl must point to Vercel API');
+  assert(text.includes("apiUrl: 'https://tally-api-theta.vercel.app'"), 'production apiUrl must point to Vercel API');
   assert(!text.includes('TODO_'), 'production environment still contains TODO placeholder');
 }
 
@@ -69,8 +69,8 @@ function checkServiceWorkerApiCache() {
   const groups = config.dataGroups ?? [];
   const allUrls = groups.flatMap(group => group.urls ?? []);
 
-  assert(allUrls.includes('https://tally-api.vercel.app/api/balances'), 'missing balances API dataGroup URL');
-  assert(allUrls.includes('https://tally-api.vercel.app/api/expiry'), 'missing expiry API dataGroup URL');
+  assert(allUrls.includes('https://tally-api-theta.vercel.app/api/balances'), 'missing balances API dataGroup URL');
+  assert(allUrls.includes('https://tally-api-theta.vercel.app/api/expiry'), 'missing expiry API dataGroup URL');
   assert(!allUrls.some(url => /\/api\/trips|\/api\/users|\/api\/waitlist/.test(url)), 'service worker must not cache write/provisioning/waitlist endpoints');
 }
 

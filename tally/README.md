@@ -120,7 +120,7 @@ All data lives in `src/app/core/services/data.service.ts`.
 - **Setup:** Import JSON → set SMTP credentials → set `ALERT_EMAIL` env var
 
 ### Waitlist Webhook (`n8n/waitlist-webhook.json`)
-- Landing page posts to `https://tally-api.vercel.app/api/waitlist`
+- Landing page posts to `https://tally-api-theta.vercel.app/api/waitlist`
 - API proxies to the n8n `WAITLIST_WEBHOOK_URL`
 - Validates email → Google Sheet → confirmation email → builder ping
 - **Setup:** Import JSON → set Google Sheets credentials → set `YOUR_EMAIL` env var

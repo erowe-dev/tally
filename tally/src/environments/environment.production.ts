@@ -8,7 +8,7 @@ export const environment = {
       audience: 'https://api.tally.app',
     },
   },
-  apiUrl: 'https://tally-api.vercel.app',
+  apiUrl: 'https://tally-api-theta.vercel.app',
   analytics: {
     enabled: false,
     endpoint: '',

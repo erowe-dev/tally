@@ -8,8 +8,8 @@ Before deploying, make sure the release branch contains one coherent production-
 
 Known open gates right now:
 
-- `https://tally-api.vercel.app/health` currently returns Vercel `NOT_FOUND`; the API project/alias must deploy before alpha.
-- `https://tally-theta-two.vercel.app` is deployed, but currently serves the landing page rather than the Angular PWA shell; PWA assets such as `manifest.webmanifest` still return `NOT_FOUND`.
+- `https://tally-api-theta.vercel.app/health` must return `status: "ok"` and `database: "ok"`.
+- `https://tally-theta-two.vercel.app` must serve the Angular PWA shell at `/`, with the waitlist landing page preserved at `/landing/`.
 - The Angular app has production dependency audit findings tied mostly to Angular 18; accept that risk only for private alpha, not public beta.
 
 Required local verification before deploy:
@@ -43,7 +43,7 @@ Use Vercel for both the Angular app and the API:
 
 - Angular app: preferred root directory `tally/`, build command `npm run build && node scripts/prepare-vercel-output.mjs`, output `browser`, production app URL currently `https://tally-theta-two.vercel.app`.
 - Root fallback: committed `vercel.json` mirrors `tally/vercel.json` so Vercel builds from the configured project root and serves the prepared `browser` output.
-- API: root directory `api/`, Vercel Functions, production API URL `https://tally-api.vercel.app`.
+- API: root directory `api/`, Vercel Functions, production API URL `https://tally-api-theta.vercel.app`.
 
 Dashboard setup:
 
@@ -105,7 +105,7 @@ Add the final custom domain to each list before pointing invited alpha users the
 
 ## Landing Page
 
-The bundled landing page submits to `https://tally-api.vercel.app/api/waitlist`, which proxies to the n8n workflow configured by `WAITLIST_WEBHOOK_URL`. If the webhook is unavailable, the page shows a manual `mailto:hello@tallypoints.app` fallback instead of a fake success.
+The bundled landing page submits to `https://tally-api-theta.vercel.app/api/waitlist`, which proxies to the n8n workflow configured by `WAITLIST_WEBHOOK_URL`. If the webhook is unavailable, the page shows a manual `mailto:hello@tallypoints.app` fallback instead of a fake success.
 
 ## Offline Read Cache
 
@@ -132,7 +132,7 @@ npm run db:migrate
 
 Block the alpha invite until all of these pass in production:
 
-- `GET https://tally-api.vercel.app/health` returns `{ "status": "ok" }`.
+- `GET https://tally-api-theta.vercel.app/health` returns `{ "status": "ok" }`.
 - `/health` includes `X-Request-Id`, `service: "tally-api"`, and `database: "ok"`.
 - Signed-out users can open public tabs.
 - Protected tabs show sign-in prompts.

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const appUrl = normalizeUrl(process.env.TALLY_APP_URL ?? 'https://tally-theta-two.vercel.app');
-const apiUrl = normalizeUrl(process.env.TALLY_API_URL ?? 'https://tally-api.vercel.app');
+const apiUrl = normalizeUrl(process.env.TALLY_API_URL ?? 'https://tally-api-theta.vercel.app');
 
 const checks = [
   {

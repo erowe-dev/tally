@@ -877,7 +877,7 @@ async function submitEmail(email, formId, successId) {
   button.textContent = 'Joining...';
 
   try {
-    const response = await fetch('https://tally-api.vercel.app/api/waitlist', {
+    const response = await fetch('https://tally-api-theta.vercel.app/api/waitlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -224,7 +224,7 @@ npx prisma migrate dev --name your_migration_name   # creates + applies locally
 Same vars as above. Also set `NODE_ENV=production` and `APP_ORIGINS` for the production Angular and landing-page origins.
 
 ### Production API URL
-`tally/src/environments/environment.production.ts` points to `https://tally-api.vercel.app`.
+`tally/src/environments/environment.production.ts` points to `https://tally-api-theta.vercel.app`.
 The PWA `dataGroups` in `tally/ngsw-config.json` must use the same API origin.
 
 ### Observability
@@ -243,9 +243,8 @@ The API sets `X-Request-Id` on every response and logs failed requests with that
 ---
 
 ## Not Implemented Yet (next priorities)
-1. **Vercel API deploy** — configure the API project env vars and verify `https://tally-api.vercel.app/health`
-2. Import n8n workflows and set `WAITLIST_WEBHOOK_URL` on the Vercel API project
-3. Configure analytics endpoint/provider and enable `environment.analytics.enabled`
-4. Stripe billing (`$6.99/mo` or `$49/yr`)
-5. Seats.aero API for live award availability
-6. Web push notifications for expiry alerts + Flying Blue promos
+1. Import n8n workflows and set `WAITLIST_WEBHOOK_URL` on the Vercel API project
+2. Configure analytics endpoint/provider and enable `environment.analytics.enabled`
+3. Stripe billing (`$6.99/mo` or `$49/yr`)
+4. Seats.aero API for live award availability
+5. Web push notifications for expiry alerts + Flying Blue promos
