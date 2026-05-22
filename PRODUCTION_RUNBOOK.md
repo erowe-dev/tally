@@ -31,6 +31,17 @@ cd tally
 npm run smoke:prod
 ```
 
+Optional authenticated smoke for personal-use verification:
+
+```bash
+cd tally
+$env:TALLY_AUTH_TOKEN="<Auth0 access token for https://api.tally.app>"
+$env:TALLY_AUTH_EMAIL="<your Auth0 email>"
+npm run smoke:auth
+```
+
+The authenticated smoke provisions your user, writes and resets a synthetic balance under `codex_smoke_points`, writes/deletes a synthetic expiry record, and creates/edits/deletes a temporary saved trip.
+
 Override the default URLs when testing preview/custom domains:
 
 ```bash
@@ -52,8 +63,9 @@ Dashboard setup:
 3. Confirm project `tally-api` has Root Directory `api`.
 4. Confirm the API project uses the committed `api/vercel.json` function routing.
 5. Add the API environment variables below before the first API deploy.
-6. Push to `main`; Vercel auto-deploys both configured projects.
-7. After both projects deploy, run `npm run smoke:prod` from `tally/`.
+6. Push to `main`; confirm the Angular app deploys automatically.
+7. Confirm the API project also creates a new deployment. If it does not, deploy it manually from `api/` with the Vercel CLI until the dashboard Git connection is repaired.
+8. After both projects deploy, run `npm run smoke:prod` from `tally/`.
 
 If deploying the Angular app with the Vercel CLI:
 
@@ -62,6 +74,16 @@ nvm use 20
 
 cd tally
 vercel link --yes --project tally
+vercel --prod
+```
+
+If deploying the API with the Vercel CLI:
+
+```bash
+nvm use 20
+
+cd api
+vercel link --yes --project tally-api
 vercel --prod
 ```
 
@@ -146,6 +168,7 @@ Block the alpha invite until all of these pass in production:
 - `POST /api/waitlist` rejects invalid emails with 400 and allows `https://tallypoints.app` via CORS.
 - Deployed `ngsw.json` includes API freshness data groups only for balances and expiry.
 - Failed API calls in the browser include an `X-Request-Id` that appears in Vercel logs.
+- `npm run smoke:auth` passes with your Auth0 access token and email.
 
 ## Browser Accessibility Pass
 

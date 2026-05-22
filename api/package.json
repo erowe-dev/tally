@@ -13,6 +13,7 @@
     "preflight:prod": "node ../scripts/production-preflight.mjs",
     "start": "node dist/index.js",
     "smoke:prod": "node ../scripts/production-smoke.mjs",
+    "smoke:auth": "node ../scripts/personal-auth-smoke.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:studio": "prisma studio"

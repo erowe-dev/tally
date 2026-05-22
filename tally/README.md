@@ -162,6 +162,14 @@ After Vercel deploys, run:
 npm run smoke:prod
 ```
 
+For a personal signed-in API smoke, provide an Auth0 access token and email:
+
+```powershell
+$env:TALLY_AUTH_TOKEN="<Auth0 access token for https://api.tally.app>"
+$env:TALLY_AUTH_EMAIL="<your Auth0 email>"
+npm run smoke:auth
+```
+
 Production API responses include `X-Request-Id`; use that value to correlate browser failures with Vercel function logs.
 
 Wallet and Expiry API reads also keep a one-hour localStorage read-through cache (`tally_cache_balances`, `tally_cache_expiry`) so first authenticated loads can fall back cleanly if the cross-origin API is temporarily unavailable.
