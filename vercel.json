@@ -1,7 +1,7 @@
 {
-  "installCommand": "cd tally && npm ci",
-  "buildCommand": "cd tally && npm run build",
-  "outputDirectory": "tally/dist/tally/browser",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/tally/browser",
   "routes": [
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }

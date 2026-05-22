@@ -93,9 +93,9 @@ function checkVercelAppConfig() {
   const rootConfigPath = 'vercel.json';
   assert(existsSync(join(root, rootConfigPath)), 'repo-root vercel.json is missing');
   const rootConfig = JSON.parse(read(rootConfigPath));
-  assert(rootConfig.installCommand === 'cd tally && npm ci', 'repo-root vercel.json must install Angular dependencies from tally/');
-  assert(rootConfig.buildCommand === 'cd tally && npm run build', 'repo-root vercel.json must build the Angular app from tally/');
-  assert(rootConfig.outputDirectory === 'tally/dist/tally/browser', 'repo-root vercel.json must serve tally/dist/tally/browser');
+  assert(rootConfig.installCommand === 'npm ci', 'repo-root vercel.json must install dependencies from the Vercel project root');
+  assert(rootConfig.buildCommand === 'npm run build', 'repo-root vercel.json must build the Angular app from the Vercel project root');
+  assert(rootConfig.outputDirectory === 'dist/tally/browser', 'repo-root vercel.json must serve dist/tally/browser');
   assert(
     rootConfig.routes?.some(route => route.dest === '/index.html'),
     'repo-root vercel.json must fall back to /index.html for the Angular app shell',
