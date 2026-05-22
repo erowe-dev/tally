@@ -22,6 +22,13 @@ function isValidDateString(value: string): boolean {
   );
 }
 
+function localDateString(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // GET /api/expiry
 // Returns Record<cardId, { cardId, lastActivityDate }> — matches ExpiryService shape.
 router.get(
@@ -52,7 +59,7 @@ router.put(
     const { cardId } = req.params;
     const { lastActivityDate } = req.body as { lastActivityDate?: unknown };
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateString();
     if (typeof lastActivityDate !== 'string' || !isValidDateString(lastActivityDate) || lastActivityDate > today) {
       res.status(400).json({ error: 'lastActivityDate must be a valid YYYY-MM-DD string not in the future' });
       return;
