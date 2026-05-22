@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist/tally/browser",
+  "buildCommand": "npm run build && node scripts/prepare-vercel-output.mjs",
+  "outputDirectory": "browser",
   "routes": [
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }

@@ -78,8 +78,11 @@ function checkVercelAppConfig() {
   const configPath = 'tally/vercel.json';
   assert(existsSync(join(root, configPath)), 'tally/vercel.json is missing');
   const config = JSON.parse(read(configPath));
-  assert(config.buildCommand === 'npm run build', 'tally/vercel.json must build with `npm run build`');
-  assert(config.outputDirectory === 'dist/tally/browser', 'tally/vercel.json must serve dist/tally/browser');
+  assert(
+    config.buildCommand === 'npm run build && node scripts/prepare-vercel-output.mjs',
+    'tally/vercel.json must build and prepare the Vercel browser output',
+  );
+  assert(config.outputDirectory === 'browser', 'tally/vercel.json must serve the prepared browser output');
   assert(
     config.routes?.some(route => route.handle === 'filesystem'),
     'tally/vercel.json must serve filesystem assets before SPA fallback',
@@ -94,8 +97,11 @@ function checkVercelAppConfig() {
   assert(existsSync(join(root, rootConfigPath)), 'repo-root vercel.json is missing');
   const rootConfig = JSON.parse(read(rootConfigPath));
   assert(rootConfig.installCommand === 'npm ci', 'repo-root vercel.json must install dependencies from the Vercel project root');
-  assert(rootConfig.buildCommand === 'npm run build', 'repo-root vercel.json must build the Angular app from the Vercel project root');
-  assert(rootConfig.outputDirectory === 'dist/tally/browser', 'repo-root vercel.json must serve dist/tally/browser');
+  assert(
+    rootConfig.buildCommand === 'npm run build && node scripts/prepare-vercel-output.mjs',
+    'repo-root vercel.json must build and prepare the Vercel browser output',
+  );
+  assert(rootConfig.outputDirectory === 'browser', 'repo-root vercel.json must serve the prepared browser output');
   assert(
     rootConfig.routes?.some(route => route.dest === '/index.html'),
     'repo-root vercel.json must fall back to /index.html for the Angular app shell',
