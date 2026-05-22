@@ -92,6 +92,10 @@ function checkVercelAppConfig() {
     'tally/vercel.json must fall back to /index.html for the Angular app shell',
   );
   assert(existsSync(join(root, 'tally/public/landing/index.html')), 'landing page must remain available from public/landing');
+  assert(
+    existsSync(join(root, 'tally/landing/scripts/prepare-vercel-output.mjs')),
+    'landing-root Vercel output prep script is missing',
+  );
 
   const rootConfigPath = 'vercel.json';
   assert(existsSync(join(root, rootConfigPath)), 'repo-root vercel.json is missing');
