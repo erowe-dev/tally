@@ -89,6 +89,17 @@ function checkVercelAppConfig() {
     'tally/vercel.json must fall back to /index.html for the Angular app shell',
   );
   assert(existsSync(join(root, 'tally/public/landing/index.html')), 'landing page must remain available from public/landing');
+
+  const rootConfigPath = 'vercel.json';
+  assert(existsSync(join(root, rootConfigPath)), 'repo-root vercel.json is missing');
+  const rootConfig = JSON.parse(read(rootConfigPath));
+  assert(rootConfig.installCommand === 'cd tally && npm ci', 'repo-root vercel.json must install Angular dependencies from tally/');
+  assert(rootConfig.buildCommand === 'cd tally && npm run build', 'repo-root vercel.json must build the Angular app from tally/');
+  assert(rootConfig.outputDirectory === 'tally/dist/tally/browser', 'repo-root vercel.json must serve tally/dist/tally/browser');
+  assert(
+    rootConfig.routes?.some(route => route.dest === '/index.html'),
+    'repo-root vercel.json must fall back to /index.html for the Angular app shell',
+  );
 }
 
 function checkVercelApiConfig() {
