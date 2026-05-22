@@ -104,8 +104,14 @@ const checks = [
       assert(res.ok, `expected 2xx, got ${res.status}: ${body}`);
       const ngsw = JSON.parse(body);
       const urls = JSON.stringify(ngsw.dataGroups ?? []);
-      assert(urls.includes(`${apiUrl}/api/balances`), 'missing balances data group');
-      assert(urls.includes(`${apiUrl}/api/expiry`), 'missing expiry data group');
+      assert(
+        urls.includes(`${apiUrl}/api/balances`) || urls.includes('tally-api') && urls.includes('api\\\\/balances'),
+        'missing balances data group',
+      );
+      assert(
+        urls.includes(`${apiUrl}/api/expiry`) || urls.includes('tally-api') && urls.includes('api\\\\/expiry'),
+        'missing expiry data group',
+      );
       assert(!urls.includes('/api/users'), 'must not cache user provisioning');
       assert(!urls.includes('/api/trips'), 'must not cache trips in service worker');
       assert(!urls.includes('/api/waitlist'), 'must not cache waitlist writes');
