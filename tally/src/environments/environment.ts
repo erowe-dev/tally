@@ -9,4 +9,12 @@ export const environment = {
     },
   },
   apiUrl: 'http://localhost:3000',
+  analytics: {
+    enabled: false,
+    endpoint: '',
+  },
+  errorReporting: {
+    enabled: false,
+    endpoint: '',
+  },
 };

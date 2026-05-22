@@ -33,6 +33,10 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
         <div class="sync-pill" [class]="expiry.syncState()">
           <span class="sync-dot"></span>
           <span class="sync-text">{{ syncLabel(expiry.syncState()) }}</span>
+          <button
+            *ngIf="expiry.syncState() === 'error'"
+            class="sync-retry"
+            (click)="expiry.retryLoad()">Retry</button>
         </div>
         <button class="bulk-today-btn"
           *ngIf="expiry.syncState() !== 'loading'"
@@ -213,6 +217,13 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
       display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
     }
     .pill-row .sync-pill { margin-bottom: 0; }
+    .sync-retry {
+      margin-left: auto; background: none; border: 1px solid currentColor;
+      border-radius: 5px; font-family: 'Geist', sans-serif; font-size: 10px;
+      font-weight: 500; color: inherit; padding: 2px 8px; cursor: pointer;
+      opacity: 0.7; transition: opacity 0.15s; flex-shrink: 0;
+    }
+    .sync-retry:hover { opacity: 1; }
 
     .bulk-today-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;

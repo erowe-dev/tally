@@ -1,14 +1,13 @@
 import { Router } from 'express';
 import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
-import { asyncRoute, requireUser, validateCardId } from '../lib/route-helpers';
+import { asyncRoute, requireUser } from '../lib/route-helpers';
 
 const router = Router();
 
-const TRIP_TYPES   = new Set(['flight', 'hotel']);
-const CABIN_TYPES  = new Set(['economy', 'premium', 'business', 'first']);
-const HOTEL_CATS   = new Set(['budget', 'mid', 'luxury', 'top']);
-const IATA_RE      = /^[A-Z]{3}$/;
+const TRIP_TYPES  = new Set(['flight', 'hotel']);
+const CABIN_TYPES = new Set(['economy', 'premium', 'business', 'first']);
+const HOTEL_CATS  = new Set(['budget', 'mid', 'luxury', 'top']);
 
 // GET /api/trips
 // Returns all saved trips for the user, newest first.

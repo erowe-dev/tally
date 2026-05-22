@@ -1,15 +1,21 @@
 {
   "name": "tally",
   "version": "0.0.0",
+  "engines": {
+    "node": ">=20 <25"
+  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "verify": "npm test -- --watch=false && npm run build && npm run build:pwa",
     "icons": "node scripts/generate-icons.mjs",
     "build:pwa": "ng build --configuration production",
-    "serve:pwa": "npx http-server dist/tally/browser -p 8080 --cors"
+    "serve:pwa": "npx http-server dist/tally/browser -p 8080 --cors",
+    "preflight:prod": "node ../scripts/production-preflight.mjs",
+    "smoke:prod": "node ../scripts/production-smoke.mjs"
   },
   "private": true,
   "dependencies": {

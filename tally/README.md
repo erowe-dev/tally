@@ -2,7 +2,7 @@
 
 > Know exactly what to do with your points.
 
-A mobile-first Progressive Web App (PWA) for intermediate credit card points earners. Built with Angular 18, standalone components, and signals.
+A mobile-first Progressive Web App (PWA) for intermediate credit card points earners. Built with Angular 18, standalone components, signals, Auth0, and an Express API.
 
 ---
 
@@ -120,10 +120,11 @@ All data lives in `src/app/core/services/data.service.ts`.
 - **Setup:** Import JSON → set SMTP credentials → set `ALERT_EMAIL` env var
 
 ### Waitlist Webhook (`n8n/waitlist-webhook.json`)
-- POST `/webhook/tally-waitlist` from landing page form
+- Landing page posts to `https://tally-api.vercel.app/api/waitlist`
+- API proxies to the n8n `WAITLIST_WEBHOOK_URL`
 - Validates email → Google Sheet → confirmation email → builder ping
 - **Setup:** Import JSON → set Google Sheets credentials → set `YOUR_EMAIL` env var
-- **Landing page:** Update the `fetch()` URL in `landing/index.html` with your n8n webhook URL
+- **Landing page:** Shows a `mailto:hello@tallypoints.app` fallback only when the API/webhook is unavailable
 
 ---
 
@@ -146,6 +147,27 @@ Point `tallypoints.app` (or your domain) at it.
 
 ---
 
+## Production Checks
+
+Run local production preflight before pushing a release:
+
+```bash
+npm run preflight:prod
+npm run verify
+```
+
+After Vercel deploys, run:
+
+```bash
+npm run smoke:prod
+```
+
+Production API responses include `X-Request-Id`; use that value to correlate browser failures with Vercel function logs.
+
+Wallet and Expiry API reads also keep a one-hour localStorage read-through cache (`tally_cache_balances`, `tally_cache_expiry`) so first authenticated loads can fall back cleanly if the cross-origin API is temporarily unavailable.
+
+---
+
 ## Roadmap
 
 ### ✅ Done
@@ -158,17 +180,21 @@ Point `tallypoints.app` (or your domain) at it.
 - Tally brand system
 - Landing page + waitlist form
 - n8n workflows (Flying Blue alert + waitlist handler)
+- Deferred tab loading — app shell ships first, feature tabs load on demand
 
 ### 🔨 Pre-launch
-- [ ] Generate actual icon PNGs (`npm run icons`)
-- [ ] Wire landing page form to n8n webhook URL
+- [x] Generate actual icon PNGs (`npm run icons`)
+- [x] Wire landing page form to API-backed n8n webhook proxy
 - [ ] Deploy landing page → grab domain
 - [ ] Import n8n workflows and configure credentials
 
 ### 🚀 Alpha Pro Tier
-- [ ] Auth — Microsoft Entra External ID
-- [ ] Cloud sync — wallet + saved trips across devices
-- [ ] Saved trips feature
+- [x] Auth — Auth0 SPA
+- [x] Cloud sync — wallet, expiry, and saved trips across devices
+- [x] Saved trips feature
+- [x] Analytics event call sites — provider endpoint disabled until configured
+- [x] Optimizer → Sweet Spots deep link
+- [x] HOW_TO_BOOK coverage for Avianca, Aeroplan, Korean Air, and Aeromexico
 - [ ] Push notifications (web push API)
 - [ ] Stripe billing — $6.99/mo or $49/year
 - [ ] Seats.aero API integration for live award search
@@ -183,6 +209,6 @@ Point `tallypoints.app` (or your domain) at it.
 - State uses **Angular Signals** — prefer `signal()` / `computed()` over RxJS where possible
 - CSS is **component-scoped** — global tokens only in `src/styles.scss`
 - `localStorage` keys: `tally_wallet_v1`, `tally_expiry_v1`
-- Backend target: `.NET 8 Web API` on Azure App Service
-- Auth target: Microsoft Entra External ID
+- Backend target: Express API on Vercel Functions
+- Auth target: Auth0
 - Payments target: Stripe

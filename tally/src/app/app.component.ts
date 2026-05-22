@@ -1,14 +1,16 @@
-import { Component, signal, computed, inject, HostListener, effect, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
-import { CommonModule } from '@angular/common';
+import { Component, signal, computed, inject, effect, PLATFORM_ID, isDevMode } from '@angular/core';
+import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { SwUpdate } from '@angular/service-worker';
 import { NavTab } from './core/models';
 import { WalletService } from './core/services/wallet.service';
 import { ExpiryService } from './core/services/expiry.service';
 import { AuthService } from './core/services/auth.service';
 import { NetworkService } from './core/services/network.service';
 import { NavigationService } from './core/services/navigation.service';
+import { AnalyticsService } from './core/services/analytics.service';
 import { TallyLogoComponent } from './shared/components/tally-logo/tally-logo.component';
 import { BottomNavComponent } from './shared/components/bottom-nav/bottom-nav.component';
+import { ToastComponent } from './shared/components/toast/toast.component';
 import { OptimizerComponent } from './features/optimizer/optimizer.component';
 import { WalletComponent } from './features/wallet/wallet.component';
 import { CardsComponent } from './features/cards/cards.component';
@@ -26,10 +28,14 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
 @Component({
   selector: 'app-root',
   standalone: true,
+  host: {
+    '(document:keydown)': 'onKeyDown($event)',
+  },
   imports: [
     CommonModule,
     TallyLogoComponent,
     BottomNavComponent,
+    ToastComponent,
     OptimizerComponent,
     WalletComponent,
     CardsComponent,
@@ -48,6 +54,17 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
         </div>
         <button class="install-btn" (click)="triggerInstall()">Install</button>
         <button class="install-dismiss" (click)="dismissInstall()" aria-label="Dismiss">✕</button>
+      </div>
+
+      <!-- SW update banner -->
+      <div class="update-banner" *ngIf="showUpdateBanner()">
+        <span class="update-icon">✦</span>
+        <div class="update-body">
+          <div class="update-title">Update available</div>
+          <div class="update-sub">Reload to get the latest version</div>
+        </div>
+        <button class="update-btn" (click)="reloadPage()">Reload</button>
+        <button class="update-dismiss" (click)="showUpdateBanner.set(false)" aria-label="Dismiss">✕</button>
       </div>
 
       <!-- Offline banner -->
@@ -88,7 +105,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
       <!-- Expiry critical ribbon — shown when authenticated and any program needs urgent action -->
       <button class="expiry-ribbon"
         *ngIf="auth.isAuthenticated() && expiry.criticalCount() > 0 && activeTab() !== 'expiry'"
-        (click)="activeTab.set('expiry')">
+        (click)="handleTabChange('expiry')">
         <span class="expiry-ribbon-icon">⚠️</span>
         <span class="expiry-ribbon-text">
           {{ expiry.criticalCount() }} program{{ expiry.criticalCount() > 1 ? 's' : '' }}
@@ -99,15 +116,37 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
 
       <main class="app-main">
 
-        <!-- Protected tabs — only rendered when authenticated -->
-        <tally-optimizer  *ngIf="activeTab() === 'optimizer'  && auth.isAuthenticated()"
-                          [prefill]="optimizerPrefill()" />
-        <tally-wallet     *ngIf="activeTab() === 'wallet'     && auth.isAuthenticated()" />
-        <tally-expiry     *ngIf="activeTab() === 'expiry'     && auth.isAuthenticated()" />
+        <!-- Protected tabs — loaded on demand after auth -->
+        @defer (when activeTab() === 'optimizer' && auth.isAuthenticated()) {
+          @if (activeTab() === 'optimizer' && auth.isAuthenticated()) {
+            <tally-optimizer [prefill]="optimizerPrefill()" />
+          }
+        }
 
-        <!-- Public tabs — always available -->
-        <tally-cards      *ngIf="activeTab() === 'cards'" />
-        <tally-sweetspots *ngIf="activeTab() === 'sweetspots'" />
+        @defer (when activeTab() === 'wallet' && auth.isAuthenticated()) {
+          @if (activeTab() === 'wallet' && auth.isAuthenticated()) {
+            <tally-wallet />
+          }
+        }
+
+        @defer (when activeTab() === 'expiry' && auth.isAuthenticated()) {
+          @if (activeTab() === 'expiry' && auth.isAuthenticated()) {
+            <tally-expiry />
+          }
+        }
+
+        <!-- Public tabs — loaded on demand -->
+        @defer (when activeTab() === 'cards') {
+          @if (activeTab() === 'cards') {
+            <tally-cards />
+          }
+        }
+
+        @defer (when activeTab() === 'sweetspots') {
+          @if (activeTab() === 'sweetspots') {
+            <tally-sweetspots />
+          }
+        }
 
         <!-- Login prompt — shown when on a protected tab but not yet signed in -->
         <div class="login-prompt"
@@ -120,7 +159,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
           <button class="login-btn" (click)="auth.login()">Sign in / Create account</button>
           <div class="login-public-note">
             Just browsing?
-            <button class="link-btn" (click)="activeTab.set('cards')">View Cards & Partners</button>
+            <button class="link-btn" (click)="handleTabChange('cards')">View Cards & Partners</button>
           </div>
         </div>
 
@@ -130,6 +169,8 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
         [activeTab]="activeTab()"
         (tabChange)="handleTabChange($event)"
       />
+
+      <tally-toast />
 
     </div>
   `,
@@ -168,6 +209,35 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
       line-height: 1;
     }
     .install-dismiss:hover { opacity: 1; }
+
+    /* SW update banner */
+    .update-banner {
+      display: flex; align-items: center; gap: 10px;
+      background: #eff6ff; border-bottom: 1px solid rgba(59,130,246,0.2);
+      padding: 10px 16px;
+    }
+    .update-icon { font-size: 16px; flex-shrink: 0; color: #1d4ed8; }
+    .update-body { flex: 1; min-width: 0; }
+    .update-title {
+      font-family: 'Geist', sans-serif; font-size: 12px;
+      font-weight: 600; color: #1d4ed8;
+    }
+    .update-sub {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: #3b82f6; letter-spacing: 0.06em;
+    }
+    .update-btn {
+      background: #1d4ed8; color: white; border: none; border-radius: 8px;
+      font-family: 'Geist', sans-serif; font-size: 12px; font-weight: 500;
+      padding: 6px 14px; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s;
+    }
+    .update-btn:hover { opacity: 0.85; }
+    .update-dismiss {
+      background: none; border: none; color: #1d4ed8;
+      font-size: 13px; cursor: pointer; padding: 4px; flex-shrink: 0; opacity: 0.6;
+      line-height: 1;
+    }
+    .update-dismiss:hover { opacity: 1; }
 
     /* Offline banner */
     .offline-banner {
@@ -296,7 +366,11 @@ export class AppComponent {
   auth = inject(AuthService);
   network = inject(NetworkService);
   private nav = inject(NavigationService);
+  private analytics = inject(AnalyticsService);
   private platformId = inject(PLATFORM_ID);
+  private document = inject(DOCUMENT);
+  private swUpdate = inject(SwUpdate, { optional: true });
+  private browserWindow = isPlatformBrowser(this.platformId) ? this.document.defaultView : null;
 
   activeTab = signal<NavTab>('cards'); // default to public tab
   optimizerPrefill = signal<{ fromCity?: string; toCity?: string; cabin?: string } | null>(null);
@@ -304,6 +378,9 @@ export class AppComponent {
   // PWA install prompt
   showInstallBanner = signal(false);
   private _deferredPrompt: BeforeInstallPromptEvent | null = null;
+
+  // SW update banner
+  showUpdateBanner = signal(false);
 
   constructor() {
     // Watch for cross-component navigation requests (e.g. "Open in Optimizer" from Sweet Spots)
@@ -317,20 +394,39 @@ export class AppComponent {
       this.nav.clear();
     });
 
+    // Honor ?tab= query param (used by PWA shortcuts in manifest)
+    const tabParam = new URLSearchParams(this.browserWindow?.location.search ?? '').get('tab') as NavTab | null;
+    if (tabParam && (this.TAB_ORDER as string[]).includes(tabParam)) {
+      this.handleTabChange(tabParam);
+    }
+
+    // SW update — show reload banner when a new version is available
+    if (!isDevMode() && this.swUpdate?.isEnabled && this.browserWindow) {
+      this.swUpdate.versionUpdates.subscribe(evt => {
+        if (evt.type === 'VERSION_READY') this.showUpdateBanner.set(true);
+      });
+      // Proactively check on tab focus
+      this.document.addEventListener('visibilitychange', () => {
+        if (this.document.visibilityState === 'visible') {
+          this.swUpdate!.checkForUpdate().catch(() => {});
+        }
+      });
+    }
+
     // PWA install prompt — only in browser, not SSR, not already standalone
-    if (isPlatformBrowser(this.platformId) && !window.matchMedia('(display-mode: standalone)').matches) {
-      const dismissed = localStorage.getItem(INSTALL_DISMISS_KEY);
+    if (this.browserWindow && !this.browserWindow.matchMedia('(display-mode: standalone)').matches) {
+      const dismissed = this.safeLocalStorageGet(INSTALL_DISMISS_KEY);
       const dismissedAt = dismissed ? parseInt(dismissed) : 0;
       const sevenDays = 7 * 24 * 60 * 60 * 1000;
       const canShow = Date.now() - dismissedAt > sevenDays;
 
       if (canShow) {
-        window.addEventListener('beforeinstallprompt', (e: Event) => {
+        this.browserWindow.addEventListener('beforeinstallprompt', (e: Event) => {
           e.preventDefault(); // prevent the mini-infobar on mobile Chrome
           this._deferredPrompt = e as BeforeInstallPromptEvent;
           this.showInstallBanner.set(true);
         });
-        window.addEventListener('appinstalled', () => {
+        this.browserWindow.addEventListener('appinstalled', () => {
           this.showInstallBanner.set(false);
           this._deferredPrompt = null;
         });
@@ -362,7 +458,7 @@ export class AppComponent {
 
   dismissInstall(): void {
     this.showInstallBanner.set(false);
-    try { localStorage.setItem(INSTALL_DISMISS_KEY, Date.now().toString()); } catch {}
+    this.safeLocalStorageSet(INSTALL_DISMISS_KEY, Date.now().toString());
   }
 
   handleTabChange(tab: NavTab): void {
@@ -370,15 +466,16 @@ export class AppComponent {
       // Show the login prompt inline rather than hard-redirecting —
       // user can still see what tab they tried to access
       this.activeTab.set(tab);
+      this.analytics.track('tab_viewed', { tab });
       return;
     }
     this.activeTab.set(tab);
+    this.analytics.track('tab_viewed', { tab });
   }
 
   private readonly TAB_ORDER: NavTab[] = ['optimizer', 'wallet', 'cards', 'sweetspots', 'expiry'];
 
   /** Keyboard shortcuts: 1–5 for tabs, Cmd/Ctrl+← / → for adjacent tabs */
-  @HostListener('document:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
     // Don't fire inside inputs/textareas
     const target = event.target as HTMLElement;
@@ -398,6 +495,26 @@ export class AppComponent {
       const dir = event.key === 'ArrowLeft' ? -1 : 1;
       const next = this.TAB_ORDER[(idx + dir + this.TAB_ORDER.length) % this.TAB_ORDER.length];
       if (next) this.handleTabChange(next);
+    }
+  }
+
+  reloadPage(): void {
+    this.browserWindow?.location.reload();
+  }
+
+  private safeLocalStorageGet(key: string): string | null {
+    try {
+      return this.browserWindow?.localStorage.getItem(key) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private safeLocalStorageSet(key: string, value: string): void {
+    try {
+      this.browserWindow?.localStorage.setItem(key, value);
+    } catch {
+      // localStorage unavailable
     }
   }
 }

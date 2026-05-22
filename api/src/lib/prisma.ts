@@ -1,6 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 
-// Singleton to prevent connection pool exhaustion during dev hot-reloads
+// In Vercel serverless each function invocation is a fresh Node process, so
+// the globalThis singleton only helps during dev hot-reloads. In production,
+// DATABASE_URL should point to Supabase's PgBouncer (port 6543) with
+// ?pgbouncer=true&connection_limit=1 to avoid exhausting the connection pool.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 export const prisma =

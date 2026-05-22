@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { AuthService } from './auth.service';
 import { ApiService } from './api.service';
 import { NetworkService } from './network.service';
+import { ToastService } from './toast.service';
 
 export interface ExpiryRule {
   cardId: string;
@@ -211,11 +212,12 @@ export class ExpiryService {
   private auth = inject(AuthService);
   private api = inject(ApiService);
   private network = inject(NetworkService);
+  private toast = inject(ToastService);
 
   private _records = signal<Record<string, ExpiryRecord>>(this.loadLocal());
   private _syncState = signal<SyncState>('idle');
+  private _retryTrigger = signal(0);
 
-  // One-shot guard: prevents the effect from re-running on signal re-evaluation
   private _apiLoaded = false;
 
   readonly records = this._records.asReadonly();
@@ -258,6 +260,7 @@ export class ExpiryService {
     // Load from API exactly once per session, after user row is confirmed.
     // Gate on isProvisioned() to prevent a 404 race with POST /api/users/me.
     effect(() => {
+      this._retryTrigger(); // tracked so retryLoad() can re-fire the effect
       if (
         !this._apiLoaded &&
         this.auth.isResolved() &&
@@ -268,7 +271,7 @@ export class ExpiryService {
         this._apiLoaded = true;
         this._syncState.set('loading');
 
-        this.api.getExpiryRecords().subscribe({
+        this.api.getExpiryRecordsWithCache().subscribe({
           next: apiRecords => {
             const localRecords = this.loadLocal();
             const localHasData = Object.keys(localRecords).length > 0;
@@ -287,15 +290,21 @@ export class ExpiryService {
               this._syncState.set('synced');
             }
           },
-          error: err => {
-            console.error('[ExpiryService] API load failed, using localStorage cache:', err);
+          error: _err => {
+            this.toast.error('Could not load expiry data — using cached data');
             this._syncState.set('error');
             // Reset so the effect can retry when network comes back online
             this._apiLoaded = false;
           },
         });
       }
-    });
+    }, { allowSignalWrites: true });
+  }
+
+  retryLoad(): void {
+    this._apiLoaded = false;
+    this._syncState.set('idle');
+    this._retryTrigger.update(n => n + 1);
   }
 
   setLastActivity(cardId: string, date: string): void {
@@ -313,7 +322,7 @@ export class ExpiryService {
 
     if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.setExpiryRecord(cardId, date).subscribe({
-        error: err => console.error('[ExpiryService] API sync failed:', err),
+        error: _err => this.toast.error('Expiry date not saved — will retry when online'),
       });
     }
   }
@@ -326,7 +335,7 @@ export class ExpiryService {
 
     if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.deleteExpiryRecord(cardId).subscribe({
-        error: err => console.error('[ExpiryService] API delete failed:', err),
+        error: _err => this.toast.error('Expiry date not deleted — will retry when online'),
       });
     }
   }
@@ -334,8 +343,7 @@ export class ExpiryService {
   private _pushLocalToApi(records: Record<string, ExpiryRecord>): void {
     for (const { cardId, lastActivityDate } of Object.values(records)) {
       this.api.setExpiryRecord(cardId, lastActivityDate).subscribe({
-        error: err =>
-          console.error(`[ExpiryService] Failed to push local ${cardId} to API:`, err),
+        error: _err => this.toast.error('Expiry date not saved — will retry when online'),
       });
     }
   }

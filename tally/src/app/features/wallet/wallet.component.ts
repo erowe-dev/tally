@@ -7,20 +7,29 @@ import { OptimizerService } from '../../core/services/optimizer.service';
 import { ExpiryService } from '../../core/services/expiry.service';
 import { NavigationService } from '../../core/services/navigation.service';
 import { CreditCard, TransferBonus } from '../../core/models';
+import { OnboardingComponent } from '../../shared/components/onboarding/onboarding.component';
 
 @Component({
   selector: 'tally-wallet',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, OnboardingComponent],
   template: `
     <div class="page-content">
       <div class="section-eyebrow">My Points Wallet</div>
       <h2 class="section-title">Enter your <em>balances</em></h2>
 
+      <!-- New user onboarding checklist -->
+      <tally-onboarding *ngIf="wallet.syncState() !== 'loading'" />
+
       <!-- Sync status pill -->
       <div class="sync-pill" [class]="wallet.syncState()">
         <span class="sync-dot"></span>
         <span class="sync-text">{{ syncLabel() }}</span>
+        <button
+          *ngIf="wallet.syncState() === 'error'"
+          class="sync-retry"
+          (click)="wallet.retryLoad()"
+        >Retry</button>
       </div>
 
       <!-- Loading shimmer -->
@@ -79,7 +88,7 @@ import { CreditCard, TransferBonus } from '../../core/models';
                   [value]="wallet.getBalance(card.id) || null"
                   (click)="$event.stopPropagation(); toggleExpand(card.id)"
                   (input)="onInput(card.id, $event)"
-                  min="0" step="1000">
+                  min="0" max="50000000" step="1000">
                 <div class="row-value" *ngIf="wallet.getBalance(card.id) > 0">
                   ~\${{ rowValue(card) | number }}
                 </div>
@@ -336,6 +345,13 @@ import { CreditCard, TransferBonus } from '../../core/models';
   styles: [`
     /* Sync status pill — base in styles.scss */
     .sync-pill { margin-bottom: 20px; }
+    .sync-retry {
+      margin-left: auto; background: none; border: 1px solid currentColor;
+      border-radius: 5px; font-family: 'Geist', sans-serif; font-size: 10px;
+      font-weight: 500; color: inherit; padding: 2px 8px; cursor: pointer;
+      opacity: 0.7; transition: opacity 0.15s; flex-shrink: 0;
+    }
+    .sync-retry:hover { opacity: 1; }
 
     /* Shimmer — base animation in styles.scss .shimmer-skeleton */
     .shimmer-row { height: 64px; margin-bottom: 10px; }

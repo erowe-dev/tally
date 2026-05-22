@@ -2,23 +2,30 @@ import { Injectable, signal, inject, effect } from '@angular/core';
 import { AuthService } from './auth.service';
 import { ApiService } from './api.service';
 import { NetworkService } from './network.service';
+import { ToastService } from './toast.service';
 import { SavedTrip } from '../models';
 
 const STORAGE_KEY = 'tally_trips_v1';
+export type SyncState = 'idle' | 'loading' | 'synced' | 'error';
 
 @Injectable({ providedIn: 'root' })
 export class TripsService {
   private auth = inject(AuthService);
   private api = inject(ApiService);
   private network = inject(NetworkService);
+  private toast = inject(ToastService);
 
   private _trips = signal<SavedTrip[]>(this.loadLocal());
+  private _syncState = signal<SyncState>('idle');
+  private _retryTrigger = signal(0);
   private _apiLoaded = false;
 
   readonly trips = this._trips.asReadonly();
+  readonly syncState = this._syncState.asReadonly();
 
   constructor() {
     effect(() => {
+      this._retryTrigger();
       if (
         !this._apiLoaded &&
         this.auth.isResolved() &&
@@ -27,18 +34,37 @@ export class TripsService {
         this.network.isOnline()
       ) {
         this._apiLoaded = true;
+        this._syncState.set('loading');
         this.api.getTrips().subscribe({
           next: trips => {
-            this._trips.set(trips);
-            this.saveLocal(trips);
+            const localTrips = this.loadLocal();
+            const localHasData = localTrips.length > 0;
+            const apiIsEmpty = trips.length === 0;
+
+            if (apiIsEmpty && localHasData) {
+              this._trips.set(localTrips);
+              this._syncState.set('synced');
+              this.pushLocalToApi(localTrips);
+            } else {
+              this._trips.set(trips);
+              this.saveLocal(trips);
+              this._syncState.set('synced');
+            }
           },
-          error: err => {
-            console.error('[TripsService] API load failed, using localStorage cache:', err);
+          error: _err => {
+            this.toast.error('Could not load saved trips — using cached data');
+            this._syncState.set('error');
             this._apiLoaded = false;
           },
         });
       }
-    });
+    }, { allowSignalWrites: true });
+  }
+
+  retryLoad(): void {
+    this._apiLoaded = false;
+    this._syncState.set('idle');
+    this._retryTrigger.update(n => n + 1);
   }
 
   saveTrip(trip: Omit<SavedTrip, 'id' | 'createdAt'>): void {
@@ -61,7 +87,7 @@ export class TripsService {
           this._trips.set(current);
           this.saveLocal(current);
         },
-        error: err => console.error('[TripsService] API save failed:', err),
+        error: _err => this.toast.error('Trip not saved — will retry when online'),
       });
     }
   }
@@ -76,7 +102,7 @@ export class TripsService {
 
     if (!id.startsWith('local_') && this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.updateTripNotes(id, trimmed).subscribe({
-        error: err => console.error('[TripsService] Note update failed:', err),
+        error: _err => this.toast.error('Note not saved — will retry when online'),
       });
     }
   }
@@ -89,7 +115,7 @@ export class TripsService {
     // Only hit the API for real (non-temp) ids
     if (!id.startsWith('local_') && this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.deleteTrip(id).subscribe({
-        error: err => console.error('[TripsService] API delete failed:', err),
+        error: _err => this.toast.error('Trip could not be deleted from server'),
       });
     }
   }
@@ -103,7 +129,7 @@ export class TripsService {
       for (const t of current) {
         if (!t.id.startsWith('local_')) {
           this.api.deleteTrip(t.id).subscribe({
-            error: err => console.error('[TripsService] API clear failed:', err),
+            error: _err => this.toast.error('Some trips could not be deleted from server'),
           });
         }
       }
@@ -123,5 +149,29 @@ export class TripsService {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
     } catch {}
+  }
+
+  private pushLocalToApi(trips: SavedTrip[]): void {
+    for (const trip of trips) {
+      this.api.createTrip({
+        tripType: trip.tripType,
+        origin: trip.origin,
+        destination: trip.destination,
+        cabin: trip.cabin,
+        passengers: trip.passengers,
+        nights: trip.nights,
+        hotelCat: trip.hotelCat,
+        programName: trip.programName,
+        ptsRequired: trip.ptsRequired,
+        notes: trip.notes,
+      }).subscribe({
+        next: saved => {
+          const current = this._trips().map(t => t.id === trip.id ? saved : t);
+          this._trips.set(current);
+          this.saveLocal(current);
+        },
+        error: err => console.error('[TripsService] Failed to push local trip to API:', err),
+      });
+    }
   }
 }

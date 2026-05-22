@@ -528,9 +528,9 @@ footer {
       Tally is the points advisor for people with 3–5 cards who want to stop leaving value on the table. Not another comparison tool — a specific recommendation engine.
     </p>
 
-    <div class="success-msg" id="successMsg">
-      <span class="success-icon">✓</span>
-      You're on the list. We'll be in touch soon.
+  <div class="success-msg" id="successMsg">
+    <span class="success-icon">✓</span>
+    You're on the list. Watch your inbox for alpha access.
     </div>
 
     <form class="waitlist-form" id="waitlistForm" onsubmit="handleSubmit(event)">
@@ -816,7 +816,7 @@ footer {
 
   <div class="success-msg" id="successMsg2" style="max-width:420px;margin:0 auto 16px;">
     <span class="success-icon">✓</span>
-    You're on the list. We'll email you when access opens.
+    You're on the list. Watch your inbox for alpha access.
   </div>
 
   <form class="waitlist-form" id="waitlistForm2" onsubmit="handleSubmit2(event)" style="justify-content:center;">
@@ -855,7 +855,6 @@ window.addEventListener('scroll', () => {
 });
 
 // Waitlist submit (hero form)
-// Replace this with your actual email service (Loops, Mailchimp, Resend, etc.)
 function handleSubmit(e) {
   e.preventDefault();
   const email = document.getElementById('emailInput').value;
@@ -868,28 +867,51 @@ function handleSubmit2(e) {
   submitEmail(email, 'waitlistForm2', 'successMsg2');
 }
 
-function submitEmail(email, formId, successId) {
-  // ── CONFIGURE THIS ──────────────────────────────────────────
-  // Option A: Loops.so
-  // fetch('https://app.loops.so/api/newsletter-form/YOUR_FORM_ID', {
-  //   method: 'POST', headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ email })
-  // });
+async function submitEmail(email, formId, successId) {
+  const form = document.getElementById(formId);
+  const success = document.getElementById(successId);
+  const button = form.querySelector('button[type="submit"]');
+  const originalLabel = button.textContent;
 
-  // Option B: Mailchimp (via serverless function)
-  // fetch('/api/subscribe', { method: 'POST', body: JSON.stringify({ email }) });
+  button.disabled = true;
+  button.textContent = 'Joining...';
 
-  // Option C: n8n webhook (matches your existing stack)
-  // fetch('https://your-n8n.com/webhook/tally-waitlist', {
-  //   method: 'POST', headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ email, timestamp: new Date().toISOString(), source: 'landing-page' })
-  // });
-  // ─────────────────────────────────────────────────────────────
+  try {
+    const response = await fetch('https://tally-api.vercel.app/api/waitlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        source: formId,
+        pageUrl: window.location.href,
+      }),
+    });
 
-  console.log('Waitlist signup:', email); // Replace with real submission
+    if (!response.ok) {
+      const fallback = await response.json().catch(() => ({}));
+      throw new Error(fallback.fallbackEmail || 'hello@tallypoints.app');
+    }
 
-  document.getElementById(formId).style.display = 'none';
-  document.getElementById(successId).classList.add('show');
+    form.style.display = 'none';
+    success.querySelector('a')?.remove();
+    success.querySelector('.success-icon').textContent = '✓';
+    success.lastChild.textContent = " You're on the list. Watch your inbox for alpha access.";
+    success.classList.add('show');
+  } catch (error) {
+    const rawFallback = error instanceof Error ? error.message : '';
+    const fallbackEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawFallback) ? rawFallback : 'hello@tallypoints.app';
+    const subject = encodeURIComponent('Tally alpha request');
+    const body = encodeURIComponent(`Please add ${email} to the Tally private alpha list.`);
+    const mailto = `mailto:${fallbackEmail}?subject=${subject}&body=${body}`;
+
+    success.querySelector('a')?.remove();
+    success.querySelector('.success-icon').textContent = '!';
+    success.lastChild.textContent = ' Waitlist is temporarily offline. Email us and we will add you manually.';
+    success.insertAdjacentHTML('beforeend', ` <a href="${mailto}" style="color:inherit;text-decoration:underline;">Send email</a>`);
+    success.classList.add('show');
+    button.disabled = false;
+    button.textContent = originalLabel;
+  }
 }
 </script>
 

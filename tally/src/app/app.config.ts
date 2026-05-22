@@ -1,9 +1,10 @@
-import { ApplicationConfig, provideZoneChangeDetection, isDevMode } from '@angular/core';
+import { ApplicationConfig, ErrorHandler, provideZoneChangeDetection, isDevMode } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideAuth0 } from '@auth0/auth0-angular';
 import { routes } from './app.routes';
+import { TallyErrorHandler } from './core/services/error-reporter.service';
 import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {
@@ -11,6 +12,7 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideHttpClient(),
+    { provide: ErrorHandler, useClass: TallyErrorHandler },
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',

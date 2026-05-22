@@ -1,7 +1,7 @@
 # AGENTS.md — Tally Points Advisor
 
 ## Project Overview
-Tally is a mobile-first PWA that helps intermediate credit card points earners optimize transfer decisions for flights and hotel redemptions. Built with Angular 18 + Auth0 + Express API + Supabase PostgreSQL. Deployed to Vercel (Angular) and Render (API) via GitHub (`erowe-dev/tally`, auto-deploys on push to `main`).
+Tally is a mobile-first PWA that helps intermediate credit card points earners optimize transfer decisions for flights and hotel redemptions. Built with Angular 18 + Auth0 + Express API + Supabase PostgreSQL. Deployed to Vercel for both the Angular app and API via GitHub (`erowe-dev/tally`, auto-deploys on push to `main`).
 
 **This is NOT part of any other codebase. Never mix references, patterns, or imports from other projects.**
 
@@ -11,14 +11,14 @@ Tally is a mobile-first PWA that helps intermediate credit card points earners o
 - **Framework:** Angular 18, standalone components (no NgModules anywhere)
 - **State:** Angular Signals (`signal()`, `computed()`, `effect()`) — prefer over RxJS/BehaviorSubject
 - **Auth:** Auth0 SPA (`@auth0/auth0-angular`), domain `dev-2iqdjh6lgnv6pnz5.us.auth0.com`
-- **API:** Express + TypeScript in `api/` — deployed on Render
+- **API:** Express + TypeScript in `api/` — deployed on Vercel Functions
 - **Database:** Supabase (PostgreSQL) + Prisma ORM
 - **Persistence:** `localStorage` write-through cache; API is source of truth on load
 - **PWA:** `manifest.webmanifest` in `src/`, wired to `angular.json` assets
 - **Styling:** Component-scoped SCSS + global CSS custom properties in `src/styles.scss`
 - **Dark mode:** Automatic via `@media (prefers-color-scheme: dark)` in `styles.scss`
 - **Angular deploy:** Vercel (auto-deploy on push to `main`, root dir = `tally/`)
-- **API deploy:** Render (web service, root dir = `api/`)
+- **API deploy:** Vercel Functions (root dir = `api/`)
 
 ---
 
@@ -49,11 +49,11 @@ tally/                                   ← Angular app (Vercel root dir)
 │   │       └── bottom-nav/                  # Bottom nav with expiry badge + lock dots
 │   ├── environments/
 │   │   ├── environment.ts                   # Dev: localhost API + Auth0 dev app
-│   │   └── environment.production.ts        # Prod: Render API URL + same Auth0 app
+│   │   └── environment.production.ts        # Prod: Vercel API URL + same Auth0 app
 │   ├── styles.scss                          # Global CSS tokens + dark mode palette
 │   ├── index.html                           # PWA meta tags, fonts, manifest link
 │   └── manifest.webmanifest                 # PWA manifest (icons, shortcuts)
-api/                                     ← Express API (Render root dir)
+api/                                     ← Express API (Vercel API root dir)
 ├── src/
 │   ├── index.ts                         # Express entry: CORS, routes, env validation
 │   ├── lib/
@@ -89,10 +89,11 @@ api/                                     ← Express API (Render root dir)
 ### API sync pattern (wallet / expiry / trips)
 ```
 1. On login: effect() fires when isResolved() && isAuthenticated() && isProvisioned() && isOnline()
-2. GET /api/{resource} → if API empty + local has data → push local up; else API overwrites local
-3. Writes: update signal + localStorage immediately, then fire-and-forget API call
-4. Error: reset _apiLoaded=false so retry happens when network comes back (isOnline() re-fires effect)
-5. Optimistic trips: insert local with temp id, replace with real id on API success
+2. GET /api/{resource} → balances/expiry use a 1h localStorage read-through cache for API failures
+3. If API empty + local has data → push local up; else API overwrites local
+4. Writes: update signal + localStorage immediately, then fire-and-forget API call
+5. Error: reset _apiLoaded=false so retry happens when network comes back (isOnline() re-fires effect)
+6. Optimistic trips: insert local with temp id, replace with real id on API success
 ```
 
 ### File conventions
@@ -107,6 +108,7 @@ api/                                     ← Express API (Render root dir)
 - `sweetSpots: SweetSpot[]` — 16 curated sweet spots with category filter
 - `transferBonuses: TransferBonus[]` — active time-limited transfer bonus promos (manually updated)
 - `localStorage` keys: `tally_wallet_v1`, `tally_expiry_v1`, `tally_trips_v1`
+- API read-through cache keys: `tally_cache_balances`, `tally_cache_expiry`
 - Always wrap `localStorage` in try/catch
 
 ---
@@ -180,26 +182,28 @@ Add to `transferBonuses` array in `data.service.ts`. The Sweet Spots tab auto-hi
 ### Angular → Vercel (auto)
 ```bash
 cd tally
+npm run preflight:prod             # verify production config before deploy
 ng build                          # verify clean build — catches template errors ng serve misses
 git add .
 git commit -m "feat: your change"
 git push origin main              # Vercel auto-deploys in ~30s
 ```
 
-### API → Render (auto)
+### API → Vercel (auto)
 ```bash
 cd api
+npm run preflight:prod             # verify production config before deploy
 npm run build                     # tsc — verify TypeScript is clean
 git add .
 git commit -m "feat: api change"
-git push origin main              # Render auto-deploys
+git push origin main              # Vercel auto-deploys
 ```
 
 ### DB migrations
 ```bash
 cd api
 npx prisma migrate dev --name your_migration_name   # creates + applies locally
-# Render runs `npm run db:migrate` (prisma migrate deploy) on each deploy
+# Run `npm run db:migrate` before production deploys that include migrations
 ```
 
 ---
@@ -213,14 +217,18 @@ npx prisma migrate dev --name your_migration_name   # creates + applies locally
 | `DATABASE_URL_POOLED` | Supabase transaction pooler URL (port 6543, `?pgbouncer=true`) |
 | `AUTH0_DOMAIN` | `dev-2iqdjh6lgnv6pnz5.us.auth0.com` |
 | `AUTH0_AUDIENCE` | `https://api.tally.app` |
+| `WAITLIST_WEBHOOK_URL` | n8n waitlist webhook URL, optional locally |
 | `PORT` | `3000` |
 
-### Render environment variables (set in dashboard)
-Same 5 vars as above. `NODE_ENV=production` also set by Render automatically.
+### Vercel API environment variables (set in dashboard)
+Same vars as above. Also set `NODE_ENV=production` and `APP_ORIGINS` for the production Angular and landing-page origins.
 
-### ⚠️ Remaining TODO before production
-`tally/src/environments/environment.production.ts` → `apiUrl` is still `'TODO_YOUR_RENDER_API_URL'`.
-After creating the Render service, replace with the actual URL (e.g. `https://tally-api.onrender.com`), then push to trigger a Vercel rebuild.
+### Production API URL
+`tally/src/environments/environment.production.ts` points to `https://tally-api.vercel.app`.
+The PWA `dataGroups` in `tally/ngsw-config.json` must use the same API origin.
+
+### Observability
+The API sets `X-Request-Id` on every response and logs failed requests with that ID. Angular has disabled-by-default `analytics` and `errorReporting` transports in the environment files; do not enable them until a provider endpoint is configured and reviewed for PII.
 
 ---
 
@@ -229,15 +237,15 @@ After creating the Render service, replace with the actual URL (e.g. `https://ta
 - Font inlining disabled in `angular.json` (`optimization.fonts: false`)
 - Component style budget: `anyComponentStyle` warning at 8 kB, error at 12 kB
 - Auth0 SDK adds ~208 kB to the bundle; initial bundle budget raised to 700 kB warn / 1 MB error
-- PWA icons (`public/icons/icon-192.png`, `public/icons/icon-512.png`) not yet generated — add them to complete PWA install experience
+- PWA icons live in `public/icons/` and are referenced by `src/manifest.webmanifest`
+- Feature tabs are loaded through Angular `@defer` blocks in `AppComponent`; keep new heavy tab UI out of the initial app shell.
 
 ---
 
 ## Not Implemented Yet (next priorities)
-1. **Render deploy** — create Render service, fill `TODO_YOUR_RENDER_API_URL` in `environment.production.ts`
-2. Wire `landing/index.html` waitlist form to n8n webhook (`submitEmail()` currently logs)
-3. Generate PWA icons (`public/icons/icon-192.png`, `public/icons/icon-512.png`)
+1. **Vercel API deploy** — configure the API project env vars and verify `https://tally-api.vercel.app/health`
+2. Import n8n workflows and set `WAITLIST_WEBHOOK_URL` on the Vercel API project
+3. Configure analytics endpoint/provider and enable `environment.analytics.enabled`
 4. Stripe billing (`$6.99/mo` or `$49/yr`)
 5. Seats.aero API for live award availability
 6. Web push notifications for expiry alerts + Flying Blue promos
-7. Trip notes editing in Saved Trips panel

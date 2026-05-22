@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { filter, switchMap, take, retry, timer } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { ToastService } from './toast.service';
 
 /**
  * Thin wrapper that bridges Auth0's RxJS observables into Angular signals.
@@ -18,6 +19,7 @@ import { environment } from '../../../environments/environment';
 export class AuthService {
   private auth0 = inject(Auth0Service);
   private http = inject(HttpClient);
+  private toast = inject(ToastService);
 
   // Auth0 observables → signals
   readonly isAuthenticated = toSignal(this.auth0.isAuthenticated$, { initialValue: false });
@@ -43,7 +45,7 @@ export class AuthService {
     // - `filter(Boolean)` waits for a truthy isAuthenticated$ emission
     // - `take(1)` on both pipes ensures this runs exactly once per session
     // - `retry` with exponential backoff handles transient API/network failures
-    //   (cold Render server, brief connectivity blip, etc.)
+    //   (cold API start, brief connectivity blip, etc.)
     this.auth0.isAuthenticated$
       .pipe(
         filter(Boolean),
@@ -70,10 +72,10 @@ export class AuthService {
       )
       .subscribe({
         next: () => this._isProvisioned.set(true),
-        error: err => {
-          console.error('[AuthService] User provisioning failed after 3 retries:', err);
-          // Leave isProvisioned=false — other services will stay in
-          // localStorage-only mode rather than hitting the API and 404-ing
+        error: _err => {
+          this.toast.error('Could not connect to server — data saves locally only');
+          // Leave isProvisioned=false — other services stay in localStorage-only
+          // mode rather than hitting the API and 404-ing
         },
       });
   }

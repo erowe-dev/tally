@@ -9,10 +9,11 @@ const REQUIRED = [
 ] as const;
 
 type RequiredVar = (typeof REQUIRED)[number];
+type ResolvedEnv = Record<RequiredVar, string> & { DATABASE_URL_POOLED?: string };
 
-export function validateEnv(): Record<RequiredVar, string> {
+export function validateEnv(): ResolvedEnv {
   const missing: string[] = [];
-  const resolved = {} as Record<RequiredVar, string>;
+  const resolved = {} as ResolvedEnv;
 
   for (const key of REQUIRED) {
     const value = process.env[key];
@@ -21,6 +22,13 @@ export function validateEnv(): Record<RequiredVar, string> {
     } else {
       resolved[key] = value;
     }
+  }
+
+  const pooledUrl = process.env['DATABASE_URL_POOLED'];
+  if (pooledUrl && pooledUrl.trim() !== '' && !pooledUrl.startsWith('TODO_')) {
+    resolved.DATABASE_URL_POOLED = pooledUrl;
+  } else if (process.env['NODE_ENV'] === 'production' || process.env['VERCEL'] === '1') {
+    missing.push('DATABASE_URL_POOLED');
   }
 
   if (missing.length > 0) {

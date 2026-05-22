@@ -3,3 +3,11 @@
 
 # Environment files with real secrets
 api/.env
+api/.env.local
+tally/.env.local
+.env.local
+
+# Vercel local project links/env pulls
+.vercel/
+api/.vercel/
+tally/.vercel/

@@ -33,8 +33,9 @@ router.put(
     const { cardId } = req.params;
     const { amount } = req.body as { amount?: unknown };
 
-    if (typeof amount !== 'number' || amount < 0 || !Number.isFinite(amount)) {
-      res.status(400).json({ error: 'amount must be a non-negative finite number' });
+    const MAX_BALANCE = 50_000_000;
+    if (typeof amount !== 'number' || amount < 0 || !Number.isFinite(amount) || amount > MAX_BALANCE) {
+      res.status(400).json({ error: `amount must be a non-negative finite number ≤ ${MAX_BALANCE}` });
       return;
     }
 

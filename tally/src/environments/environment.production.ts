@@ -8,5 +8,13 @@ export const environment = {
       audience: 'https://api.tally.app',
     },
   },
-  apiUrl: 'TODO_YOUR_RENDER_API_URL', // e.g. 'https://tally-api.onrender.com'
+  apiUrl: 'https://tally-api.vercel.app',
+  analytics: {
+    enabled: false,
+    endpoint: '',
+  },
+  errorReporting: {
+    enabled: false,
+    endpoint: '',
+  },
 };

@@ -5,10 +5,12 @@ import { DataService } from '../../core/services/data.service';
 import { WalletService } from '../../core/services/wallet.service';
 import { SweetSpot, TransferBonus } from '../../core/models';
 import { NavigationService } from '../../core/services/navigation.service';
+import { AnalyticsService } from '../../core/services/analytics.service';
 
 type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'new' | 'saved' | 'covered';
 type SortMode = 'default' | 'cpp' | 'pts';
 const FAV_KEY = 'tally_sweetspot_favs_v1';
+const FILTER_KEY = 'tally_sweetspots_filter_v1';
 
 interface CppTier { val: number; label: string }
 const CPP_TIERS: CppTier[] = [
@@ -36,6 +38,8 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
   'Hilton Honors':               'hilton.com/en/hilton-honors/redeem',
   'Avianca LifeMiles':           'lifemiles.com/shop/redeem',
   'United MileagePlus':          'united.com/en/us/book/award-travel',
+  'Korean Air SkyPass':          'koreanair.com/skypass',
+  'Aeromexico Club Premier':     'aeromexico.com/en-us/club-premier',
   'IHG One Rewards':             'ihg.com/rewardsclub/gb/en/redeem',
 };
 
@@ -111,7 +115,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
 
       <div class="spots-list">
         <div class="spot-card" *ngFor="let s of filtered()" [class]="'cat-' + s.category">
-          <button class="fav-btn" (click)="toggleFav(spotKey(s))"
+          <button class="fav-btn" (click)="toggleFav(s)"
             [class.active]="isFav(spotKey(s))"
             [title]="isFav(spotKey(s)) ? 'Remove from saved' : 'Save this spot'">
             {{ isFav(spotKey(s)) ? '★' : '☆' }}
@@ -452,9 +456,10 @@ export class SweetspotsComponent {
   data = inject(DataService);
   wallet = inject(WalletService);
   private nav = inject(NavigationService);
+  private analytics = inject(AnalyticsService);
 
   searchRaw = '';
-  activeFilter = signal<Filter>('all');
+  activeFilter = signal<Filter>(this.loadInitialFilter());
   activeSort = signal<SortMode>('default');
   minCppFilter = signal<number>(0);
   private _favs = signal<Set<string>>(this.loadFavs());
@@ -541,13 +546,50 @@ export class SweetspotsComponent {
     return this._favs().has(key);
   }
 
-  toggleFav(key: string): void {
+  toggleFav(spot: SweetSpot): void {
+    const key = this.spotKey(spot);
+    let saved = false;
     this._favs.update(prev => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
+      if (next.has(key)) {
+        next.delete(key);
+        saved = false;
+      } else {
+        next.add(key);
+        saved = true;
+      }
       this.saveFavs(next);
       return next;
     });
+    this.analytics.track('sweet_spot_favorited', {
+      spot_key: key,
+      cpp_tier: this.cppTier(spot.cpp),
+      saved,
+    });
+  }
+
+  private loadInitialFilter(): Filter {
+    try {
+      const stored = localStorage.getItem(FILTER_KEY) as Filter | null;
+      localStorage.removeItem(FILTER_KEY);
+      return stored && this.isFilter(stored) ? stored : 'all';
+    } catch {
+      return 'all';
+    }
+  }
+
+  private isFilter(value: string): value is Filter {
+    return ['all', 'flight', 'hotel', 'promo', 'new', 'saved', 'covered'].includes(value);
+  }
+
+  private cppTier(cpp: string): string {
+    const parsed = parseFloat(cpp);
+    if (Number.isNaN(parsed)) return 'infinite_or_unknown';
+    if (parsed >= 2.5) return '2.5_plus';
+    if (parsed >= 2) return '2_plus';
+    if (parsed >= 1.5) return '1.5_plus';
+    if (parsed >= 1) return '1_plus';
+    return 'under_1';
   }
 
   private loadFavs(): Set<string> {

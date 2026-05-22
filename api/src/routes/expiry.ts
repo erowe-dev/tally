@@ -52,8 +52,9 @@ router.put(
     const { cardId } = req.params;
     const { lastActivityDate } = req.body as { lastActivityDate?: unknown };
 
-    if (typeof lastActivityDate !== 'string' || !isValidDateString(lastActivityDate)) {
-      res.status(400).json({ error: 'lastActivityDate must be a valid YYYY-MM-DD string' });
+    const today = new Date().toISOString().slice(0, 10);
+    if (typeof lastActivityDate !== 'string' || !isValidDateString(lastActivityDate) || lastActivityDate > today) {
+      res.status(400).json({ error: 'lastActivityDate must be a valid YYYY-MM-DD string not in the future' });
       return;
     }
 

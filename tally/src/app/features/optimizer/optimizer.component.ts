@@ -6,6 +6,8 @@ import { WalletService } from '../../core/services/wallet.service';
 import { DataService } from '../../core/services/data.service';
 import { TripsService } from '../../core/services/trips.service';
 import { ExpiryService, ExpiryStatus } from '../../core/services/expiry.service';
+import { AnalyticsService } from '../../core/services/analytics.service';
+import { NavigationService } from '../../core/services/navigation.service';
 import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
 
 interface RouteHistoryEntry {
@@ -145,6 +147,15 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     ],
     url: 'lifemiles.com',
   },
+  'Aeroplan': {
+    steps: [
+      'Transfer Amex MR, Chase UR, Capital One, or Bilt → Aeroplan (1:1)',
+      'Search at aircanada.com with "Book with points" enabled',
+      'Use flexible dates to compare dynamic Air Canada pricing against partner awards',
+      'Look for partner awards to avoid fuel surcharges and preserve stopover flexibility',
+    ],
+    url: 'aircanada.com/ca/en/aco/home/aeroplan.html',
+  },
   'United MileagePlus': {
     steps: [
       'Transfer Chase UR or Bilt → United MileagePlus (1:1 — instant)',
@@ -189,6 +200,24 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       'Best value: InterContinental and Kimpton boutique properties',
     ],
     url: 'ihg.com/rewardsclub/gb/en/redeem',
+  },
+  'Korean Air SkyPass': {
+    steps: [
+      'Use Korean Air SkyPass miles or search partner space through Korean Air',
+      'Log in at koreanair.com → SKYPASS → Redeem Miles',
+      'Search Seoul routes first, then add onward partners after confirming long-haul space',
+      'Partner awards can require extra documentation, so start early for family bookings',
+    ],
+    url: 'koreanair.com/skypass',
+  },
+  'Aeromexico Club Premier': {
+    steps: [
+      'Transfer from compatible bank or hotel partners only after confirming award space',
+      'Search at aeromexico.com → Club Premier reward flights',
+      'Compare against Flying Blue and Delta before transferring because pricing can vary widely',
+      'Use Aeromexico primarily when SkyTeam availability is better than cash pricing',
+    ],
+    url: 'aeromexico.com/en-us/club-premier',
   },
 };
 
@@ -385,6 +414,9 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
               ℹ Airport codes not in our database — showing worldwide recommendations
             </span>
           </div>
+          <button class="related-spots-btn" type="button" (click)="openRelatedSweetSpots()">
+            Find related sweet spots →
+          </button>
         </div>
 
         <!-- Result filters (only when user has a wallet) -->
@@ -729,9 +761,20 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
 
     .results-header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-top: 24px; margin-bottom: 12px;
+      margin-top: 24px; margin-bottom: 12px; gap: 10px; flex-wrap: wrap;
     }
     .results-hint { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--tally-green); }
+    .related-spots-btn {
+      border: 1px solid var(--border); border-radius: 999px;
+      background: var(--white); color: var(--tally-green);
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.04em; padding: 7px 12px; cursor: pointer;
+    }
+    .related-spots-btn:hover,
+    .related-spots-btn:focus-visible {
+      border-color: var(--tally-green); background: var(--tally-green-light);
+      outline: none;
+    }
 
     /* Result filter bar */
     .result-filters {
@@ -1051,6 +1094,8 @@ export class OptimizerComponent implements OnChanges {
   wallet = inject(WalletService);
   trips = inject(TripsService);
   private expiry = inject(ExpiryService);
+  private analytics = inject(AnalyticsService);
+  private nav = inject(NavigationService);
 
   tripType = signal<'flight' | 'hotel'>('flight');
   fromCity = '';
@@ -1065,6 +1110,7 @@ export class OptimizerComponent implements OnChanges {
   analyzed = signal(false);
   maxCpp = signal(1);
   routeLabel = signal<string>('');
+  private routeCategory = signal<string>('default');
   editingNoteId = signal<string | null>(null);
   pendingNote = '';
   // Briefly highlights the save button after saving
@@ -1142,15 +1188,39 @@ export class OptimizerComponent implements OnChanges {
     if (this.tripType() === 'flight') {
       const result = this.optimizer.getFlightRecs(this.fromCity, this.toCity, this.cabin, this.passengers);
       recs = result.recs;
+      this.routeCategory.set(result.category);
       this.routeLabel.set(ROUTE_LABELS[result.category] ?? '');
     } else {
       recs = this.optimizer.getHotelRecs(this.hotelCategory, this.hotelNights);
+      this.routeCategory.set(this.hotelCategory);
       this.routeLabel.set('');
     }
     this.maxCpp.set(recs[0]?.cpp ?? 1);
     this.results.set(recs);
     this.analyzed.set(true);
     this.pushToHistory();
+    try { localStorage.setItem('tally_optimizer_used', '1'); } catch {}
+    this.analytics.track('optimizer_search', {
+      trip_type: this.tripType(),
+      route_category: this.routeCategory(),
+      result_count: recs.length,
+    });
+
+    const top = recs[0];
+    if (top) {
+      this.analytics.track('transfer_calculated', {
+        source_card: top.cards[0] ?? 'unknown',
+        partner: top.program,
+        points_required: top.ptsRequired ?? top.ptsBase,
+      });
+    }
+  }
+
+  openRelatedSweetSpots(): void {
+    const filter = this.tripType() === 'hotel' ? 'hotel' : 'flight';
+    try { localStorage.setItem('tally_sweetspots_filter_v1', filter); } catch {}
+    this.analytics.track('sweet_spots_deep_linked', { from: 'optimizer', filter });
+    this.nav.navigateTo({ tab: 'sweetspots' });
   }
 
   saveTrip(rec: Recommendation): void {

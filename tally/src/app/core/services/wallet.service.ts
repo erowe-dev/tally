@@ -3,6 +3,8 @@ import { DataService } from './data.service';
 import { AuthService } from './auth.service';
 import { ApiService } from './api.service';
 import { NetworkService } from './network.service';
+import { ToastService } from './toast.service';
+import { AnalyticsService } from './analytics.service';
 
 const STORAGE_KEY = 'tally_wallet_v1';
 const HISTORY_KEY = 'tally_wallet_history_v1';
@@ -24,15 +26,16 @@ export class WalletService {
   private auth = inject(AuthService);
   private api = inject(ApiService);
   private network = inject(NetworkService);
+  private toast = inject(ToastService);
+  private analytics = inject(AnalyticsService);
   // DataService kept to preserve existing canCover() usage in optimizer
   private data = inject(DataService);
 
   private _balances = signal<Record<string, number>>(this.loadLocal());
   private _syncState = signal<SyncState>('idle');
   private _history = signal<HistoryEntry[]>(this.loadHistory());
+  private _retryTrigger = signal(0);
 
-  // Prevent the effect from running more than once per session even if
-  // signals are re-evaluated (e.g. token refresh re-emits isLoading)
   private _apiLoaded = false;
 
   readonly balances = this._balances.asReadonly();
@@ -67,6 +70,7 @@ export class WalletService {
     // Gating on isProvisioned() prevents a 404 race where GET /api/balances
     // arrives before POST /api/users/me finishes.
     effect(() => {
+      this._retryTrigger(); // tracked so retryLoad() can re-fire the effect
       if (
         !this._apiLoaded &&
         this.auth.isResolved() &&
@@ -77,7 +81,7 @@ export class WalletService {
         this._apiLoaded = true;
         this._syncState.set('loading');
 
-        this.api.getBalances().subscribe({
+        this.api.getBalancesWithCache().subscribe({
           next: apiBalances => {
             const localBalances = this.loadLocal();
             const localHasData = Object.keys(localBalances).some(k => (localBalances[k] ?? 0) > 0);
@@ -97,8 +101,8 @@ export class WalletService {
               this.recordSnapshot(Object.values(apiBalances).reduce((a, b) => a + b, 0));
             }
           },
-          error: err => {
-            console.error('[WalletService] API load failed, using localStorage cache:', err);
+          error: _err => {
+            this.toast.error('Could not load balances — using cached data');
             this._syncState.set('error');
             // Reset so the effect can retry — it will re-fire when network
             // comes back online (isOnline() signal changes true→false→true)
@@ -106,7 +110,13 @@ export class WalletService {
           },
         });
       }
-    });
+    }, { allowSignalWrites: true });
+  }
+
+  retryLoad(): void {
+    this._apiLoaded = false;
+    this._syncState.set('idle');
+    this._retryTrigger.update(n => n + 1);
   }
 
   setBalance(cardId: string, value: number): void {
@@ -117,11 +127,12 @@ export class WalletService {
     this._balances.set(updated);
     this.saveLocal(updated);
     this.recordSnapshot(Object.values(updated).reduce((a, b) => a + b, 0));
+    this.analytics.track('balance_updated', { card_id: cardId, non_zero: amount > 0 });
 
     // Fire-and-forget sync to API only after provisioning is confirmed and online
     if (this.auth.isProvisioned() && this.network.isOnline()) {
       this.api.setBalance(cardId, amount).subscribe({
-        error: err => console.error('[WalletService] API sync failed:', err),
+        error: _err => this.toast.error('Balance not saved — will retry when online'),
       });
     }
   }
@@ -139,8 +150,7 @@ export class WalletService {
     const entries = Object.entries(balances).filter(([, v]) => v > 0);
     for (const [cardId, amount] of entries) {
       this.api.setBalance(cardId, amount).subscribe({
-        error: err =>
-          console.error(`[WalletService] Failed to push local ${cardId} to API:`, err),
+        error: _err => this.toast.error('Balance not saved — will retry when online'),
       });
     }
   }
