@@ -48,9 +48,9 @@ import { ToastService } from '../../../core/services/toast.service';
       from { opacity: 1; transform: translateY(0); }
       to   { opacity: 0; transform: translateY(8px); }
     }
-    .toast.error   { background: #fef2f2; color: #991b1b; border: 1px solid rgba(220,38,38,0.2); }
+    .toast.error   { background: var(--toast-error-bg); color: var(--toast-error-text); border: 1px solid rgba(220,38,38,0.2); }
     .toast.success { background: var(--tally-green-light); color: var(--tally-green); border: 1px solid rgba(26,122,74,0.2); }
-    .toast.info    { background: #eff6ff; color: #1d4ed8; border: 1px solid rgba(59,130,246,0.2); }
+    .toast.info    { background: var(--info-bg); color: var(--info-text); border: 1px solid var(--info-border); }
     .toast-icon { flex-shrink: 0; font-size: 14px; line-height: 1.4; }
     .toast-msg  { flex: 1; }
   `],

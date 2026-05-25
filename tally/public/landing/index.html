@@ -175,6 +175,7 @@ nav.scrolled { border-bottom-color: var(--border); }
 }
 .submit-btn:hover { opacity: 0.9; }
 .submit-btn:active { transform: scale(0.97); }
+.submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 
 .form-note {
   font-family: var(--mono); font-size: 11px;
@@ -509,7 +510,7 @@ footer {
   <div class="nav-right">
     <a href="#features" class="nav-link">Features</a>
     <a href="#how" class="nav-link">How it works</a>
-    <a href="#waitlist" class="nav-cta">Get early access</a>
+    <a href="mailto:hello@tallypoints.app" class="nav-cta">Contact for access</a>
   </div>
 </nav>
 
@@ -519,7 +520,7 @@ footer {
   <div class="hero-content">
     <div class="hero-eyebrow">
       <span class="eyebrow-dot"></span>
-      Alpha — Limited early access
+      Private alpha — Invite-only
     </div>
     <h1 class="hero-headline">
       Know exactly what<br>to do with your <em>points</em>
@@ -530,20 +531,20 @@ footer {
 
   <div class="success-msg" id="successMsg">
     <span class="success-icon">✓</span>
-    You're on the list. Watch your inbox for alpha access.
+    Private alpha is invite-only right now.
     </div>
 
-    <form class="waitlist-form" id="waitlistForm" onsubmit="handleSubmit(event)">
+    <form class="waitlist-form" id="waitlistForm" onsubmit="handleClosedSubmit(event)">
       <input
         class="email-input"
         type="email"
         id="emailInput"
-        placeholder="your@email.com"
-        required
+        placeholder="Private alpha is currently closed"
+        disabled
         autocomplete="email">
-      <button class="submit-btn" type="submit">Join waitlist →</button>
+      <button class="submit-btn" type="submit" disabled>Invite-only right now</button>
     </form>
-    <p class="form-note">Free during alpha · No credit card · First 100 users get Pro free forever</p>
+    <p class="form-note">Private alpha is currently closed. Email hello@tallypoints.app if you already have an invite.</p>
 
     <div class="social-proof">
       <div class="sp-avatars">
@@ -551,7 +552,7 @@ footer {
         <div class="sp-avatar">M</div>
         <div class="sp-avatar">R</div>
       </div>
-      <span class="sp-text">Join <strong>early testers</strong> already on the list</span>
+      <span class="sp-text"><strong>Private testing</strong> is limited while the app stabilizes</span>
     </div>
   </div>
 </section>
@@ -810,20 +811,20 @@ footer {
 
 <!-- ── BOTTOM CTA ── -->
 <section class="bottom-cta" id="waitlist">
-  <div class="bottom-cta-eyebrow">Join the alpha</div>
+  <div class="bottom-cta-eyebrow">Private alpha</div>
   <h2 class="bottom-cta-title">Stop guessing.<br><em>Start knowing.</em></h2>
-  <p class="bottom-cta-sub">Free during alpha. First 100 users get Pro free, forever.</p>
+  <p class="bottom-cta-sub">Private alpha is invite-only right now while the core app is stabilized.</p>
 
   <div class="success-msg" id="successMsg2" style="max-width:420px;margin:0 auto 16px;">
     <span class="success-icon">✓</span>
-    You're on the list. Watch your inbox for alpha access.
+    Private alpha is invite-only right now.
   </div>
 
-  <form class="waitlist-form" id="waitlistForm2" onsubmit="handleSubmit2(event)" style="justify-content:center;">
-    <input class="email-input" type="email" id="emailInput2" placeholder="your@email.com" required autocomplete="email">
-    <button class="submit-btn" type="submit">Join waitlist →</button>
+  <form class="waitlist-form" id="waitlistForm2" onsubmit="handleClosedSubmit(event)" style="justify-content:center;">
+    <input class="email-input" type="email" id="emailInput2" placeholder="Private alpha is currently closed" disabled autocomplete="email">
+    <button class="submit-btn" type="submit" disabled>Invite-only right now</button>
   </form>
-  <p class="form-note" style="margin-top:12px;">No spam. One email when access opens.</p>
+  <p class="form-note" style="margin-top:12px;">For manual access questions, email hello@tallypoints.app.</p>
 </section>
 
 <!-- ── FOOTER ── -->
@@ -854,64 +855,8 @@ window.addEventListener('scroll', () => {
   document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 20);
 });
 
-// Waitlist submit (hero form)
-function handleSubmit(e) {
+function handleClosedSubmit(e) {
   e.preventDefault();
-  const email = document.getElementById('emailInput').value;
-  submitEmail(email, 'waitlistForm', 'successMsg');
-}
-
-function handleSubmit2(e) {
-  e.preventDefault();
-  const email = document.getElementById('emailInput2').value;
-  submitEmail(email, 'waitlistForm2', 'successMsg2');
-}
-
-async function submitEmail(email, formId, successId) {
-  const form = document.getElementById(formId);
-  const success = document.getElementById(successId);
-  const button = form.querySelector('button[type="submit"]');
-  const originalLabel = button.textContent;
-
-  button.disabled = true;
-  button.textContent = 'Joining...';
-
-  try {
-    const response = await fetch('https://tally-api-theta.vercel.app/api/waitlist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email,
-        source: formId,
-        pageUrl: window.location.href,
-      }),
-    });
-
-    if (!response.ok) {
-      const fallback = await response.json().catch(() => ({}));
-      throw new Error(fallback.fallbackEmail || 'hello@tallypoints.app');
-    }
-
-    form.style.display = 'none';
-    success.querySelector('a')?.remove();
-    success.querySelector('.success-icon').textContent = '✓';
-    success.lastChild.textContent = " You're on the list. Watch your inbox for alpha access.";
-    success.classList.add('show');
-  } catch (error) {
-    const rawFallback = error instanceof Error ? error.message : '';
-    const fallbackEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawFallback) ? rawFallback : 'hello@tallypoints.app';
-    const subject = encodeURIComponent('Tally alpha request');
-    const body = encodeURIComponent(`Please add ${email} to the Tally private alpha list.`);
-    const mailto = `mailto:${fallbackEmail}?subject=${subject}&body=${body}`;
-
-    success.querySelector('a')?.remove();
-    success.querySelector('.success-icon').textContent = '!';
-    success.lastChild.textContent = ' Waitlist is temporarily offline. Email us and we will add you manually.';
-    success.insertAdjacentHTML('beforeend', ` <a href="${mailto}" style="color:inherit;text-decoration:underline;">Send email</a>`);
-    success.classList.add('show');
-    button.disabled = false;
-    button.textContent = originalLabel;
-  }
 }
 </script>
 

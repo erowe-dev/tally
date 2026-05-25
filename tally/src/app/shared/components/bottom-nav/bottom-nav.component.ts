@@ -12,15 +12,17 @@ interface NavItem { id: NavTab; label: string; icon: string; }
   standalone: true,
   imports: [CommonModule],
   template: `
-    <nav class="bottom-nav">
+    <nav class="bottom-nav" aria-label="Primary app navigation">
       <button
         *ngFor="let item of items"
         class="nav-btn"
         [class.active]="activeTab === item.id"
         [class.locked]="isLocked(item.id)"
+        [attr.aria-current]="activeTab === item.id ? 'page' : null"
+        [attr.aria-label]="getAriaLabel(item)"
         (click)="tabChange.emit(item.id)"
       >
-        <span class="nav-icon-wrap">
+        <span class="nav-icon-wrap" aria-hidden="true">
           <span class="nav-icon">{{ item.icon }}</span>
           <!-- Expiry critical count badge -->
           <span class="badge" *ngIf="item.id === 'expiry' && expiry.criticalCount() > 0 && auth.isAuthenticated()">
@@ -39,7 +41,7 @@ interface NavItem { id: NavTab; label: string; icon: string; }
     .bottom-nav {
       position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
       width: 100%; max-width: 430px;
-      background: rgba(247,246,243,0.94);
+      background: var(--shell-translucent);
       backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       border-top: 1px solid var(--border);
       padding: 10px 0 calc(env(safe-area-inset-bottom, 0px) + 10px);
@@ -50,6 +52,11 @@ interface NavItem { id: NavTab; label: string; icon: string; }
       display: flex; flex-direction: column; align-items: center; gap: 3px;
       cursor: pointer; padding: 4px 10px;
       -webkit-tap-highlight-color: transparent;
+      border-radius: 12px;
+    }
+    .nav-btn:focus-visible {
+      outline: 2px solid var(--tally-green);
+      outline-offset: 3px;
     }
     .nav-icon-wrap { position: relative; display: flex; justify-content: center; }
     .nav-icon { font-size: 20px; line-height: 1; }
@@ -57,7 +64,7 @@ interface NavItem { id: NavTab; label: string; icon: string; }
     /* Expiry critical count badge */
     .badge {
       position: absolute; top: -4px; right: -8px;
-      background: var(--tally-red); color: white;
+      background: var(--tally-red); color: var(--on-accent);
       font-family: 'Geist Mono', monospace; font-size: 9px;
       width: 15px; height: 15px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
@@ -67,14 +74,14 @@ interface NavItem { id: NavTab; label: string; icon: string; }
     .bonus-dot {
       position: absolute; top: -2px; right: -6px;
       width: 7px; height: 7px; border-radius: 50%;
-      background: var(--tally-amber, #d97706); border: 1.5px solid var(--off);
+      background: var(--tally-amber, #d97706); border: 1.5px solid var(--off, #f7f6f3);
     }
 
     /* Small dot on protected tabs when not signed in */
     .lock-dot {
       position: absolute; top: -2px; right: -6px;
       width: 6px; height: 6px; border-radius: 50%;
-      background: var(--border); border: 1.5px solid var(--off);
+      background: var(--border); border: 1.5px solid var(--off, #f7f6f3);
     }
 
     .nav-label {
@@ -103,6 +110,12 @@ export class BottomNavComponent {
 
   isLocked(tab: NavTab): boolean {
     return this.PROTECTED.has(tab) && !this.auth.isAuthenticated();
+  }
+
+  getAriaLabel(item: NavItem): string {
+    return this.isLocked(item.id)
+      ? `${item.label} tab, sign-in required`
+      : `${item.label} tab`;
   }
 
   items: NavItem[] = [

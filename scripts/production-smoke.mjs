@@ -36,8 +36,8 @@ const checks = [
       const body = await readBody(res);
       assert(res.ok, `expected 2xx, got ${res.status}`);
       assert(
-        body.includes('Know what to do with your points') && body.includes('/api/waitlist'),
-        'expected bundled waitlist landing page at /landing/',
+        body.includes('Know what to do with your points') && body.includes('Private alpha is invite-only right now'),
+        'expected bundled invite-only landing page at /landing/',
       );
     },
   },
@@ -78,7 +78,7 @@ const checks = [
     },
   },
   {
-    name: 'Waitlist API validates unauthenticated submissions',
+    name: 'Waitlist API reports private alpha closed',
     run: async () => {
       const res = await fetch(`${apiUrl}/api/waitlist`, {
         method: 'POST',
@@ -89,7 +89,8 @@ const checks = [
         body: JSON.stringify({ email: 'not-an-email' }),
       });
       const body = await readBody(res);
-      assert(res.status === 400, `expected 400 for invalid email, got ${res.status}: ${body}`);
+      assert(res.status === 410, `expected 410 for closed waitlist, got ${res.status}: ${body}`);
+      assert(body.includes('contactEmail'), `expected contactEmail in closed response, got ${body}`);
       assert(
         res.headers.get('access-control-allow-origin') === 'https://tallypoints.app',
         'expected CORS allow-origin for tallypoints.app',

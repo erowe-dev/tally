@@ -104,7 +104,7 @@ PORT=3000
 ```
 
 `DATABASE_URL_POOLED` is required in production so Prisma uses Supabase pooling.
-`WAITLIST_WEBHOOK_URL` enables the landing-page signup forms; without it, the API returns a 503 and the page offers a manual email fallback.
+`WAITLIST_WEBHOOK_URL` is reserved for a later waitlist reopening. For this private-alpha milestone, signup is deliberately closed and the API returns a 410 response with the manual contact email.
 
 ## Observability
 
@@ -127,7 +127,7 @@ Add the final custom domain to each list before pointing invited alpha users the
 
 ## Landing Page
 
-The bundled landing page submits to `https://tally-api-theta.vercel.app/api/waitlist`, which proxies to the n8n workflow configured by `WAITLIST_WEBHOOK_URL`. If the webhook is unavailable, the page shows a manual `mailto:hello@tallypoints.app` fallback instead of a fake success.
+The bundled landing page remains available at `/landing/`, but signup is disabled while the private alpha is invite-only. The forms do not call `/api/waitlist`; they show closed/invite-only copy and direct interested users to `mailto:hello@tallypoints.app`.
 
 ## Offline Read Cache
 
@@ -165,7 +165,7 @@ Block the alpha invite until all of these pass in production:
 - Trip notes can be edited, one trip can be deleted, and all trips can be cleared.
 - A second browser session sees server-backed synced data.
 - Unauthenticated calls to `/api/balances`, `/api/expiry`, and `/api/trips` are rejected.
-- `POST /api/waitlist` rejects invalid emails with 400 and allows `https://tallypoints.app` via CORS.
+- `POST /api/waitlist` returns a deliberate 410 closed response with `contactEmail` and allows configured production origins via CORS.
 - Deployed `ngsw.json` includes API freshness data groups only for balances and expiry.
 - Failed API calls in the browser include an `X-Request-Id` that appears in Vercel logs.
 - `npm run smoke:auth` passes with your Auth0 access token and email.

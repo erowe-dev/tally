@@ -198,7 +198,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
       color: var(--tally-green-mid, #2d8a5a); letter-spacing: 0.06em;
     }
     .install-btn {
-      background: var(--tally-green); color: white; border: none; border-radius: 8px;
+      background: var(--tally-green); color: var(--on-accent); border: none; border-radius: 8px;
       font-family: 'Geist', sans-serif; font-size: 12px; font-weight: 500;
       padding: 6px 14px; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s;
     }
@@ -213,27 +213,27 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
     /* SW update banner */
     .update-banner {
       display: flex; align-items: center; gap: 10px;
-      background: #eff6ff; border-bottom: 1px solid rgba(59,130,246,0.2);
+      background: var(--info-bg); border-bottom: 1px solid var(--info-border);
       padding: 10px 16px;
     }
-    .update-icon { font-size: 16px; flex-shrink: 0; color: #1d4ed8; }
+    .update-icon { font-size: 16px; flex-shrink: 0; color: var(--info-text); }
     .update-body { flex: 1; min-width: 0; }
     .update-title {
       font-family: 'Geist', sans-serif; font-size: 12px;
-      font-weight: 600; color: #1d4ed8;
+      font-weight: 600; color: var(--info-text);
     }
     .update-sub {
       font-family: 'Geist Mono', monospace; font-size: 9px;
-      color: #3b82f6; letter-spacing: 0.06em;
+      color: var(--info-text); letter-spacing: 0.06em;
     }
     .update-btn {
-      background: #1d4ed8; color: white; border: none; border-radius: 8px;
+      background: var(--info-text); color: var(--off); border: none; border-radius: 8px;
       font-family: 'Geist', sans-serif; font-size: 12px; font-weight: 500;
       padding: 6px 14px; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s;
     }
     .update-btn:hover { opacity: 0.85; }
     .update-dismiss {
-      background: none; border: none; color: #1d4ed8;
+      background: none; border: none; color: var(--info-text);
       font-size: 13px; cursor: pointer; padding: 4px; flex-shrink: 0; opacity: 0.6;
       line-height: 1;
     }
@@ -241,7 +241,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
 
     /* Offline banner */
     .offline-banner {
-      background: var(--tally-amber, #d97706); color: #fff;
+      background: var(--tally-amber); color: var(--off);
       font-family: 'Geist', sans-serif; font-size: 12px;
       text-align: center; padding: 8px 16px;
       position: sticky; top: 0; z-index: 200;
@@ -265,7 +265,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
       padding: calc(env(safe-area-inset-top,0px) + 14px) 20px 14px;
       display: flex; align-items: center; justify-content: space-between;
       border-bottom: 1px solid var(--border);
-      background: rgba(247,246,243,0.92);
+      background: var(--shell-translucent);
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       position: sticky; top: 0; z-index: 100;
     }
@@ -285,7 +285,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
     }
     .user-avatar-fallback {
       width: 28px; height: 28px; border-radius: 50%;
-      background: var(--tally-green); color: white;
+      background: var(--tally-green); color: var(--on-accent);
       font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 600;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0; border: 1.5px solid var(--border);
@@ -300,7 +300,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
 
     /* Expiry critical ribbon */
     .expiry-ribbon {
-      width: 100%; background: var(--tally-red-light, #fef2f2);
+      width: 100%; background: var(--tally-red-light);
       border: none; border-bottom: 1px solid rgba(220,38,38,0.15);
       padding: 9px 16px; cursor: pointer;
       display: flex; align-items: center; gap: 8px;
@@ -343,7 +343,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
       color: var(--text2); line-height: 1.6; max-width: 280px;
     }
     .login-btn {
-      background: var(--tally-green); color: #fff;
+      background: var(--tally-green); color: var(--on-accent);
       font-family: 'Geist', sans-serif; font-size: 15px; font-weight: 500;
       border: none; border-radius: 12px; padding: 14px 32px;
       cursor: pointer; transition: background 0.15s; width: 100%; max-width: 280px;

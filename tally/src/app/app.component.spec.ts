@@ -1,5 +1,5 @@
-import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { Component, Input, Output, EventEmitter, Type, signal } from '@angular/core';
+import { ComponentFixture, DeferBlockState, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { SwUpdate } from '@angular/service-worker';
 import { AppComponent } from './app.component';
@@ -8,6 +8,7 @@ import { ExpiryService } from './core/services/expiry.service';
 import { AuthService } from './core/services/auth.service';
 import { NetworkService } from './core/services/network.service';
 import { NavigationService } from './core/services/navigation.service';
+import { AnalyticsService } from './core/services/analytics.service';
 import { NavTab } from './core/models';
 import { TallyLogoComponent } from './shared/components/tally-logo/tally-logo.component';
 import { BottomNavComponent } from './shared/components/bottom-nav/bottom-nav.component';
@@ -79,7 +80,22 @@ class MockNavigationService {
   }
 }
 
+class MockAnalyticsService {
+  track = jasmine.createSpy('track');
+}
+
 describe('AppComponent', () => {
+  const navTabs: NavTab[] = ['optimizer', 'wallet', 'cards', 'sweetspots', 'expiry'];
+  const publicTabs: NavTab[] = ['cards', 'sweetspots'];
+  const protectedTabs: NavTab[] = ['optimizer', 'wallet', 'expiry'];
+  const componentByTab: Record<NavTab, Type<unknown>> = {
+    optimizer: StubOptimizerComponent,
+    wallet: StubWalletComponent,
+    cards: StubCardsComponent,
+    sweetspots: StubSweetspotsComponent,
+    expiry: StubExpiryComponent,
+  };
+
   let auth: MockAuthService;
   let wallet: MockWalletService;
   let expiry: MockExpiryService;
@@ -97,6 +113,7 @@ describe('AppComponent', () => {
         { provide: ExpiryService, useValue: expiry },
         { provide: NetworkService, useValue: new MockNetworkService() },
         { provide: NavigationService, useValue: new MockNavigationService() },
+        { provide: AnalyticsService, useValue: new MockAnalyticsService() },
         { provide: SwUpdate, useValue: { isEnabled: false, versionUpdates: { subscribe: () => ({ unsubscribe() {} }) } } },
       ],
     })
@@ -129,9 +146,97 @@ describe('AppComponent', () => {
       .compileComponents();
   });
 
+  async function renderDeferredContent(fixture: ComponentFixture<AppComponent>): Promise<void> {
+    fixture.detectChanges();
+    const deferBlocks = await fixture.getDeferBlocks();
+    await Promise.all(deferBlocks.map(block => block.render(DeferBlockState.Complete)));
+    fixture.detectChanges();
+  }
+
+  function expectOnlyTabStub(fixture: ComponentFixture<AppComponent>, tab: NavTab): void {
+    navTabs.forEach(candidate => {
+      const match = fixture.debugElement.query(By.directive(componentByTab[candidate]));
+      if (candidate === tab) {
+        expect(match).withContext(`${candidate} stub visibility`).not.toBeNull();
+      } else {
+        expect(match).withContext(`${candidate} stub visibility`).toBeNull();
+      }
+    });
+  }
+
   it('creates the app shell', () => {
     const fixture = TestBed.createComponent(AppComponent);
     expect(fixture.componentInstance).toBeTruthy();
+  });
+
+  publicTabs.forEach(tab => {
+    it(`renders the public ${tab} tab when signed out`, async () => {
+      const fixture = TestBed.createComponent(AppComponent);
+      fixture.componentInstance.handleTabChange(tab);
+      await renderDeferredContent(fixture);
+
+      expect(fixture.componentInstance.activeTab()).toBe(tab);
+      expectOnlyTabStub(fixture, tab);
+      expect(fixture.nativeElement.querySelector('.login-prompt')).toBeNull();
+    });
+  });
+
+  protectedTabs.forEach(tab => {
+    it(`shows the login prompt for the protected ${tab} tab when signed out`, async () => {
+      const fixture = TestBed.createComponent(AppComponent);
+      fixture.componentInstance.handleTabChange(tab);
+      await renderDeferredContent(fixture);
+
+      expect(fixture.componentInstance.activeTab()).toBe(tab);
+      expect(fixture.nativeElement.querySelector('.login-title')?.textContent).toContain('Sign in to continue');
+      expect(fixture.debugElement.query(By.directive(componentByTab[tab]))).toBeNull();
+    });
+  });
+
+  protectedTabs.forEach(tab => {
+    it(`renders the signed-in deferred ${tab} tab stub`, async () => {
+      auth.isAuthenticated.set(true);
+
+      const fixture = TestBed.createComponent(AppComponent);
+      fixture.componentInstance.handleTabChange(tab);
+      await renderDeferredContent(fixture);
+
+      expect(fixture.componentInstance.activeTab()).toBe(tab);
+      expectOnlyTabStub(fixture, tab);
+      expect(fixture.nativeElement.querySelector('.login-prompt')).toBeNull();
+    });
+  });
+
+  navTabs.forEach(tab => {
+    it(`switches activeTab to ${tab} from the bottom-nav output`, () => {
+      const fixture = TestBed.createComponent(AppComponent);
+      fixture.detectChanges();
+
+      const bottomNav = fixture.debugElement.query(By.directive(StubBottomNavComponent));
+      const bottomNavComponent = bottomNav.componentInstance as StubBottomNavComponent;
+      bottomNavComponent.tabChange.emit(tab);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.activeTab()).toBe(tab);
+    });
+  });
+
+  [
+    { key: '1', tab: 'optimizer' },
+    { key: '2', tab: 'wallet' },
+    { key: '3', tab: 'cards' },
+    { key: '4', tab: 'sweetspots' },
+    { key: '5', tab: 'expiry' },
+  ].forEach(({ key, tab }) => {
+    it(`switches to ${tab} from keyboard shortcut ${key}`, () => {
+      const fixture = TestBed.createComponent(AppComponent);
+      fixture.detectChanges();
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key }));
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.activeTab()).toBe(tab as NavTab);
+    });
   });
 
   it('shows the login prompt on a protected tab when signed out', () => {

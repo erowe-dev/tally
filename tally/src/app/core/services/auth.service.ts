@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, inject, signal, computed, effect } from '@angular/core';
 import { AuthService as Auth0Service } from '@auth0/auth0-angular';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
@@ -30,10 +30,7 @@ export class AuthService {
   // flipped — prevents downstream effects from re-firing if Auth0 ever
   // re-emits isLoading:true later (e.g. during token refresh).
   private _hasResolvedOnce = signal(false);
-  readonly isResolved = computed(() => {
-    if (!this.isLoading()) this._hasResolvedOnce.set(true);
-    return this._hasResolvedOnce() || !this.isLoading();
-  });
+  readonly isResolved = computed(() => this._hasResolvedOnce() || !this.isLoading());
 
   // True once the DB user row has been provisioned. Other services gate their
   // effect()s on this to avoid racing ahead of POST /api/users/me.
@@ -41,6 +38,10 @@ export class AuthService {
   readonly isProvisioned = this._isProvisioned.asReadonly();
 
   constructor() {
+    effect(() => {
+      if (!this.isLoading()) this._hasResolvedOnce.set(true);
+    }, { allowSignalWrites: true });
+
     // On first login: provision the user row in our database.
     // - `filter(Boolean)` waits for a truthy isAuthenticated$ emission
     // - `take(1)` on both pipes ensures this runs exactly once per session
