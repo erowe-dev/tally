@@ -18,6 +18,8 @@ model User {
   balances      Balance[]
   expiryRecords ExpiryRecord[]
   trips         Trip[]
+  preferences   UserPreference?
+  savedSearches SavedSearch[]
 
   @@map("users")
 }
@@ -69,4 +71,64 @@ model Trip {
 
   @@index([userId])
   @@map("trips")
+}
+
+model UserPreference {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  homeAirports      Json     @default("[]")
+  preferredCabin    String?
+  maxStops          Int?
+  preferredPrograms Json     @default("[]")
+  hotelChains       Json     @default("[]")
+  defaultTravelers  Int?
+  dateFlexibility   String?
+  pointValuationCpp Float?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@map("user_preferences")
+}
+
+model SavedSearch {
+  id                 String    @id @default(cuid())
+  userId             String
+  searchType         String    // 'flight' | 'hotel'
+  originAirport      String?
+  destinationAirport String?
+  destinationText    String
+  dateWindow         Json
+  cabin              String?
+  passengers         Int       @default(1)
+  hotelIntent        Json?
+  notes              String?
+  lastRunAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId, searchType])
+  @@map("saved_searches")
+}
+
+model ProviderCache {
+  id                String   @id @default(cuid())
+  cacheKey          String   @unique
+  provider          String
+  searchType        String
+  normalizedRequest Json
+  response          Json
+  source            String
+  confidence        Float    @default(0)
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([provider, searchType])
+  @@index([expiresAt])
+  @@map("provider_cache")
 }

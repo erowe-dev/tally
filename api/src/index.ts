@@ -13,6 +13,9 @@ import balancesRouter from './routes/balances';
 import expiryRouter from './routes/expiry';
 import tripsRouter from './routes/trips';
 import waitlistRouter from './routes/waitlist';
+import preferencesRouter from './routes/preferences';
+import searchesRouter from './routes/searches';
+import searchRouter from './routes/search';
 
 const app = express();
 const port = parseInt(process.env['PORT'] ?? '3000', 10);
@@ -109,6 +112,9 @@ app.use('/api/balances', balancesRouter);
 app.use('/api/expiry', expiryRouter);
 app.use('/api/trips', tripsRouter);
 app.use('/api/waitlist', waitlistRouter);
+app.use('/api/preferences', preferencesRouter);
+app.use('/api/searches', searchesRouter);
+app.use('/api/search', searchRouter);
 
 // Fallback error handler — any error that reaches here is unexpected.
 // Keeps the response shape consistent and avoids leaking stack traces.

@@ -6,7 +6,8 @@ import { DataService } from '../../core/services/data.service';
 import { OptimizerService } from '../../core/services/optimizer.service';
 import { ExpiryService } from '../../core/services/expiry.service';
 import { NavigationService } from '../../core/services/navigation.service';
-import { CreditCard, TransferBonus } from '../../core/models';
+import { PreferencesService } from '../../core/services/preferences.service';
+import { CreditCard, TransferBonus, UserPreference } from '../../core/models';
 import { OnboardingComponent } from '../../shared/components/onboarding/onboarding.component';
 import { ToastService } from '../../core/services/toast.service';
 
@@ -34,6 +35,67 @@ const MAX_BALANCE = 50_000_000;
           (click)="wallet.retryLoad()"
         >Retry</button>
       </div>
+
+      <section class="prefs-panel" *ngIf="wallet.syncState() !== 'loading'" aria-labelledby="wallet-prefs-title">
+        <div class="prefs-head">
+          <div>
+            <span class="prefs-kicker">Trip defaults</span>
+            <h3 id="wallet-prefs-title">Search preferences</h3>
+          </div>
+          <span class="prefs-status" [class.error]="prefs.syncState() === 'error'">
+            {{ preferenceSyncLabel() }}
+          </span>
+        </div>
+        <div class="prefs-grid">
+          <label class="pref-field">
+            <span>Home airports</span>
+            <input
+              class="pref-input"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              [ngModel]="prefs.preferences().homeAirports.join(', ')"
+              (ngModelChange)="updateHomeAirports($event)"
+              placeholder="OMA, ORD">
+          </label>
+          <label class="pref-field">
+            <span>Preferred cabin</span>
+            <select
+              class="pref-input"
+              [ngModel]="prefs.preferences().preferredCabin"
+              (ngModelChange)="updatePreference('preferredCabin', $event)">
+              <option value="economy">Economy</option>
+              <option value="premium">Premium economy</option>
+              <option value="business">Business</option>
+              <option value="first">First</option>
+            </select>
+          </label>
+          <label class="pref-field">
+            <span>Travelers</span>
+            <input
+              class="pref-input"
+              type="number"
+              min="1"
+              max="9"
+              inputmode="numeric"
+              [ngModel]="prefs.preferences().defaultTravelers"
+              (ngModelChange)="updatePreference('defaultTravelers', clampTravelers($event))">
+          </label>
+          <label class="pref-field">
+            <span>Date flexibility</span>
+            <select
+              class="pref-input"
+              [ngModel]="prefs.preferences().dateFlexibility"
+              (ngModelChange)="updatePreference('dateFlexibility', $event)">
+              <option value="exact">Exact dates</option>
+              <option value="plus_minus_3">±3 days</option>
+              <option value="plus_minus_7">±7 days</option>
+              <option value="month">Whole month</option>
+              <option value="next_60_days">Next 60 days</option>
+            </select>
+          </label>
+        </div>
+      </section>
 
       <!-- Loading shimmer -->
       <ng-container *ngIf="wallet.syncState() === 'loading'">
@@ -355,6 +417,57 @@ const MAX_BALANCE = 50_000_000;
       opacity: 0.7; transition: opacity 0.15s; flex-shrink: 0;
     }
     .sync-retry:hover { opacity: 1; }
+
+    .prefs-panel {
+      background: linear-gradient(135deg, var(--surface), var(--white));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 20px;
+    }
+    .prefs-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 12px; margin-bottom: 12px;
+    }
+    .prefs-kicker {
+      display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--tally-green);
+      margin-bottom: 3px;
+    }
+    .prefs-head h3 {
+      margin: 0; font-family: 'Instrument Serif', serif;
+      font-size: 22px; font-weight: 400; color: var(--text);
+    }
+    .prefs-status {
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.08em; color: var(--text3); white-space: nowrap;
+      padding-top: 3px;
+    }
+    .prefs-status.error { color: var(--tally-amber); }
+    .prefs-grid {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .pref-field {
+      display: flex; flex-direction: column; gap: 5px;
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
+    }
+    .pref-input {
+      min-height: 44px; width: 100%;
+      background: var(--white); border: 1.5px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 500;
+      letter-spacing: 0; text-transform: none; padding: 10px 12px;
+      outline: none;
+    }
+    .pref-input:focus-visible {
+      border-color: var(--tally-green);
+      box-shadow: 0 0 0 3px rgba(26, 122, 74, 0.14);
+    }
+    @media (max-width: 430px) {
+      .prefs-grid { grid-template-columns: 1fr; }
+    }
 
     /* Shimmer — base animation in styles.scss .shimmer-skeleton */
     .shimmer-row { height: 64px; margin-bottom: 10px; }
@@ -770,6 +883,7 @@ export class WalletComponent {
   private optimizer = inject(OptimizerService);
   private expiry = inject(ExpiryService);
   private toast = inject(ToastService);
+  prefs = inject(PreferencesService);
   nav = inject(NavigationService);
   private _allRecs = this.optimizer.getAllRecs();
 
@@ -797,6 +911,34 @@ export class WalletComponent {
     Math.round(this.simMonthlySpend * this.simEarnRate)
   );
   readonly simYearlyEarn = computed(() => this.simMonthlyEarn() * 12);
+
+  preferenceSyncLabel(): string {
+    switch (this.prefs.syncState()) {
+      case 'loading': return 'Loading';
+      case 'synced': return 'Saved';
+      case 'error': return 'Offline saved';
+      default: return 'Local';
+    }
+  }
+
+  updateHomeAirports(value: string): void {
+    const homeAirports = value
+      .split(',')
+      .map(code => code.trim().toUpperCase())
+      .filter(Boolean)
+      .slice(0, 5);
+    this.prefs.updatePreferences({ homeAirports });
+  }
+
+  updatePreference<K extends keyof UserPreference>(key: K, value: UserPreference[K]): void {
+    this.prefs.updatePreferences({ [key]: value } as Partial<UserPreference>);
+  }
+
+  clampTravelers(value: unknown): number {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(parsed)) return this.prefs.preferences().defaultTravelers;
+    return Math.min(9, Math.max(1, Math.round(parsed)));
+  }
 
   simMonthsToMilestone(gap: number): number {
     const monthly = this.simMonthlyEarn();

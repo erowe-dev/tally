@@ -8,7 +8,9 @@ import { TripsService } from '../../core/services/trips.service';
 import { ExpiryService, ExpiryStatus } from '../../core/services/expiry.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { NavigationService } from '../../core/services/navigation.service';
-import { Recommendation, CabinClass, HotelCategory } from '../../core/models';
+import { SearchesService } from '../../core/services/searches.service';
+import { AirportSearchService } from '../../core/services/airport-search.service';
+import { Recommendation, CabinClass, HotelCategory, SavedSearch, DateFlexibility } from '../../core/models';
 
 interface RouteHistoryEntry {
   tripType: 'flight' | 'hotel';
@@ -16,9 +18,38 @@ interface RouteHistoryEntry {
   hotelCategory: HotelCategory; hotelNights: number;
   label: string; ts: string;
 }
+
+type FlexPreset = 'exact' | 'plus3' | 'plus7' | 'month' | 'next60';
+type TripDirection = 'roundtrip' | 'oneway';
+
+interface OptimizerSavedSearch {
+  id: string;
+  tripType: 'flight' | 'hotel';
+  label: string;
+  createdAt: string;
+  fromCity: string;
+  toCity: string;
+  cabin: CabinClass;
+  passengers: number;
+  tripDirection: TripDirection;
+  earliestDeparture: string;
+  latestReturn: string;
+  tripLengthMin: number;
+  tripLengthMax: number;
+  flexibilityPreset: FlexPreset;
+  hotelDest: string;
+  hotelCategory: HotelCategory;
+  hotelNights: number;
+  hotelCheckIn: string;
+  hotelCheckOut: string;
+  hotelTravelers: number;
+  hotelRooms: number;
+}
+
 const ROUTE_HISTORY_KEY = 'tally_route_history_v1';
 const MAX_ROUTE_HISTORY = 5;
 const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
+const MAX_SAVED_SEARCHES = 5;
 
 const ROUTE_LABELS: Record<string, string> = {
   transatlantic: 'US ↔ Europe',
@@ -245,27 +276,47 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       <div class="fields" *ngIf="tripType() === 'flight'">
         <div class="field-row">
           <div class="field">
-            <label class="field-label">From</label>
-            <input class="field-input" [(ngModel)]="fromCity" placeholder="ORD"
-                   maxlength="3" (input)="fromCity = fromCity.toUpperCase()">
+            <label class="field-label" for="optimizer-from">From</label>
+            <input
+              id="optimizer-from"
+              class="field-input"
+              [(ngModel)]="fromCity"
+              placeholder="OMA or Omaha"
+              list="optimizer-airports"
+              autocomplete="off"
+              aria-describedby="airport-search-help"
+              (input)="fromCity = normalizeAirportInput(fromCity)">
             <div class="home-airport-hint" *ngIf="homeAirport() || fromCity.length === 3">
               <span class="home-badge" *ngIf="fromCity.length === 3 && fromCity === homeAirport()">📍 Home</span>
               <button class="home-set-btn" *ngIf="fromCity.length === 3 && fromCity !== homeAirport()"
-                (click)="setHomeAirport()" title="Save as your default departure airport">📍 Set as home</button>
+                (click)="setHomeAirport()" title="Save as your default departure airport" aria-label="Save origin as home airport">📍 Set as home</button>
               <button class="home-use-btn" *ngIf="homeAirport() && fromCity.length !== 3"
-                (click)="useHomeAirport()">📍 {{ homeAirport() }}</button>
+                (click)="useHomeAirport()" [attr.aria-label]="'Use saved home airport ' + homeAirport()">📍 {{ homeAirport() }}</button>
             </div>
           </div>
           <div class="field">
-            <label class="field-label">To</label>
-            <input class="field-input" [(ngModel)]="toCity" placeholder="LHR"
-                   maxlength="3" (input)="toCity = toCity.toUpperCase()">
+            <label class="field-label" for="optimizer-to">To</label>
+            <input
+              id="optimizer-to"
+              class="field-input"
+              [(ngModel)]="toCity"
+              placeholder="LHR or London"
+              list="optimizer-airports"
+              autocomplete="off"
+              aria-describedby="airport-search-help"
+              (input)="toCity = normalizeAirportInput(toCity)">
           </div>
         </div>
+        <datalist id="optimizer-airports">
+          <option *ngFor="let airport of airportOptions" [value]="airport.code">
+            {{ airport.city }} · {{ airport.name }} · {{ airport.region }}
+          </option>
+        </datalist>
+        <p id="airport-search-help" class="field-note">Start with an airport code or city. Suggestions are bundled for offline use while live airport search is being wired in.</p>
         <div class="field-row">
           <div class="field">
-            <label class="field-label">Cabin</label>
-            <select class="field-input" [(ngModel)]="cabin">
+            <label class="field-label" for="optimizer-cabin">Cabin</label>
+            <select id="optimizer-cabin" class="field-input" [(ngModel)]="cabin">
               <option value="economy">Economy</option>
               <option value="premium">Premium Economy</option>
               <option value="business">Business</option>
@@ -273,13 +324,52 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             </select>
           </div>
           <div class="field">
-            <label class="field-label">Passengers</label>
-            <select class="field-input" [(ngModel)]="passengers">
+            <label class="field-label" for="optimizer-passengers">Passengers</label>
+            <select id="optimizer-passengers" class="field-input" [(ngModel)]="passengers">
               <option [ngValue]="1">1 Passenger</option>
               <option [ngValue]="2">2 Passengers</option>
               <option [ngValue]="3">3 Passengers</option>
               <option [ngValue]="4">4 Passengers</option>
             </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="optimizer-direction">Trip type</label>
+            <select id="optimizer-direction" class="field-input" [(ngModel)]="tripDirection">
+              <option value="roundtrip">Round-trip</option>
+              <option value="oneway">One-way</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="optimizer-flex">Flexibility</label>
+            <select id="optimizer-flex" class="field-input" [(ngModel)]="flexibilityPreset">
+              <option value="exact">Exact dates</option>
+              <option value="plus3">±3 days</option>
+              <option value="plus7">±7 days</option>
+              <option value="month">Whole month</option>
+              <option value="next60">Next 60 days</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="optimizer-earliest">Earliest departure</label>
+            <input id="optimizer-earliest" class="field-input" type="date" [(ngModel)]="earliestDeparture">
+          </div>
+          <div class="field">
+            <label class="field-label" for="optimizer-latest">Latest return</label>
+            <input id="optimizer-latest" class="field-input" type="date" [(ngModel)]="latestReturn">
+          </div>
+        </div>
+        <div class="field-row compact-row">
+          <div class="field">
+            <label class="field-label" for="optimizer-min-nights">Trip length min</label>
+            <input id="optimizer-min-nights" class="field-input" type="number" min="1" max="45" [(ngModel)]="tripLengthMin">
+          </div>
+          <div class="field">
+            <label class="field-label" for="optimizer-max-nights">Trip length max</label>
+            <input id="optimizer-max-nights" class="field-input" type="number" min="1" max="60" [(ngModel)]="tripLengthMax">
           </div>
         </div>
       </div>
@@ -288,18 +378,30 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       <div class="fields" *ngIf="tripType() === 'hotel'">
         <div class="field-row">
           <div class="field full">
-            <label class="field-label">Destination (optional)</label>
+            <label class="field-label" for="optimizer-hotel-dest">Destination</label>
             <input
+              id="optimizer-hotel-dest"
               class="field-input"
               [(ngModel)]="hotelDest"
-              placeholder="Tokyo, Maldives, Paris…"
-              aria-label="Hotel destination">
+              placeholder="Tokyo, Maldives, Paris..."
+              aria-describedby="hotel-destination-help">
+          </div>
+        </div>
+        <p id="hotel-destination-help" class="field-note">Hotel results now factor destination context into the planning summary, but Tally is not checking live rooms or booking rates yet.</p>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="optimizer-checkin">Check-in</label>
+            <input id="optimizer-checkin" class="field-input" type="date" [(ngModel)]="hotelCheckIn">
+          </div>
+          <div class="field">
+            <label class="field-label" for="optimizer-checkout">Check-out</label>
+            <input id="optimizer-checkout" class="field-input" type="date" [(ngModel)]="hotelCheckOut">
           </div>
         </div>
         <div class="field-row">
           <div class="field">
-            <label class="field-label">Category</label>
-            <select class="field-input" [(ngModel)]="hotelCategory">
+            <label class="field-label" for="optimizer-hotel-category">Category</label>
+            <select id="optimizer-hotel-category" class="field-input" [(ngModel)]="hotelCategory">
               <option value="budget">Budget (Cat 1–2)</option>
               <option value="mid">Mid-range (Cat 3–4)</option>
               <option value="luxury">Luxury (Cat 5–6)</option>
@@ -307,12 +409,31 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             </select>
           </div>
           <div class="field">
-            <label class="field-label">Nights</label>
-            <select class="field-input" [(ngModel)]="hotelNights">
+            <label class="field-label" for="optimizer-hotel-nights">Nights</label>
+            <select id="optimizer-hotel-nights" class="field-input" [(ngModel)]="hotelNights">
               <option [ngValue]="1">1 Night</option>
               <option [ngValue]="3">3 Nights</option>
               <option [ngValue]="5">5 Nights</option>
               <option [ngValue]="7">7 Nights</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row compact-row">
+          <div class="field">
+            <label class="field-label" for="optimizer-hotel-travelers">Travelers</label>
+            <select id="optimizer-hotel-travelers" class="field-input" [(ngModel)]="hotelTravelers">
+              <option [ngValue]="1">1 Traveler</option>
+              <option [ngValue]="2">2 Travelers</option>
+              <option [ngValue]="3">3 Travelers</option>
+              <option [ngValue]="4">4 Travelers</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="optimizer-hotel-rooms">Rooms</label>
+            <select id="optimizer-hotel-rooms" class="field-input" [(ngModel)]="hotelRooms">
+              <option [ngValue]="1">1 Room</option>
+              <option [ngValue]="2">2 Rooms</option>
+              <option [ngValue]="3">3 Rooms</option>
             </select>
           </div>
         </div>
@@ -330,6 +451,37 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       </div>
 
       <button class="btn-analyze" (click)="analyze()">Analyze Transfers →</button>
+
+      <div class="saved-search-actions">
+        <button
+          class="btn-save-search"
+          type="button"
+          (click)="saveCurrentSearch()"
+          [attr.aria-label]="'Save current ' + tripType() + ' search intent'">
+          ☆ Save search
+        </button>
+        <span class="saved-search-count" *ngIf="savedSearches().length">
+          {{ savedSearches().length }} saved
+        </span>
+      </div>
+
+      <div class="saved-search-panel" *ngIf="savedSearches().length">
+        <div class="saved-search-header">
+          <span class="section-eyebrow">Saved Searches</span>
+          <span class="saved-search-sub">Search intents, separate from booked trip ideas</span>
+        </div>
+        <div class="saved-search-list">
+          <button
+            class="saved-search-chip"
+            type="button"
+            *ngFor="let search of savedSearches()"
+            (click)="applySavedSearch(search)"
+            [attr.aria-label]="'Re-run saved search ' + search.label">
+            <span>{{ search.tripType === 'flight' ? '✈' : '🏨' }}</span>
+            <span>{{ search.label }}</span>
+          </button>
+        </div>
+      </div>
 
       <!-- Quick Wins toggle — only shown when user has wallet data -->
       <button class="btn-quick-wins" *ngIf="wallet.hasAnyPoints()"
@@ -418,6 +570,32 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             Find related sweet spots →
           </button>
         </div>
+
+        <section class="strategy-summary" aria-labelledby="strategy-summary-title">
+          <div>
+            <span class="section-eyebrow" id="strategy-summary-title">Strategy Summary</span>
+            <h3>{{ strategySummary().title }}</h3>
+          </div>
+          <div class="strategy-grid">
+            <div class="strategy-item">
+              <span>Route type</span>
+              <strong>{{ strategySummary().route }}</strong>
+            </div>
+            <div class="strategy-item">
+              <span>Expected points</span>
+              <strong>{{ strategySummary().pointsBand }}</strong>
+            </div>
+            <div class="strategy-item">
+              <span>Date window</span>
+              <strong>{{ strategySummary().dateWindow }}</strong>
+            </div>
+            <div class="strategy-item">
+              <span>Wallet coverage</span>
+              <strong>{{ strategySummary().coverage }}</strong>
+            </div>
+          </div>
+          <p class="strategy-note">{{ strategySummary().expiryRisk }}</p>
+        </section>
 
         <!-- Result filters (only when user has a wallet) -->
         <div class="result-filters" *ngIf="wallet.hasAnyPoints()">
@@ -624,6 +802,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
 
     .fields { margin-bottom: 14px; }
     .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .field-row.compact-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .field { display: flex; flex-direction: column; gap: 4px; }
     .field.full { grid-column: 1 / -1; }
     .field-label {
@@ -686,6 +865,49 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       transition: opacity 0.15s, transform 0.1s;
     }
     .btn-analyze:active { transform: scale(0.98); opacity: 0.9; }
+
+    .saved-search-actions {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; margin: 8px 0 12px;
+    }
+    .btn-save-search {
+      min-height: 44px; flex: 1;
+      background: var(--white); color: var(--tally-green);
+      border: 1.5px solid var(--border2); border-radius: 12px;
+      font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-save-search:hover,
+    .btn-save-search:focus-visible {
+      border-color: var(--tally-green); background: var(--tally-green-light);
+      outline: none;
+    }
+    .saved-search-count {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      color: var(--text3); white-space: nowrap;
+    }
+    .saved-search-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px; margin-bottom: 12px;
+    }
+    .saved-search-header { margin-bottom: 8px; }
+    .saved-search-sub {
+      display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
+      color: var(--text3); letter-spacing: 0.06em; margin-top: 2px;
+    }
+    .saved-search-list { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+    .saved-search-chip {
+      min-height: 44px; display: inline-flex; align-items: center; gap: 6px;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 999px; padding: 8px 12px; flex: 0 0 auto;
+      color: var(--text); font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.03em; cursor: pointer;
+    }
+    .saved-search-chip:hover,
+    .saved-search-chip:focus-visible {
+      border-color: var(--tally-green); color: var(--tally-green);
+      outline: none;
+    }
 
     .btn-quick-wins {
       width: 100%; background: var(--tally-green-light); color: var(--tally-green);
@@ -802,6 +1024,36 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .route-unrecognized {
       display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--tally-amber, #b45309); letter-spacing: 0.05em; margin-top: 2px;
+    }
+
+    .strategy-summary {
+      background: linear-gradient(135deg, var(--tally-green-light), var(--surface));
+      border: 1px solid rgba(26,122,74,0.22);
+      border-radius: 16px; padding: 14px; margin-bottom: 12px;
+    }
+    .strategy-summary h3 {
+      margin: 3px 0 12px;
+      font-family: 'Instrument Serif', serif; font-size: 22px; line-height: 1;
+      color: var(--text);
+    }
+    .strategy-grid {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px; margin-bottom: 10px;
+    }
+    .strategy-item {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px;
+    }
+    .strategy-item span {
+      display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3);
+      margin-bottom: 4px;
+    }
+    .strategy-item strong {
+      display: block; font-size: 12px; color: var(--text); line-height: 1.35;
+    }
+    .strategy-note {
+      margin: 0; font-size: 12px; color: var(--text2); line-height: 1.45;
     }
 
     .result-card {
@@ -1085,6 +1337,23 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       border-color: var(--tally-green); color: var(--tally-green);
       background: var(--tally-green-light);
     }
+
+    @media (max-width: 430px) {
+      .field-row,
+      .field-row.compact-row,
+      .strategy-grid {
+        grid-template-columns: 1fr;
+      }
+      .related-spots-btn,
+      .btn-save-search,
+      .saved-search-chip,
+      .rf-btn {
+        min-height: 44px;
+      }
+      .saved-search-list {
+        margin-inline: -2px;
+      }
+    }
   `]
 })
 export class OptimizerComponent implements OnChanges {
@@ -1096,15 +1365,27 @@ export class OptimizerComponent implements OnChanges {
   private expiry = inject(ExpiryService);
   private analytics = inject(AnalyticsService);
   private nav = inject(NavigationService);
+  private searches = inject(SearchesService);
+  private airportSearch = inject(AirportSearchService);
 
   tripType = signal<'flight' | 'hotel'>('flight');
   fromCity = '';
   toCity = '';
   cabin: CabinClass = 'business';
   passengers = 1;
+  tripDirection: TripDirection = 'roundtrip';
+  earliestDeparture = '';
+  latestReturn = '';
+  tripLengthMin = 5;
+  tripLengthMax = 10;
+  flexibilityPreset: FlexPreset = 'plus7';
   hotelDest = '';
   hotelCategory: HotelCategory = 'mid';
   hotelNights = 5;
+  hotelCheckIn = '';
+  hotelCheckOut = '';
+  hotelTravelers = 2;
+  hotelRooms = 1;
 
   results = signal<Recommendation[]>([]);
   analyzed = signal(false);
@@ -1131,6 +1412,10 @@ export class OptimizerComponent implements OnChanges {
   // Route history
   private _routeHistory = signal<RouteHistoryEntry[]>(this.loadRouteHistory());
   readonly recentRoutes = this._routeHistory.asReadonly();
+  readonly savedSearches = computed<OptimizerSavedSearch[]>(() =>
+    this.searches.searches().slice(0, MAX_SAVED_SEARCHES).map(search => this.toOptimizerSavedSearch(search)),
+  );
+  readonly airportOptions = this.airportSearch.airports();
   // Home airport preference
   private _homeAirport = signal<string>('');
   readonly homeAirport = this._homeAirport.asReadonly();
@@ -1183,6 +1468,23 @@ export class OptimizerComponent implements OnChanges {
     return !this.routeLabel() || this.routeLabel() === 'Worldwide';
   });
 
+  readonly strategySummary = computed(() => {
+    const recs = this.results();
+    const pointsBand = this.getPointsBand(recs);
+    const coverage = this.getBestCoverageLabel(recs);
+    const route = this.tripType() === 'flight'
+      ? (this.routeLabel() || ROUTE_LABELS[this.routeCategory()] || 'Worldwide')
+      : this.getHotelStrategyRoute();
+    return {
+      title: this.tripType() === 'flight' ? 'How to search this award window' : 'How to frame this hotel search',
+      route,
+      pointsBand,
+      dateWindow: this.tripType() === 'flight' ? this.getFlightDateWindowSummary() : this.getHotelDateWindowSummary(),
+      coverage,
+      expiryRisk: this.getStrategyExpiryNote(recs),
+    };
+  });
+
   analyze(): void {
     let recs: Recommendation[];
     if (this.tripType() === 'flight') {
@@ -1191,6 +1493,7 @@ export class OptimizerComponent implements OnChanges {
       this.routeCategory.set(result.category);
       this.routeLabel.set(ROUTE_LABELS[result.category] ?? '');
     } else {
+      this.syncHotelNightsFromDates();
       recs = this.optimizer.getHotelRecs(this.hotelCategory, this.hotelNights);
       this.routeCategory.set(this.hotelCategory);
       this.routeLabel.set('');
@@ -1221,6 +1524,47 @@ export class OptimizerComponent implements OnChanges {
     try { localStorage.setItem('tally_sweetspots_filter_v1', filter); } catch {}
     this.analytics.track('sweet_spots_deep_linked', { from: 'optimizer', filter });
     this.nav.navigateTo({ tab: 'sweetspots' });
+  }
+
+  normalizeAirportInput(value: string): string {
+    const trimmed = value.trim();
+    const exact = this.airportSearch.findByCode(trimmed) ??
+      this.airportSearch.search(trimmed, 1).find(airport =>
+        airport.city.toLowerCase() === trimmed.toLowerCase() ||
+        airport.name.toLowerCase() === trimmed.toLowerCase()
+      );
+    if (exact) {
+      this.airportSearch.rememberAirport(exact.code);
+      return exact.code;
+    }
+    return trimmed.toUpperCase().slice(0, 32);
+  }
+
+  saveCurrentSearch(): void {
+    this.searches.createSearch(this.buildSavedSearchPayload());
+  }
+
+  applySavedSearch(search: OptimizerSavedSearch): void {
+    this.tripType.set(search.tripType);
+    this.fromCity = search.fromCity ?? '';
+    this.toCity = search.toCity ?? '';
+    this.cabin = search.cabin ?? 'business';
+    this.passengers = search.passengers ?? 1;
+    this.tripDirection = search.tripDirection ?? 'roundtrip';
+    this.earliestDeparture = search.earliestDeparture ?? '';
+    this.latestReturn = search.latestReturn ?? '';
+    this.tripLengthMin = search.tripLengthMin ?? 5;
+    this.tripLengthMax = search.tripLengthMax ?? 10;
+    this.flexibilityPreset = search.flexibilityPreset ?? 'plus7';
+    this.hotelDest = search.hotelDest ?? '';
+    this.hotelCategory = search.hotelCategory ?? 'mid';
+    this.hotelNights = search.hotelNights ?? 5;
+    this.hotelCheckIn = search.hotelCheckIn ?? '';
+    this.hotelCheckOut = search.hotelCheckOut ?? '';
+    this.hotelTravelers = search.hotelTravelers ?? 2;
+    this.hotelRooms = search.hotelRooms ?? 1;
+    this.showQuickWins.set(false);
+    this.analyze();
   }
 
   saveTrip(rec: Recommendation): void {
@@ -1262,6 +1606,84 @@ export class OptimizerComponent implements OnChanges {
   getCashValue(rec: Recommendation): number {
     const pts = rec.ptsRequired ?? rec.ptsBase;
     return Math.round(pts * rec.cpp / 100);
+  }
+
+  getFlexLabel(): string {
+    const labels: Record<FlexPreset, string> = {
+      exact: 'exact dates',
+      plus3: '±3 days',
+      plus7: '±7 days',
+      month: 'whole month',
+      next60: 'next 60 days',
+    };
+    return labels[this.flexibilityPreset];
+  }
+
+  private getPointsBand(recs: Recommendation[]): string {
+    if (!recs.length) return 'Not enough data yet';
+    const points = recs.map(r => r.ptsRequired ?? r.ptsBase).filter(Boolean).sort((a, b) => a - b);
+    const low = points[0] ?? 0;
+    const high = points[Math.min(points.length - 1, 2)] ?? low;
+    return low === high ? `${low.toLocaleString()} pts` : `${low.toLocaleString()}-${high.toLocaleString()} pts`;
+  }
+
+  private getBestCoverageLabel(recs: Recommendation[]): string {
+    if (!this.wallet.hasAnyPoints()) return 'Add balances to compare coverage';
+    const best = Math.max(0, ...recs.map(r => this.getCovPct(r)));
+    if (best >= 100) return 'You can cover at least one option';
+    if (best > 0) return `Best match is ${best}% covered`;
+    return 'No matching balance yet';
+  }
+
+  private getFlightDateWindowSummary(): string {
+    if (this.flexibilityPreset === 'next60') return 'Any good day in the next 60 days';
+    const depart = this.earliestDeparture ? this.formatShortDate(this.earliestDeparture) : 'any departure';
+    const returns = this.tripDirection === 'oneway'
+      ? 'one-way'
+      : (this.latestReturn ? `return by ${this.formatShortDate(this.latestReturn)}` : `${this.tripLengthMin}-${this.tripLengthMax} nights`);
+    return `${depart} · ${returns} · ${this.getFlexLabel()}`;
+  }
+
+  private getHotelDateWindowSummary(): string {
+    const checkIn = this.hotelCheckIn ? this.formatShortDate(this.hotelCheckIn) : 'flexible check-in';
+    const checkOut = this.hotelCheckOut ? this.formatShortDate(this.hotelCheckOut) : `${this.hotelNights} nights`;
+    return `${checkIn} to ${checkOut} · ${this.hotelTravelers} traveler${this.hotelTravelers === 1 ? '' : 's'} · ${this.hotelRooms} room${this.hotelRooms === 1 ? '' : 's'}`;
+  }
+
+  private getHotelStrategyRoute(): string {
+    const destination = this.hotelDest.trim() || 'Flexible destination';
+    return `${destination} · ${this.hotelCategory} hotels`;
+  }
+
+  private getStrategyExpiryNote(recs: Recommendation[]): string {
+    const warning = recs.map(r => this.getExpiryWarning(r)).find(Boolean);
+    if (!warning) return 'No urgent expiry conflict found for these recommendations.';
+    if (warning.urgency === 'expired') return `${warning.programName} points may already be expired; confirm balance before transferring.`;
+    return `${warning.programName} expires in ${warning.daysRemaining} day${warning.daysRemaining === 1 ? '' : 's'}; prioritize this currency if the routing fits.`;
+  }
+
+  private formatShortDate(value: string): string {
+    try {
+      const [year, month, day] = value.split('-').map(Number);
+      return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return value;
+    }
+  }
+
+  private syncHotelNightsFromDates(): void {
+    if (!this.hotelCheckIn || !this.hotelCheckOut) return;
+    const start = this.localDateValue(this.hotelCheckIn);
+    const end = this.localDateValue(this.hotelCheckOut);
+    if (!start || !end || end <= start) return;
+    const nights = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+    this.hotelNights = Math.min(30, Math.max(1, nights));
+  }
+
+  private localDateValue(value: string): Date | null {
+    const [year, month, day] = value.split('-').map(Number);
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day);
   }
 
   /** Percentage of required points the user already has (0–100, capped at 100) */
@@ -1373,6 +1795,130 @@ export class OptimizerComponent implements OnChanges {
 
   private saveRouteHistory(entries: RouteHistoryEntry[]): void {
     try { localStorage.setItem(ROUTE_HISTORY_KEY, JSON.stringify(entries)); } catch {}
+  }
+
+  private buildSavedSearchPayload(): Omit<SavedSearch, 'id' | 'createdAt' | 'updatedAt'> {
+    const destinationText = this.tripType() === 'flight'
+      ? this.normalizeAirportInput(this.toCity || 'ANY')
+      : (this.hotelDest.trim() || 'Hotel search');
+    const dateWindow = {
+      startDate: this.tripType() === 'flight' ? this.earliestDeparture : this.hotelCheckIn,
+      endDate: this.tripType() === 'flight' ? this.latestReturn : this.hotelCheckOut,
+      flexibility: this.toDateFlexibility(this.flexibilityPreset),
+      tripLengthMin: this.tripLengthMin,
+      tripLengthMax: this.tripLengthMax,
+    };
+
+    if (this.tripType() === 'hotel') {
+      return {
+        searchType: 'hotel',
+        destinationText,
+        dateWindow,
+        passengers: this.hotelTravelers,
+        hotelIntent: {
+          destination: destinationText,
+          checkInDate: this.hotelCheckIn || undefined,
+          checkOutDate: this.hotelCheckOut || undefined,
+          nights: this.hotelNights,
+          hotelCategory: this.hotelCategory,
+          travelers: this.hotelTravelers,
+          rooms: this.hotelRooms,
+          preferredChains: [],
+        },
+      };
+    }
+
+    const originAirport = this.fromCity.trim() ? this.normalizeAirportInput(this.fromCity) : undefined;
+    const destinationAirport = this.toCity.trim() ? this.normalizeAirportInput(this.toCity) : undefined;
+    return {
+      searchType: 'flight',
+      originAirport,
+      destinationAirport,
+      destinationText,
+      dateWindow,
+      cabin: this.cabin,
+      passengers: this.passengers,
+    };
+  }
+
+  private toOptimizerSavedSearch(search: SavedSearch): OptimizerSavedSearch {
+    return {
+      id: search.id,
+      tripType: search.searchType,
+      label: this.getSavedSearchLabel(search),
+      createdAt: search.createdAt,
+      fromCity: search.originAirport ?? '',
+      toCity: search.destinationAirport ?? '',
+      cabin: search.cabin ?? 'business',
+      passengers: search.passengers,
+      tripDirection: search.dateWindow.endDate ? 'roundtrip' : 'oneway',
+      earliestDeparture: search.dateWindow.startDate,
+      latestReturn: search.dateWindow.endDate,
+      tripLengthMin: search.dateWindow.tripLengthMin ?? 5,
+      tripLengthMax: search.dateWindow.tripLengthMax ?? 10,
+      flexibilityPreset: this.fromDateFlexibility(search.dateWindow.flexibility),
+      hotelDest: search.hotelIntent?.destination ?? search.destinationText,
+      hotelCategory: search.hotelIntent?.hotelCategory ?? 'mid',
+      hotelNights: search.hotelIntent?.nights ?? 5,
+      hotelCheckIn: search.hotelIntent?.checkInDate ?? search.dateWindow.startDate,
+      hotelCheckOut: search.hotelIntent?.checkOutDate ?? search.dateWindow.endDate,
+      hotelTravelers: search.hotelIntent?.travelers ?? search.passengers,
+      hotelRooms: search.hotelIntent?.rooms ?? 1,
+    };
+  }
+
+  private getSavedSearchLabel(search: SavedSearch): string {
+    if (search.searchType === 'flight') {
+      const from = search.originAirport || 'Anywhere';
+      const to = search.destinationAirport || search.destinationText || 'Anywhere';
+      return `${from}→${to} · ${this.getFlexLabelFor(search.dateWindow.flexibility)} · ${search.cabin ?? 'any cabin'}`;
+    }
+    const nights = search.hotelIntent?.nights ?? search.dateWindow.tripLengthMin ?? 1;
+    const category = search.hotelIntent?.hotelCategory ?? 'mid';
+    return `${search.destinationText || 'Hotel search'} · ${nights}n · ${category}`;
+  }
+
+  private toDateFlexibility(value: FlexPreset): DateFlexibility {
+    const map: Record<FlexPreset, DateFlexibility> = {
+      exact: 'exact',
+      plus3: 'plus_minus_3',
+      plus7: 'plus_minus_7',
+      month: 'month',
+      next60: 'next_60_days',
+    };
+    return map[value];
+  }
+
+  private fromDateFlexibility(value: DateFlexibility): FlexPreset {
+    const map: Record<DateFlexibility, FlexPreset> = {
+      exact: 'exact',
+      plus_minus_3: 'plus3',
+      plus_minus_7: 'plus7',
+      month: 'month',
+      next_60_days: 'next60',
+    };
+    return map[value] ?? 'plus7';
+  }
+
+  private getFlexLabelFor(value: DateFlexibility): string {
+    const labels: Record<DateFlexibility, string> = {
+      exact: 'exact dates',
+      plus_minus_3: '±3 days',
+      plus_minus_7: '±7 days',
+      month: 'whole month',
+      next_60_days: 'next 60 days',
+    };
+    return labels[value];
+  }
+
+  private buildSavedSearchLabel(): string {
+    if (this.tripType() === 'flight') {
+      const from = this.fromCity || 'Anywhere';
+      const to = this.toCity || 'Anywhere';
+      return `${from}→${to} · ${this.getFlexLabel()} · ${this.cabin}`;
+    }
+    const dest = this.hotelDest.trim() || 'Hotel search';
+    return `${dest} · ${this.hotelNights}n · ${this.hotelCategory}`;
   }
 
   private buildHistoryLabel(): string {

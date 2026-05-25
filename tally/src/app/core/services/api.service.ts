@@ -3,11 +3,36 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService as Auth0Service } from '@auth0/auth0-angular';
 import { Observable, catchError, of, switchMap, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { SavedTrip } from '../models';
+import {
+  AwardAvailabilityResult,
+  CabinClass,
+  HotelSearchIntent,
+  ProviderCacheStatus,
+  SavedTrip,
+  SavedSearch,
+  UserPreference,
+} from '../models';
 
 export interface ApiExpiryRecord {
   cardId: string;
   lastActivityDate: string;
+}
+
+export interface ProviderSearchResponse<T> {
+  cacheStatus: ProviderCacheStatus;
+  lastChecked: string;
+  stale: boolean;
+  source: string;
+  results: T[];
+}
+
+export interface AwardAvailabilityRequest {
+  originAirport: string;
+  destinationAirport: string;
+  startDate: string;
+  endDate: string;
+  cabin: CabinClass;
+  passengers: number;
 }
 
 interface CacheEnvelope<T> {
@@ -139,6 +164,68 @@ export class ApiService {
   updateTripNotes(id: string, notes: string): Observable<unknown> {
     return this.withAuth(headers =>
       this.http.patch(`${environment.apiUrl}/api/trips/${id}`, { notes }, { headers }),
+    );
+  }
+
+  // ── Preferences ────────────────────────────────────────────────────────────
+
+  getPreferences(): Observable<UserPreference | null> {
+    return this.withAuth(headers =>
+      this.http.get<UserPreference | null>(`${environment.apiUrl}/api/preferences`, { headers }),
+    );
+  }
+
+  savePreferences(preferences: UserPreference): Observable<UserPreference> {
+    return this.withAuth(headers =>
+      this.http.put<UserPreference>(`${environment.apiUrl}/api/preferences`, preferences, { headers }),
+    );
+  }
+
+  // ── Saved searches ─────────────────────────────────────────────────────────
+
+  getSavedSearches(): Observable<SavedSearch[]> {
+    return this.withAuth(headers =>
+      this.http.get<SavedSearch[]>(`${environment.apiUrl}/api/searches`, { headers }),
+    );
+  }
+
+  createSavedSearch(search: Omit<SavedSearch, 'id' | 'createdAt' | 'updatedAt'>): Observable<SavedSearch> {
+    return this.withAuth(headers =>
+      this.http.post<SavedSearch>(`${environment.apiUrl}/api/searches`, search, { headers }),
+    );
+  }
+
+  updateSavedSearch(id: string, changes: Partial<Omit<SavedSearch, 'id' | 'createdAt'>>): Observable<SavedSearch> {
+    return this.withAuth(headers =>
+      this.http.put<SavedSearch>(`${environment.apiUrl}/api/searches/${id}`, changes, { headers }),
+    );
+  }
+
+  deleteSavedSearch(id: string): Observable<unknown> {
+    return this.withAuth(headers =>
+      this.http.delete(`${environment.apiUrl}/api/searches/${id}`, { headers }),
+    );
+  }
+
+  // ── Provider-backed search ─────────────────────────────────────────────────
+
+  searchAwardAvailability(request: AwardAvailabilityRequest): Observable<ProviderSearchResponse<AwardAvailabilityResult>> {
+    return this.withAuth(headers =>
+      this.http.post<ProviderSearchResponse<AwardAvailabilityResult>>(
+        `${environment.apiUrl}/api/search/award-availability`,
+        request,
+        { headers },
+      ),
+    );
+  }
+
+  searchHotelFit(intent: HotelSearchIntent): Observable<ProviderSearchResponse<HotelSearchIntent>> {
+    return this.withAuth(headers =>
+      this.http.post<ProviderSearchResponse<HotelSearchIntent>>(
+        `${environment.apiUrl}/api/search/hotel-fit`,
+        intent,
+        { headers },
+      ),
     );
   }
 
