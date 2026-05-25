@@ -56,9 +56,9 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       <!-- Search -->
       <div class="spot-search-wrap">
         <span class="spot-search-icon">🔍</span>
-        <input class="spot-search-input" type="search" placeholder="Search sweet spots…"
+        <input class="spot-search-input" type="search" aria-label="Search sweet spots" placeholder="Search sweet spots…"
           [ngModel]="searchRaw()" (ngModelChange)="searchRaw.set($event)" autocomplete="off">
-        <button class="spot-search-clear" *ngIf="searchRaw()" (click)="searchRaw.set('')">✕</button>
+        <button class="spot-search-clear" *ngIf="searchRaw()" type="button" aria-label="Clear sweet spot search" (click)="searchRaw.set('')">✕</button>
       </div>
 
       <!-- Transfer Bonuses strip -->
@@ -207,6 +207,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .spot-search-input::-webkit-search-cancel-button { display: none; }
     .spot-search-clear {
       background: none; border: none; cursor: pointer; padding: 4px;
+      min-width: 36px; min-height: 36px;
       font-size: 12px; color: var(--text3); line-height: 1;
     }
 
@@ -253,10 +254,11 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.08em; color: var(--text3); cursor: pointer;
       transition: all 0.15s;
+      min-height: 36px;
     }
     .filter-btn.active {
       background: var(--tally-green); border-color: var(--tally-green);
-      color: white;
+      color: var(--on-accent);
     }
 
     .sort-row {
@@ -272,6 +274,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.06em; color: var(--text3); cursor: pointer;
       transition: all 0.15s;
+      min-height: 36px;
     }
     .sort-btn.active { border-color: var(--tally-green); color: var(--tally-green); }
 
@@ -352,7 +355,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     }
     .cov-count {
       display: inline-flex; align-items: center; justify-content: center;
-      background: var(--tally-green); color: white;
+      background: var(--tally-green); color: var(--on-accent);
       font-family: 'Geist Mono', monospace; font-size: 8px;
       width: 14px; height: 14px; border-radius: 50%; margin-left: 4px;
     }
@@ -366,22 +369,22 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       border-radius: 8px; color: var(--tally-green);
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; padding: 5px 12px; cursor: pointer;
-      transition: all 0.15s;
+      transition: all 0.15s; min-height: 36px;
     }
-    .spot-optimizer-btn:hover { background: var(--tally-green); color: white; }
+    .spot-optimizer-btn:hover { background: var(--tally-green); color: var(--on-accent); }
     .spot-book-link {
       display: inline-flex; align-items: center;
       background: none; border: 1px solid rgba(26,122,74,0.3); border-radius: 8px;
       color: var(--tally-green); font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; padding: 5px 10px;
-      text-decoration: none; transition: all 0.15s;
+      text-decoration: none; transition: all 0.15s; min-height: 36px;
     }
     .spot-book-link:hover { background: var(--tally-green-light); }
     .spot-share-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; padding: 5px 10px; cursor: pointer;
-      transition: all 0.15s; margin-left: auto;
+      transition: all 0.15s; margin-left: auto; min-height: 36px;
     }
     .spot-share-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .spot-share-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
@@ -410,10 +413,10 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       border-radius: 20px; padding: 4px 10px;
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.06em; color: var(--text3); cursor: pointer;
-      transition: all 0.15s; white-space: nowrap;
+      transition: all 0.15s; white-space: nowrap; min-height: 36px;
     }
     .cpp-tier-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
-    .cpp-tier-btn.active { background: var(--tally-green); border-color: var(--tally-green); color: white; }
+    .cpp-tier-btn.active { background: var(--tally-green); border-color: var(--tally-green); color: var(--on-accent); }
 
     .empty-filter { text-align: center; padding: 32px 16px; color: var(--text3); font-size: 14px; }
     .spot-clear-btn {
@@ -436,6 +439,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       background: none; border: none; cursor: pointer;
       font-size: 16px; color: var(--border2); line-height: 1;
       padding: 4px; transition: color 0.15s, transform 0.15s;
+      min-width: 36px; min-height: 36px;
       -webkit-tap-highlight-color: transparent;
     }
     .fav-btn:hover { color: var(--tally-amber, #d97706); transform: scale(1.15); }
@@ -448,7 +452,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     /* Saved filter count badge */
     .fav-count {
       display: inline-flex; align-items: center; justify-content: center;
-      background: var(--tally-amber, #d97706); color: white;
+      background: var(--tally-amber, #d97706); color: var(--on-accent);
       font-family: 'Geist Mono', monospace; font-size: 8px;
       width: 14px; height: 14px; border-radius: 50%; margin-left: 4px;
     }

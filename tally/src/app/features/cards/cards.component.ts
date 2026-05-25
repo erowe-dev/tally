@@ -116,12 +116,13 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         <input
           class="search-input"
           type="search"
+          aria-label="Search programs or partners"
           placeholder="Search programs or partners…"
           [ngModel]="searchRaw()"
           (ngModelChange)="searchRaw.set($event)"
           autocomplete="off"
         />
-        <button class="search-clear" *ngIf="searchRaw()" (click)="searchRaw.set('')">✕</button>
+        <button class="search-clear" *ngIf="searchRaw()" type="button" aria-label="Clear program search" (click)="searchRaw.set('')">✕</button>
       </div>
 
       <!-- Category tabs + great toggle + mine filter -->
@@ -425,6 +426,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .search-input::-webkit-search-cancel-button { display: none; }
     .search-clear {
       background: none; border: none; cursor: pointer; padding: 4px;
+      min-width: 36px; min-height: 36px;
       font-size: 12px; color: var(--text3); line-height: 1;
     }
 
@@ -440,6 +442,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       background: none; border: 1px solid var(--border); border-radius: 16px;
       padding: 3px 10px; font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.06em; color: var(--text3); cursor: pointer; transition: all 0.15s;
+      min-height: 36px;
     }
     .sort-btn.active { border-color: var(--tally-green); color: var(--tally-green); }
 
@@ -453,10 +456,11 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.08em; color: var(--text3); cursor: pointer;
       transition: all 0.15s;
+      min-height: 36px;
     }
     .filter-btn.active {
       background: var(--tally-green); border-color: var(--tally-green);
-      color: white;
+      color: var(--on-accent);
     }
     .great-toggle.active {
       background: var(--tally-amber, #d97706); border-color: var(--tally-amber, #d97706);
