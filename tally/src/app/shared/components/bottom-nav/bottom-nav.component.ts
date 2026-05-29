@@ -14,6 +14,7 @@ interface NavItem { id: NavTab; label: string; icon: string; }
   template: `
     <nav class="bottom-nav" aria-label="Primary app navigation">
       <button
+        type="button"
         *ngFor="let item of items"
         class="nav-btn"
         [class.active]="activeTab === item.id"
@@ -44,13 +45,15 @@ interface NavItem { id: NavTab; label: string; icon: string; }
       background: var(--shell-translucent);
       backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       border-top: 1px solid var(--border);
-      padding: 10px 0 calc(env(safe-area-inset-bottom, 0px) + 10px);
-      display: flex; justify-content: space-around; z-index: 200;
+      padding: 8px 8px calc(env(safe-area-inset-bottom, 0px) + 8px);
+      display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+      z-index: 200;
     }
     .nav-btn {
       background: none; border: none;
       display: flex; flex-direction: column; align-items: center; gap: 3px;
-      cursor: pointer; padding: 4px 10px;
+      justify-content: center; cursor: pointer; padding: 6px 4px;
+      min-width: 0; min-height: 52px;
       -webkit-tap-highlight-color: transparent;
       border-radius: 12px;
     }
@@ -87,6 +90,7 @@ interface NavItem { id: NavTab; label: string; icon: string; }
     .nav-label {
       font-size: 9px; font-family: 'Geist Mono', monospace;
       letter-spacing: 0.08em; color: var(--text3); text-transform: uppercase;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis;
     }
     .nav-btn.active .nav-label { color: var(--tally-green); }
     .nav-btn.locked .nav-icon { opacity: 0.5; }

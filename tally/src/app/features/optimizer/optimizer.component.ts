@@ -10,7 +10,8 @@ import { AnalyticsService } from '../../core/services/analytics.service';
 import { NavigationService } from '../../core/services/navigation.service';
 import { SearchesService } from '../../core/services/searches.service';
 import { AirportSearchService } from '../../core/services/airport-search.service';
-import { Recommendation, CabinClass, HotelCategory, SavedSearch, DateFlexibility } from '../../core/models';
+import { Recommendation, CabinClass, HotelCategory, SavedSearch, DateFlexibility, SavedTrip } from '../../core/models';
+import { SavedTripsComponent } from './saved-trips.component';
 
 interface RouteHistoryEntry {
   tripType: 'flight' | 'hotel';
@@ -255,7 +256,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
 @Component({
   selector: 'tally-optimizer',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SavedTripsComponent],
   template: `
     <div class="page-content">
       <div class="section-eyebrow">Transfer Optimizer</div>
@@ -263,10 +264,10 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
 
       <div class="toggle-row">
         <div class="type-toggle">
-          <button class="toggle-btn" [class.active]="tripType() === 'flight'" (click)="tripType.set('flight')">
+          <button type="button" class="toggle-btn" [class.active]="tripType() === 'flight'" (click)="tripType.set('flight')">
             ✈ Flights
           </button>
-          <button class="toggle-btn" [class.active]="tripType() === 'hotel'" (click)="tripType.set('hotel')">
+          <button type="button" class="toggle-btn" [class.active]="tripType() === 'hotel'" (click)="tripType.set('hotel')">
             🏨 Hotels
           </button>
         </div>
@@ -280,17 +281,19 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             <input
               id="optimizer-from"
               class="field-input"
+              [class.invalid]="validationError() && !fromCity.trim()"
+              [attr.aria-invalid]="validationError() && !fromCity.trim() ? 'true' : null"
               [(ngModel)]="fromCity"
               placeholder="OMA or Omaha"
               list="optimizer-airports"
               autocomplete="off"
               aria-describedby="airport-search-help"
-              (input)="fromCity = normalizeAirportInput(fromCity)">
+              (input)="fromCity = normalizeAirportInput(fromCity); clearValidation()">
             <div class="home-airport-hint" *ngIf="homeAirport() || fromCity.length === 3">
               <span class="home-badge" *ngIf="fromCity.length === 3 && fromCity === homeAirport()">📍 Home</span>
-              <button class="home-set-btn" *ngIf="fromCity.length === 3 && fromCity !== homeAirport()"
+              <button type="button" class="home-set-btn" *ngIf="fromCity.length === 3 && fromCity !== homeAirport()"
                 (click)="setHomeAirport()" title="Save as your default departure airport" aria-label="Save origin as home airport">📍 Set as home</button>
-              <button class="home-use-btn" *ngIf="homeAirport() && fromCity.length !== 3"
+              <button type="button" class="home-use-btn" *ngIf="homeAirport() && fromCity.length !== 3"
                 (click)="useHomeAirport()" [attr.aria-label]="'Use saved home airport ' + homeAirport()">📍 {{ homeAirport() }}</button>
             </div>
           </div>
@@ -299,12 +302,14 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             <input
               id="optimizer-to"
               class="field-input"
+              [class.invalid]="validationError() && !toCity.trim()"
+              [attr.aria-invalid]="validationError() && !toCity.trim() ? 'true' : null"
               [(ngModel)]="toCity"
               placeholder="LHR or London"
               list="optimizer-airports"
               autocomplete="off"
               aria-describedby="airport-search-help"
-              (input)="toCity = normalizeAirportInput(toCity)">
+              (input)="toCity = normalizeAirportInput(toCity); clearValidation()">
           </div>
         </div>
         <datalist id="optimizer-airports">
@@ -355,21 +360,21 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         <div class="field-row">
           <div class="field">
             <label class="field-label" for="optimizer-earliest">Earliest departure</label>
-            <input id="optimizer-earliest" class="field-input" type="date" [(ngModel)]="earliestDeparture">
+            <input id="optimizer-earliest" class="field-input" type="date" [(ngModel)]="earliestDeparture" (ngModelChange)="clearValidation()">
           </div>
           <div class="field">
             <label class="field-label" for="optimizer-latest">Latest return</label>
-            <input id="optimizer-latest" class="field-input" type="date" [(ngModel)]="latestReturn">
+            <input id="optimizer-latest" class="field-input" type="date" [(ngModel)]="latestReturn" (ngModelChange)="clearValidation()">
           </div>
         </div>
         <div class="field-row compact-row">
           <div class="field">
             <label class="field-label" for="optimizer-min-nights">Trip length min</label>
-            <input id="optimizer-min-nights" class="field-input" type="number" min="1" max="45" [(ngModel)]="tripLengthMin">
+            <input id="optimizer-min-nights" class="field-input" type="number" min="1" max="45" [(ngModel)]="tripLengthMin" (ngModelChange)="clearValidation()">
           </div>
           <div class="field">
             <label class="field-label" for="optimizer-max-nights">Trip length max</label>
-            <input id="optimizer-max-nights" class="field-input" type="number" min="1" max="60" [(ngModel)]="tripLengthMax">
+            <input id="optimizer-max-nights" class="field-input" type="number" min="1" max="60" [(ngModel)]="tripLengthMax" (ngModelChange)="clearValidation()">
           </div>
         </div>
       </div>
@@ -384,6 +389,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
               class="field-input"
               [(ngModel)]="hotelDest"
               placeholder="Tokyo, Maldives, Paris..."
+              (ngModelChange)="clearValidation()"
               aria-describedby="hotel-destination-help">
           </div>
         </div>
@@ -391,11 +397,11 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         <div class="field-row">
           <div class="field">
             <label class="field-label" for="optimizer-checkin">Check-in</label>
-            <input id="optimizer-checkin" class="field-input" type="date" [(ngModel)]="hotelCheckIn">
+            <input id="optimizer-checkin" class="field-input" type="date" [(ngModel)]="hotelCheckIn" (ngModelChange)="clearValidation()">
           </div>
           <div class="field">
             <label class="field-label" for="optimizer-checkout">Check-out</label>
-            <input id="optimizer-checkout" class="field-input" type="date" [(ngModel)]="hotelCheckOut">
+            <input id="optimizer-checkout" class="field-input" type="date" [(ngModel)]="hotelCheckOut" (ngModelChange)="clearValidation()">
           </div>
         </div>
         <div class="field-row">
@@ -443,14 +449,24 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       <div class="recent-routes" *ngIf="recentRoutes().length > 0">
         <span class="recent-label">Recent</span>
         <div class="recent-chips">
-          <button class="recent-chip" *ngFor="let h of recentRoutes()" (click)="applyHistory(h)"
+          <button type="button" class="recent-chip" *ngFor="let h of recentRoutes()" (click)="applyHistory(h)"
             [title]="'Re-run: ' + h.label">
             {{ h.tripType === 'flight' ? '✈' : '🏨' }} {{ h.label }}
           </button>
         </div>
       </div>
 
-      <button class="btn-analyze" (click)="analyze()">Analyze Transfers →</button>
+      <div class="validation-banner" *ngIf="validationError() as error" aria-live="assertive">
+        {{ error }}
+      </div>
+
+      <button
+        type="button"
+        class="btn-analyze"
+        [class.needs-attention]="validationError()"
+        (click)="analyze()">
+        {{ validationError() ? 'Review inputs' : 'Analyze Transfers →' }}
+      </button>
 
       <div class="saved-search-actions">
         <button
@@ -484,7 +500,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       </div>
 
       <!-- Quick Wins toggle — only shown when user has wallet data -->
-      <button class="btn-quick-wins" *ngIf="wallet.hasAnyPoints()"
+      <button type="button" class="btn-quick-wins" *ngIf="wallet.hasAnyPoints()"
         (click)="toggleQuickWins()">
         {{ showQuickWins() ? '✕ Hide' : '⚡ What can I book now?' }}
       </button>
@@ -523,7 +539,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             <span class="chip" *ngFor="let cid of rec.cards">{{ getShort(cid) }}</span>
           </div>
         </div>
-        <div class="qw-empty" *ngIf="quickWins().length === 0">
+        <div class="qw-empty" *ngIf="quickWins().length === 0" aria-live="polite">
           <p>Your balances don't yet cover any individual redemption. Keep earning!</p>
         </div>
       </div>
@@ -536,7 +552,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         <div class="quick-dest-section" *ngIf="homeAirport() && tripType() === 'flight'">
           <div class="qd-label">Popular routes from {{ homeAirport() }}</div>
           <div class="qd-chips">
-            <button *ngFor="let d of quickDestinations()" class="qd-chip"
+            <button type="button" *ngFor="let d of quickDestinations()" class="qd-chip"
               (click)="applyQuickDest(d)">
               {{ d.flag }} {{ d.to }} <span class="qd-type">{{ d.label }}</span>
             </button>
@@ -545,7 +561,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         <!-- Wallet-aware suggestion: surfaces when user has points -->
         <div class="wallet-hint" *ngIf="walletSuggestion() as hint">
           <div class="wh-label">Suggested for your wallet</div>
-          <button class="wh-card" (click)="applyWalletSuggestion(hint)">
+          <button type="button" class="wh-card" (click)="applyWalletSuggestion(hint)">
             <span class="wh-icon">💡</span>
             <div class="wh-body">
               <div class="wh-title">{{ hint.title }}</div>
@@ -599,19 +615,19 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
 
         <!-- Result filters (only when user has a wallet) -->
         <div class="result-filters" *ngIf="wallet.hasAnyPoints()">
-          <button class="rf-btn" [class.active]="canAffordOnly()"
+          <button type="button" class="rf-btn" [class.active]="canAffordOnly()"
             (click)="canAffordOnly.set(!canAffordOnly())">
             ✓ Can afford
           </button>
           <div class="rf-sort">
-            <button class="rf-btn" [class.active]="sortBy() === 'cpp'"
+            <button type="button" class="rf-btn" [class.active]="sortBy() === 'cpp'"
               (click)="sortBy.set('cpp')">Best CPP</button>
-            <button class="rf-btn" [class.active]="sortBy() === 'coverage'"
+            <button type="button" class="rf-btn" [class.active]="sortBy() === 'coverage'"
               (click)="sortBy.set('coverage')">My Coverage</button>
           </div>
         </div>
 
-        <div class="no-affordable" *ngIf="canAffordOnly() && filteredResults().length === 0">
+        <div class="no-affordable" *ngIf="canAffordOnly() && filteredResults().length === 0" aria-live="polite">
           <p>No results match your current wallet. Add more points in Wallet to unlock options.</p>
         </div>
 
@@ -683,14 +699,14 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
           <div class="best-badge" *ngIf="i === 0">BEST VALUE</div>
 
           <div class="card-action-row">
-            <button class="save-btn" (click)="saveTrip(rec)" [class.saved]="justSaved() === rec.program">
+            <button type="button" class="save-btn" (click)="saveTrip(rec)" [class.saved]="justSaved() === rec.program">
               {{ justSaved() === rec.program ? '✓ Saved' : '+ Save' }}
             </button>
-            <button class="copy-btn" *ngIf="i === 0"
+            <button type="button" class="copy-btn" *ngIf="i === 0"
               (click)="copyTopResult(rec)" [class.copied]="copiedResult()">
               {{ copiedResult() ? '✓ Copied' : '📋 Share' }}
             </button>
-            <button class="howto-btn" *ngIf="getHowToSteps(rec.program).length > 0"
+            <button type="button" class="howto-btn" *ngIf="getHowToSteps(rec.program).length > 0"
               (click)="toggleHowTo(rec.program)"
               [class.open]="expandedHowTo() === rec.program">
               {{ expandedHowTo() === rec.program ? 'Hide steps' : 'How to book' }}
@@ -727,63 +743,14 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         <p>Try a different route or relax your cabin preference. Our data covers major international routes.</p>
       </div>
 
-      <!-- Saved Trips -->
-      <div class="saved-section" *ngIf="trips.trips().length > 0">
-        <div class="saved-section-header">
-          <span class="section-eyebrow">Saved Trips ({{ trips.trips().length }})</span>
-          <button class="clear-all-btn" [class.confirm]="clearConfirm()" (click)="clearAllTrips()">
-            {{ clearConfirm() ? '⚠ Confirm clear?' : 'Clear all' }}
-          </button>
-        </div>
-        <div class="saved-card" *ngFor="let trip of trips.trips()">
-          <div class="trip-type-icon">{{ trip.tripType === 'flight' ? '✈' : '🏨' }}</div>
-          <div class="saved-info">
-            <div class="saved-program">{{ trip.programName }}</div>
-            <div class="saved-meta">
-              <ng-container *ngIf="trip.tripType === 'flight'">
-                <span *ngIf="trip.origin">{{ trip.origin }}→{{ trip.destination }}</span>
-                <span *ngIf="trip.cabin"> · {{ trip.cabin }}</span>
-                <span *ngIf="trip.passengers && trip.passengers > 1"> · {{ trip.passengers }}pax</span>
-              </ng-container>
-              <ng-container *ngIf="trip.tripType === 'hotel'">
-                <span *ngIf="trip.destination">{{ trip.destination }} · </span>
-                <span *ngIf="trip.hotelCat">{{ trip.hotelCat }}</span>
-                <span *ngIf="trip.nights"> · {{ trip.nights }} night{{ trip.nights !== 1 ? 's' : '' }}</span>
-              </ng-container>
-            </div>
-            <!-- Inline note display / edit -->
-            <div class="saved-note-area">
-              <input *ngIf="editingNoteId() !== trip.id"
-                class="saved-note-preview"
-                readonly
-                [value]="trip.notes || ''"
-                placeholder="Add a note…"
-                (click)="startEditNote(trip.id, trip.notes || '')"
-              />
-              <div class="saved-note-edit" *ngIf="editingNoteId() === trip.id">
-                <input class="saved-note-input" [(ngModel)]="pendingNote"
-                  placeholder="Add a note…" maxlength="500"
-                  (keyup.enter)="commitNote(trip.id)"
-                  (keyup.escape)="editingNoteId.set(null)">
-                <button class="note-save-btn" (click)="commitNote(trip.id)">Save</button>
-                <button class="note-cancel-btn" (click)="editingNoteId.set(null)">✕</button>
-              </div>
-            </div>
-            <div class="saved-date">{{ formatTripDate(trip.createdAt) }}</div>
-          </div>
-          <div class="saved-pts">{{ trip.ptsRequired | number }}<small>pts</small></div>
-          <div class="saved-actions">
-            <button class="reanalyze-btn" (click)="reanalyzeTrip(trip)" title="Re-run analysis">↺</button>
-            <button class="delete-btn" (click)="trips.deleteTrip(trip.id)" title="Remove">×</button>
-          </div>
-        </div>
-      </div>
+      <tally-saved-trips (reanalyze)="reanalyzeTrip($event)" />
     </div>
   `,
   styles: [`
     .toggle-row { margin-bottom: 20px; }
     .type-toggle {
-      display: inline-flex;
+      display: grid; grid-template-columns: 1fr 1fr;
+      width: 100%;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -794,7 +761,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       color: var(--text3);
       font-family: 'Geist', sans-serif;
       font-size: 13px; font-weight: 500;
-      padding: 9px 18px;
+      padding: 10px 14px;
       cursor: pointer;
       transition: all 0.18s;
     }
@@ -818,6 +785,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       transition: border-color 0.15s; -webkit-appearance: none;
     }
     .field-input:focus { border-color: var(--tally-green); }
+    .field-input.invalid { border-color: var(--tally-red); background: var(--tally-red-light); }
     .field-input::placeholder { color: var(--text3); font-weight: 400; }
     select.field-input option { background: var(--white); color: var(--text); }
     .field-input.is-disabled {
@@ -841,7 +809,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       letter-spacing: 0.1em; color: var(--tally-green); font-weight: 500;
     }
     .home-set-btn {
-      background: none; border: none; padding: 0;
+      background: none; border: none; padding: 8px 0;
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.08em; color: var(--text3);
       cursor: pointer; transition: color 0.15s;
@@ -849,7 +817,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .home-set-btn:hover { color: var(--tally-green); }
     .home-use-btn {
       background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.25);
-      border-radius: 20px; padding: 2px 9px;
+      border-radius: 20px; padding: 8px 10px;
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.08em; color: var(--tally-green);
       cursor: pointer; transition: all 0.15s;
@@ -864,7 +832,20 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       cursor: pointer; margin-bottom: 4px;
       transition: opacity 0.15s, transform 0.1s;
     }
+    .btn-analyze.needs-attention { background: var(--tally-amber); }
     .btn-analyze:active { transform: scale(0.98); opacity: 0.9; }
+    .validation-banner {
+      margin: 4px 0 10px;
+      background: var(--tally-amber-light);
+      border: 1px solid rgba(180,83,9,0.24);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: var(--tally-amber);
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      line-height: 1.45;
+    }
 
     .saved-search-actions {
       display: flex; align-items: center; justify-content: space-between;
@@ -950,7 +931,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .qd-chip {
       display: inline-flex; align-items: center; gap: 5px;
       background: var(--white); border: 1.5px solid var(--border2);
-      border-radius: 20px; padding: 6px 12px;
+      border-radius: 20px; padding: 8px 12px;
       font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 500;
       color: var(--text); cursor: pointer;
       transition: all 0.15s; -webkit-tap-highlight-color: transparent;
@@ -990,7 +971,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       border: 1px solid var(--border); border-radius: 999px;
       background: var(--white); color: var(--tally-green);
       font-family: 'Geist Mono', monospace; font-size: 10px;
-      letter-spacing: 0.04em; padding: 7px 12px; cursor: pointer;
+      letter-spacing: 0.04em; padding: 9px 12px; cursor: pointer;
     }
     .related-spots-btn:hover,
     .related-spots-btn:focus-visible {
@@ -1006,7 +987,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .rf-sort { display: flex; gap: 4px; margin-left: auto; }
     .rf-btn {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 20px; padding: 4px 11px;
+      border-radius: 20px; padding: 8px 12px;
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.08em; color: var(--text3); cursor: pointer;
       transition: all 0.15s; white-space: nowrap;
@@ -1198,11 +1179,10 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
 
     .card-action-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
 
-    /* How-to-Book button and panel */
     .howto-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
-      letter-spacing: 0.06em; padding: 5px 10px; cursor: pointer;
+      letter-spacing: 0.06em; padding: 8px 10px; cursor: pointer;
       transition: all 0.15s; margin-left: auto;
     }
     .howto-btn:hover, .howto-btn.open {
@@ -1223,12 +1203,11 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       color: var(--tally-green); letter-spacing: 0.04em;
       text-decoration: none; margin-top: 4px;
     }
-    .howto-link:hover { text-decoration: underline; }
     .save-btn {
       background: none;
       border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace;
-      font-size: 10px; letter-spacing: 0.08em; padding: 5px 10px;
+      font-size: 10px; letter-spacing: 0.08em; padding: 8px 10px;
       cursor: pointer; transition: all 0.15s;
     }
     .save-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
@@ -1237,83 +1216,11 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       background: none;
       border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace;
-      font-size: 10px; letter-spacing: 0.08em; padding: 5px 10px;
+      font-size: 10px; letter-spacing: 0.08em; padding: 8px 10px;
       cursor: pointer; transition: all 0.15s;
     }
     .copy-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .copy-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
-
-    .saved-section-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-top: 28px; margin-bottom: 12px;
-    }
-    .clear-all-btn {
-      background: none; border: none;
-      font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.08em; color: var(--text3); cursor: pointer;
-      padding: 3px 8px; border-radius: 6px; transition: all 0.15s;
-    }
-    .clear-all-btn:hover { color: var(--tally-red); }
-    .clear-all-btn.confirm {
-      color: var(--tally-red); background: rgba(220,38,38,0.08);
-      border: 1px solid rgba(220,38,38,0.25);
-    }
-
-    .saved-card {
-      background: var(--white); border: 1px solid var(--border);
-      border-radius: 12px; padding: 12px 14px;
-      display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
-    }
-    .trip-type-icon { font-size: 16px; flex-shrink: 0; opacity: 0.7; }
-    .saved-info { flex: 1; min-width: 0; }
-    .saved-program { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .saved-meta { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text3); letter-spacing: 0.04em; }
-    .saved-date {
-      font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--border2);
-      letter-spacing: 0.04em; margin-top: 2px;
-    }
-    .saved-pts {
-      font-family: 'Geist Mono', monospace; font-size: 14px;
-      color: var(--tally-green); text-align: right; flex-shrink: 0;
-    }
-    .saved-pts small { display: block; font-size: 9px; color: var(--text3); }
-    .saved-actions { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
-    .reanalyze-btn {
-      background: none; border: 1px solid var(--border); border-radius: 6px;
-      color: var(--text3); font-size: 14px; line-height: 1;
-      cursor: pointer; padding: 3px 6px; transition: all 0.15s;
-    }
-    .reanalyze-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
-    .delete-btn {
-      background: none; border: none; color: var(--text3);
-      font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 4px;
-      border-radius: 4px; transition: color 0.15s;
-      flex-shrink: 0;
-    }
-    .delete-btn:hover { color: var(--tally-red); }
-
-    .saved-note-area { margin-top: 4px; }
-    .saved-note-preview {
-      width: 100%; background: none; border: none; outline: none; cursor: pointer;
-      font-family: 'Geist', sans-serif; font-size: 11px; color: var(--text3);
-      padding: 0; line-height: 1.4;
-    }
-    .saved-note-preview:not([value=""]):not([value]) { color: var(--text2); }
-    .saved-note-edit { display: flex; gap: 4px; align-items: center; }
-    .saved-note-input {
-      flex: 1; background: var(--surface); border: 1.5px solid var(--tally-green);
-      border-radius: 7px; font-family: 'Geist', sans-serif; font-size: 11px;
-      color: var(--text); padding: 4px 8px; outline: none;
-    }
-    .note-save-btn {
-      background: var(--tally-green); border: none; border-radius: 6px;
-      color: white; font-family: 'Geist Mono', monospace; font-size: 9px;
-      padding: 4px 8px; cursor: pointer; flex-shrink: 0; letter-spacing: 0.06em;
-    }
-    .note-cancel-btn {
-      background: none; border: none; color: var(--text3); font-size: 12px;
-      cursor: pointer; padding: 2px; flex-shrink: 0;
-    }
 
     /* Recent routes */
     .recent-routes {
@@ -1328,7 +1235,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .recent-chips { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; }
     .recent-chip {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 20px; padding: 4px 11px;
+      border-radius: 20px; padding: 8px 11px;
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.03em; color: var(--text2); cursor: pointer;
       transition: all 0.15s; white-space: nowrap;
@@ -1344,6 +1251,10 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       .strategy-grid {
         grid-template-columns: 1fr;
       }
+      .field-note { font-size: 9px; }
+      .result-filters { align-items: stretch; }
+      .rf-sort { width: 100%; margin-left: 0; }
+      .rf-btn { flex: 1; }
       .related-spots-btn,
       .btn-save-search,
       .saved-search-chip,
@@ -1352,6 +1263,17 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       }
       .saved-search-list {
         margin-inline: -2px;
+      }
+      .rc-top { align-items: flex-start; }
+      .card-action-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .howto-btn,
+      .save-btn,
+      .copy-btn {
+        width: 100%;
+        margin-left: 0;
       }
     }
   `]
@@ -1389,11 +1311,10 @@ export class OptimizerComponent implements OnChanges {
 
   results = signal<Recommendation[]>([]);
   analyzed = signal(false);
+  validationError = signal<string | null>(null);
   maxCpp = signal(1);
   routeLabel = signal<string>('');
   private routeCategory = signal<string>('default');
-  editingNoteId = signal<string | null>(null);
-  pendingNote = '';
   // Briefly highlights the save button after saving
   justSaved = signal<string | null>(null);
   // Briefly highlights the copy button after copying
@@ -1403,11 +1324,8 @@ export class OptimizerComponent implements OnChanges {
   sortBy = signal<'cpp' | 'coverage'>('cpp');
   // Quick Wins panel
   showQuickWins = signal(false);
-  // Two-step confirm for clearing all saved trips
-  clearConfirm = signal(false);
   // Tracks which result card has the "How to Book" panel open
   expandedHowTo = signal<string | null>(null);
-  private _clearConfirmTimer: ReturnType<typeof setTimeout> | null = null;
   private _allRecs = this.optimizer.getAllRecs();
   // Route history
   private _routeHistory = signal<RouteHistoryEntry[]>(this.loadRouteHistory());
@@ -1486,6 +1404,15 @@ export class OptimizerComponent implements OnChanges {
   });
 
   analyze(): void {
+    this.normalizePlanningInputs();
+    const error = this.getValidationError();
+    this.validationError.set(error);
+    if (error) {
+      this.results.set([]);
+      this.analyzed.set(false);
+      return;
+    }
+
     let recs: Recommendation[];
     if (this.tripType() === 'flight') {
       const result = this.optimizer.getFlightRecs(this.fromCity, this.toCity, this.cabin, this.passengers);
@@ -1517,6 +1444,70 @@ export class OptimizerComponent implements OnChanges {
         points_required: top.ptsRequired ?? top.ptsBase,
       });
     }
+  }
+
+  clearValidation(): void {
+    if (this.validationError()) this.validationError.set(null);
+  }
+
+  private getValidationError(): string | null {
+    if (this.tripType() === 'flight') {
+      if (!this.fromCity.trim() || !this.toCity.trim()) {
+        return 'Enter both origin and destination before analyzing.';
+      }
+      if (this.fromCity.trim().toUpperCase() === this.toCity.trim().toUpperCase()) {
+        return 'Origin and destination need to be different.';
+      }
+      if (this.earliestDeparture && this.latestReturn) {
+        const depart = this.localDateValue(this.earliestDeparture);
+        const returns = this.localDateValue(this.latestReturn);
+        if (!depart || !returns) {
+          return 'Use valid departure and return dates.';
+        }
+        if (returns < depart) {
+          return 'Latest return cannot be before earliest departure.';
+        }
+      }
+      if (!Number.isFinite(this.tripLengthMin) || !Number.isFinite(this.tripLengthMax) || this.tripLengthMin < 1 || this.tripLengthMax < 1) {
+        return 'Trip length must be at least 1 night.';
+      }
+      if (this.tripLengthMin > this.tripLengthMax) {
+        return 'Trip length minimum cannot be greater than maximum.';
+      }
+    }
+
+    if (this.tripType() === 'hotel') {
+      if (this.hotelCheckIn && this.hotelCheckOut) {
+        const checkIn = this.localDateValue(this.hotelCheckIn);
+        const checkOut = this.localDateValue(this.hotelCheckOut);
+        if (!checkIn || !checkOut) {
+          return 'Use valid hotel check-in and check-out dates.';
+        }
+        if (checkOut <= checkIn) {
+          return 'Check-out needs to be after check-in.';
+        }
+      }
+      if (!Number.isFinite(this.hotelNights) || this.hotelNights < 1) {
+        return 'Hotel nights must be at least 1.';
+      }
+    }
+
+    return null;
+  }
+
+  private normalizePlanningInputs(): void {
+    this.passengers = this.toBoundedInt(this.passengers, 1, 9, 1);
+    this.tripLengthMin = this.toBoundedInt(this.tripLengthMin, 1, 45, 5);
+    this.tripLengthMax = this.toBoundedInt(this.tripLengthMax, 1, 60, Math.max(this.tripLengthMin, 10));
+    this.hotelNights = this.toBoundedInt(this.hotelNights, 1, 30, 5);
+    this.hotelTravelers = this.toBoundedInt(this.hotelTravelers, 1, 9, 2);
+    this.hotelRooms = this.toBoundedInt(this.hotelRooms, 1, 5, 1);
+  }
+
+  private toBoundedInt(value: unknown, min: number, max: number, fallback: number): number {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return fallback;
+    return Math.min(max, Math.max(min, Math.round(num)));
   }
 
   openRelatedSweetSpots(): void {
@@ -1745,7 +1736,7 @@ export class OptimizerComponent implements OnChanges {
     return this.trips.trips().some(t => t.programName === programName);
   }
 
-  reanalyzeTrip(trip: import('../../core/models').SavedTrip): void {
+  reanalyzeTrip(trip: SavedTrip): void {
     this.tripType.set(trip.tripType);
     if (trip.tripType === 'flight') {
       this.fromCity = trip.origin ?? '';
@@ -1760,16 +1751,6 @@ export class OptimizerComponent implements OnChanges {
     this.analyze();
     // Scroll to top of page-content
     document.querySelector('.page-content')?.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  startEditNote(tripId: string, currentNote: string): void {
-    this.pendingNote = currentNote;
-    this.editingNoteId.set(tripId);
-  }
-
-  commitNote(tripId: string): void {
-    this.trips.updateNotes(tripId, this.pendingNote);
-    this.editingNoteId.set(null);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -2091,26 +2072,4 @@ export class OptimizerComponent implements OnChanges {
     this.expandedHowTo.update(cur => cur === program ? null : program);
   }
 
-  clearAllTrips(): void {
-    if (!this.clearConfirm()) {
-      // First tap — enter confirm state, auto-reset after 3s
-      this.clearConfirm.set(true);
-      if (this._clearConfirmTimer) clearTimeout(this._clearConfirmTimer);
-      this._clearConfirmTimer = setTimeout(() => this.clearConfirm.set(false), 3000);
-    } else {
-      // Second tap — actually clear
-      if (this._clearConfirmTimer) clearTimeout(this._clearConfirmTimer);
-      this._clearConfirmTimer = null;
-      this.clearConfirm.set(false);
-      this.trips.clearAll();
-    }
-  }
-
-  formatTripDate(iso: string): string {
-    try {
-      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch {
-      return '';
-    }
-  }
 }

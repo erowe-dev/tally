@@ -37,12 +37,14 @@ export class WalletService {
   private _syncState = signal<SyncState>('idle');
   private _history = signal<HistoryEntry[]>(this.loadHistory());
   private _retryTrigger = signal(0);
+  private _pendingCount = signal(Object.keys(this.loadPending()).length);
 
   private _apiLoaded = false;
 
   readonly balances = this._balances.asReadonly();
   readonly syncState = this._syncState.asReadonly();
   readonly history = this._history.asReadonly();
+  readonly pendingCount = this._pendingCount.asReadonly();
 
   readonly totalPoints = computed(() =>
     Object.values(this._balances()).reduce((a, b) => a + b, 0),
@@ -225,7 +227,9 @@ export class WalletService {
 
   private savePending(cardId: string, amount: number): void {
     try {
-      localStorage.setItem(PENDING_KEY, JSON.stringify({ ...this.loadPending(), [cardId]: amount }));
+      const pending = { ...this.loadPending(), [cardId]: amount };
+      localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+      this._pendingCount.set(Object.keys(pending).length);
     } catch {}
   }
 
@@ -238,6 +242,7 @@ export class WalletService {
       } else {
         localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
       }
+      this._pendingCount.set(Object.keys(pending).length);
     } catch {}
   }
 

@@ -146,7 +146,45 @@ describe('TripsService', () => {
     });
 
     expect(service.trips()[0].id.startsWith('local_')).toBeTrue();
+    expect(service.localOnlyCount()).toBe(1);
     expect(api.createTrip).not.toHaveBeenCalled();
+  });
+
+  it('updates the local-only count when a temporary trip is promoted', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([
+      {
+        id: 'local_1',
+        tripType: 'flight',
+        origin: 'ORD',
+        destination: 'LHR',
+        cabin: 'business',
+        passengers: 1,
+        programName: 'Virgin Atlantic Flying Club',
+        ptsRequired: 50000,
+        createdAt: '2026-05-18T00:00:00.000Z',
+      },
+    ]));
+    api.getTrips.and.returnValue(of([]));
+    api.createTrip.and.returnValue(of({
+      id: 'server_1',
+      tripType: 'flight',
+      origin: 'ORD',
+      destination: 'LHR',
+      cabin: 'business',
+      passengers: 1,
+      programName: 'Virgin Atlantic Flying Club',
+      ptsRequired: 50000,
+      createdAt: '2026-05-18T00:00:00.000Z',
+    }));
+    auth.isResolved.set(true);
+    auth.isAuthenticated.set(true);
+    auth.isProvisioned.set(true);
+
+    const service = createService();
+    TestBed.flushEffects();
+
+    expect(service.localOnlyCount()).toBe(0);
+    expect(service.trips()[0].id).toBe('server_1');
   });
 
   it('retries loading after an API failure', () => {

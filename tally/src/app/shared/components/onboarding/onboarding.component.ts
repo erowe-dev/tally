@@ -14,7 +14,7 @@ const OPTIMIZER_KEY = 'tally_optimizer_used';
     <div class="onboarding-panel" *ngIf="!dismissed()">
       <div class="ob-header">
         <span class="ob-title">Welcome to Tally ✦</span>
-        <button class="ob-dismiss" (click)="dismiss()" aria-label="Dismiss">✕</button>
+        <button type="button" class="ob-dismiss" (click)="dismiss()" aria-label="Dismiss">✕</button>
       </div>
       <div class="ob-sub">3 steps to get the most from your points</div>
       <div class="ob-steps">
@@ -40,7 +40,7 @@ const OPTIMIZER_KEY = 'tally_optimizer_used';
           </div>
         </div>
       </div>
-      <button class="ob-action" *ngIf="allDone()" (click)="dismiss()">
+      <button type="button" class="ob-action" *ngIf="allDone()" (click)="dismiss()">
         All set — dismiss
       </button>
     </div>

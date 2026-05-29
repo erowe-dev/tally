@@ -1,4 +1,4 @@
-import { Component, inject, computed, signal } from '@angular/core';
+import { Component, inject, computed, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { WalletService, HistoryEntry } from '../../core/services/wallet.service';
@@ -12,6 +12,13 @@ import { OnboardingComponent } from '../../shared/components/onboarding/onboardi
 import { ToastService } from '../../core/services/toast.service';
 
 const MAX_BALANCE = 50_000_000;
+const GOAL_KEY = 'tally_wallet_goal_v1';
+
+interface WalletGoalState {
+  name: string;
+  points: number;
+  expanded: boolean;
+}
 
 @Component({
   selector: 'tally-wallet',
@@ -26,10 +33,11 @@ const MAX_BALANCE = 50_000_000;
       <tally-onboarding *ngIf="wallet.syncState() !== 'loading'" />
 
       <!-- Sync status pill -->
-      <div class="sync-pill" [class]="wallet.syncState()">
+      <div class="sync-pill" [class]="wallet.syncState()" aria-live="polite">
         <span class="sync-dot"></span>
         <span class="sync-text">{{ syncLabel() }}</span>
         <button
+          type="button"
           *ngIf="wallet.syncState() === 'error'"
           class="sync-retry"
           (click)="wallet.retryLoad()"
@@ -111,7 +119,7 @@ const MAX_BALANCE = 50_000_000;
           <div class="arb-title">{{ r.pts | number }} points at risk</div>
           <div class="arb-sub">{{ r.programs }} program{{ r.programs !== 1 ? 's' : '' }} expiring within 90 days</div>
         </div>
-        <button class="arb-action" (click)="nav.navigateTo({ tab: 'expiry' })">Review →</button>
+          <button type="button" class="arb-action" (click)="nav.navigateTo({ tab: 'expiry' })">Review →</button>
       </div>
 
       <!-- Program groups -->
@@ -138,7 +146,7 @@ const MAX_BALANCE = 50_000_000;
                 </div>
                 <!-- Quick-add buttons — only show when expanded -->
                 <div class="quick-add" *ngIf="expandedCard() === card.id">
-                  <button *ngFor="let inc of quickIncrements"
+                  <button type="button" *ngFor="let inc of quickIncrements"
                     class="qa-btn" (click)="quickAdd(card.id, inc)">
                     +{{ formatInc(inc) }}
                   </button>
@@ -167,7 +175,7 @@ const MAX_BALANCE = 50_000_000;
       <div class="spend-sim" *ngIf="wallet.syncState() !== 'loading'">
         <div class="spend-sim-header">
           <span class="spend-sim-label">Earning simulator</span>
-          <button class="goal-toggle" (click)="showSim.set(!showSim())">
+          <button type="button" class="goal-toggle" (click)="showSim.set(!showSim())">
             {{ showSim() ? 'Hide' : 'Show' }}
           </button>
         </div>
@@ -236,14 +244,14 @@ const MAX_BALANCE = 50_000_000;
       <div class="goal-section">
         <div class="goal-header">
           <span class="goal-label">Point Goal</span>
-          <button class="goal-toggle" (click)="showGoal.set(!showGoal())">
+          <button type="button" class="goal-toggle" (click)="toggleGoal()">
             {{ showGoal() ? 'Hide' : 'Set Goal' }}
           </button>
         </div>
         <ng-container *ngIf="showGoal()">
           <div class="goal-inputs">
-            <input class="goal-name-input" [(ngModel)]="goalName" placeholder="e.g. Tokyo Business Class">
-            <input class="goal-pts-input" type="number" inputmode="numeric" [(ngModel)]="goalPts"
+            <input class="goal-name-input" [ngModel]="goalName" (ngModelChange)="updateGoalName($event)" placeholder="e.g. Tokyo Business Class">
+            <input class="goal-pts-input" type="number" inputmode="numeric" [ngModel]="goalPts" (ngModelChange)="updateGoalPoints($event)"
               placeholder="60000" min="0" step="5000">
           </div>
           <div class="goal-progress" *ngIf="goalPts > 0">
@@ -327,7 +335,7 @@ const MAX_BALANCE = 50_000_000;
         <div class="transfer-calc" *ngIf="heldCards().length > 0">
           <div class="tc-header">
             <span class="tc-label">Transfer Calculator</span>
-            <button class="goal-toggle" (click)="showTransferCalc.set(!showTransferCalc())">
+            <button type="button" class="goal-toggle" (click)="showTransferCalc.set(!showTransferCalc())">
               {{ showTransferCalc() ? 'Hide' : 'Show' }}
             </button>
           </div>
@@ -382,7 +390,7 @@ const MAX_BALANCE = 50_000_000;
         </div>
 
         <div class="maximize-btn-row">
-          <button class="maximize-btn" (click)="nav.navigateTo({ tab: 'optimizer' })">
+          <button type="button" class="maximize-btn" (click)="nav.navigateTo({ tab: 'optimizer' })">
             ⚡ Find best redemption in Optimizer →
           </button>
         </div>
@@ -392,8 +400,8 @@ const MAX_BALANCE = 50_000_000;
           availability — use the Optimizer to find and book specific redemptions.
         </div>
         <div class="action-row">
-          <button class="action-btn" (click)="exportCsv()">↓ Export CSV</button>
-          <button class="action-btn share-btn" (click)="copyShare()" [class.copied]="copied()">
+          <button type="button" class="action-btn" (click)="exportCsv()">↓ Export CSV</button>
+          <button type="button" class="action-btn share-btn" (click)="copyShare()" [class.copied]="copied()">
             {{ copied() ? '✓ Copied!' : '📋 Share' }}
           </button>
         </div>
@@ -496,6 +504,7 @@ const MAX_BALANCE = 50_000_000;
       background: var(--white); border: 1px solid var(--border);
       border-radius: 14px; padding: 12px 14px;
       display: flex; align-items: center; gap: 12px;
+      min-height: 70px;
     }
     .card-badge {
       width: 38px; height: 26px; border-radius: 6px;
@@ -580,7 +589,7 @@ const MAX_BALANCE = 50_000_000;
     }
     .arb-action {
       background: var(--tally-red, #dc2626); color: white;
-      border: none; border-radius: 8px; padding: 6px 12px;
+      border: none; border-radius: 8px; padding: 8px 12px; min-height: 40px;
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; cursor: pointer; flex-shrink: 0;
       transition: opacity 0.15s;
@@ -605,7 +614,7 @@ const MAX_BALANCE = 50_000_000;
       background: var(--surface); border: 1.5px solid var(--border2);
       border-radius: 9px; color: var(--tally-green);
       font-family: 'Geist Mono', monospace; font-size: 13px;
-      padding: 7px 9px; width: 90px; text-align: right;
+      min-height: 44px; padding: 9px 10px; width: 102px; text-align: right;
       outline: none; transition: border-color 0.15s;
       -moz-appearance: textfield;
     }
@@ -614,7 +623,10 @@ const MAX_BALANCE = 50_000_000;
     .balance-input:focus { border-color: var(--tally-green); }
     .balance-input::placeholder { color: var(--border2); }
 
-    .input-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .input-wrap {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+      min-width: 102px; cursor: pointer;
+    }
     .row-value {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--tally-green-mid, #2d8a5a); letter-spacing: 0.04em;
@@ -630,7 +642,7 @@ const MAX_BALANCE = 50_000_000;
       background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2);
       border-radius: 6px; color: var(--tally-green);
       font-family: 'Geist Mono', monospace; font-size: 9px; letter-spacing: 0.06em;
-      padding: 3px 7px; cursor: pointer; transition: background 0.12s;
+      min-height: 36px; padding: 8px 10px; cursor: pointer; transition: background 0.12s;
     }
     .qa-btn:hover { background: rgba(26,122,74,0.15); }
 
@@ -680,21 +692,22 @@ const MAX_BALANCE = 50_000_000;
     .goal-toggle {
       background: none; border: 1px solid var(--border2); border-radius: 7px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.06em; padding: 3px 9px; cursor: pointer; transition: all 0.15s;
+      letter-spacing: 0.06em; min-height: 40px; padding: 8px 12px; cursor: pointer; transition: all 0.15s;
     }
     .goal-toggle:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .goal-inputs { display: flex; gap: 8px; margin-bottom: 12px; }
     .goal-name-input {
       flex: 1; background: var(--white); border: 1.5px solid var(--border2);
       border-radius: 9px; font-family: 'Geist', sans-serif; font-size: 13px;
-      color: var(--text); padding: 8px 10px; outline: none; transition: border-color 0.15s;
+      color: var(--text); min-height: 44px; padding: 10px 12px; outline: none; transition: border-color 0.15s;
+      min-width: 0;
     }
     .goal-name-input:focus { border-color: var(--tally-green); }
     .goal-name-input::placeholder { color: var(--text3); }
     .goal-pts-input {
       width: 90px; background: var(--white); border: 1.5px solid var(--border2);
       border-radius: 9px; font-family: 'Geist Mono', monospace; font-size: 13px;
-      color: var(--tally-green); padding: 8px 10px; outline: none;
+      color: var(--tally-green); min-height: 44px; padding: 10px 12px; outline: none;
       text-align: right; transition: border-color 0.15s; -moz-appearance: textfield;
     }
     .goal-pts-input::-webkit-outer-spin-button,
@@ -763,7 +776,7 @@ const MAX_BALANCE = 50_000_000;
     .action-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
-      letter-spacing: 0.1em; padding: 6px 14px; cursor: pointer;
+      letter-spacing: 0.1em; min-height: 44px; padding: 10px 14px; cursor: pointer;
       transition: all 0.15s; flex: 1; max-width: 140px;
     }
     .action-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
@@ -786,7 +799,7 @@ const MAX_BALANCE = 50_000_000;
       background: var(--white); border: 1.5px solid var(--border2);
       border-radius: 9px; color: var(--tally-green);
       font-family: 'Geist Mono', monospace; font-size: 14px;
-      padding: 8px 10px; outline: none; transition: border-color 0.15s;
+      min-height: 44px; padding: 10px 12px; outline: none; transition: border-color 0.15s;
       -moz-appearance: textfield; width: 100%; box-sizing: border-box;
     }
     .sim-input::-webkit-outer-spin-button,
@@ -875,6 +888,31 @@ const MAX_BALANCE = 50_000_000;
       font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--text3); letter-spacing: 0.06em; text-align: center;
     }
+    @media (max-width: 380px) {
+      .wallet-row {
+        display: grid;
+        grid-template-columns: 38px minmax(0, 1fr);
+        align-items: start;
+      }
+      .input-wrap {
+        grid-column: 2;
+        width: 100%;
+        min-width: 0;
+        align-items: stretch;
+      }
+      .balance-input { width: 100%; text-align: left; }
+      .row-value { text-align: right; }
+      .quick-add { grid-column: 1 / -1; }
+      .at-risk-banner { align-items: flex-start; flex-wrap: wrap; }
+      .arb-action { width: 100%; }
+      .goal-inputs,
+      .spend-sim-body {
+        flex-direction: column;
+      }
+      .goal-pts-input { width: 100%; text-align: left; }
+      .action-row { flex-direction: column; }
+      .action-btn { max-width: none; }
+    }
   `]
 })
 export class WalletComponent {
@@ -886,19 +924,67 @@ export class WalletComponent {
   prefs = inject(PreferencesService);
   nav = inject(NavigationService);
   private _allRecs = this.optimizer.getAllRecs();
+  private readonly initialGoal = this.loadGoal();
 
   expandedCard = signal<string | null>(null);
   readonly quickIncrements = [5_000, 10_000, 25_000, 50_000, 100_000];
 
   // Goal tracker
-  showGoal = signal(false);
-  goalName = '';
-  goalPts = 0;
+  showGoal = signal(this.initialGoal.expanded || this.initialGoal.points > 0 || !!this.initialGoal.name);
+  goalName = this.initialGoal.name;
+  goalPts = this.initialGoal.points;
+
+  constructor() {
+    effect(() => {
+      this.showGoal();
+      this.saveGoal();
+    });
+  }
 
   readonly goalPct = computed(() => {
     if (!this.goalPts) return 0;
     return Math.min(100, Math.round((this.wallet.totalPoints() / this.goalPts) * 100));
   });
+
+  toggleGoal(): void {
+    this.showGoal.update(v => !v);
+  }
+
+  updateGoalName(value: string): void {
+    this.goalName = value;
+    this.saveGoal();
+  }
+
+  updateGoalPoints(value: unknown): void {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    this.goalPts = Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
+    this.saveGoal();
+  }
+
+  private loadGoal(): WalletGoalState {
+    try {
+      const raw = localStorage.getItem(GOAL_KEY);
+      if (!raw) return { name: '', points: 0, expanded: false };
+      const parsed = JSON.parse(raw) as Partial<WalletGoalState>;
+      return {
+        name: typeof parsed.name === 'string' ? parsed.name.slice(0, 120) : '',
+        points: typeof parsed.points === 'number' && Number.isFinite(parsed.points) ? Math.max(0, Math.round(parsed.points)) : 0,
+        expanded: parsed.expanded === true,
+      };
+    } catch {
+      return { name: '', points: 0, expanded: false };
+    }
+  }
+
+  private saveGoal(): void {
+    try {
+      localStorage.setItem(GOAL_KEY, JSON.stringify({
+        name: this.goalName.slice(0, 120),
+        points: Math.max(0, Math.round(Number(this.goalPts) || 0)),
+        expanded: this.showGoal(),
+      }));
+    } catch {}
+  }
 
   copied = signal(false);
 
@@ -1028,6 +1114,8 @@ export class WalletComponent {
   }
 
   syncLabel(): string {
+    const pending = this.wallet.pendingCount();
+    if (pending > 0) return `${pending} change${pending === 1 ? '' : 's'} pending`;
     switch (this.wallet.syncState()) {
       case 'idle':    return 'Local';
       case 'loading': return 'Syncing…';
@@ -1099,13 +1187,23 @@ export class WalletComponent {
     rows.push(`"TOTAL","",${this.wallet.totalPoints()},${this.wallet.estimatedValue()}`);
 
     const csv = rows.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    this.downloadBlob(
+      new Blob([csv], { type: 'text/csv;charset=utf-8;' }),
+      `tally-wallet-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+  }
+
+  private downloadBlob(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tally-wallet-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   /** 7-day point change from history (null when insufficient data) */

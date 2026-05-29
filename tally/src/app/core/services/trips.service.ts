@@ -1,4 +1,4 @@
-import { Injectable, signal, inject, effect } from '@angular/core';
+import { Injectable, signal, inject, effect, computed } from '@angular/core';
 import { AuthService } from './auth.service';
 import { ApiService } from './api.service';
 import { NetworkService } from './network.service';
@@ -23,6 +23,7 @@ export class TripsService {
 
   readonly trips = this._trips.asReadonly();
   readonly syncState = this._syncState.asReadonly();
+  readonly localOnlyCount = computed(() => this._trips().filter(t => t.id.startsWith('local_')).length);
 
   constructor() {
     effect(() => {

@@ -131,5 +131,27 @@ describe('WalletService', () => {
     expect(service.balances()).toEqual({ amex_mr: 0, chase_ur: 5000 });
     expect(api.setBalance).toHaveBeenCalledWith('amex_mr', 0);
     expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+    expect(service.pendingCount()).toBe(0);
+  });
+
+  it('tracks pending balance writes while offline and clears them after a later sync', () => {
+    network.isOnline.set(false);
+    auth.isProvisioned.set(true);
+    const service = createService();
+
+    service.setBalance('amex_mr', 15000);
+
+    expect(service.pendingCount()).toBe(1);
+    expect(JSON.parse(localStorage.getItem(PENDING_KEY) ?? '{}')).toEqual({ amex_mr: 15000 });
+
+    api.getBalancesWithCache.and.returnValue(of({}));
+    api.setBalance.and.returnValue(of({}));
+    network.isOnline.set(true);
+    auth.isResolved.set(true);
+    auth.isAuthenticated.set(true);
+    TestBed.flushEffects();
+
+    expect(service.pendingCount()).toBe(0);
+    expect(localStorage.getItem(PENDING_KEY)).toBeNull();
   });
 });

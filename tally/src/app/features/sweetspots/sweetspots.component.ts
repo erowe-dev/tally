@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../core/services/data.service';
@@ -12,6 +12,14 @@ type Filter = 'all' | 'flight' | 'hotel' | 'promo' | 'new' | 'saved' | 'covered'
 type SortMode = 'default' | 'cpp' | 'pts';
 const FAV_KEY = 'tally_sweetspot_favs_v1';
 const FILTER_KEY = 'tally_sweetspots_filter_v1';
+const UI_STATE_KEY = 'tally_sweetspots_ui_v1';
+const SEARCH_STATE_KEY = 'tally_sweetspots_search_session_v1';
+
+interface SweetSpotsUiState {
+  activeFilter?: Filter;
+  activeSort?: SortMode;
+  minCppFilter?: number;
+}
 
 interface CppTier { val: number; label: string }
 const CPP_TIERS: CppTier[] = [
@@ -81,7 +89,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
 
       <!-- Filter tabs -->
       <div class="filter-row">
-        <button *ngFor="let f of filters" class="filter-btn"
+        <button type="button" *ngFor="let f of filters" class="filter-btn"
           [class.active]="activeFilter() === f.id"
           (click)="activeFilter.set(f.id)">
           {{ f.label }}
@@ -93,7 +101,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       <!-- Sort row -->
       <div class="sort-row">
         <span class="sort-label">Sort:</span>
-        <button *ngFor="let s of sortModes" class="sort-btn"
+        <button type="button" *ngFor="let s of sortModes" class="sort-btn"
           [class.active]="activeSort() === s.id"
           (click)="activeSort.set(s.id)">
           {{ s.label }}
@@ -104,7 +112,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       <div class="cpp-filter-row">
         <span class="cpp-filter-label">Min CPP:</span>
         <div class="cpp-tiers">
-          <button *ngFor="let t of cppTiers" class="cpp-tier-btn"
+          <button type="button" *ngFor="let t of cppTiers" class="cpp-tier-btn"
             [class.active]="minCppFilter() === t.val"
             (click)="minCppFilter.set(t.val)">
             {{ t.label }}
@@ -116,7 +124,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
 
       <div class="spots-list">
         <div class="spot-card" *ngFor="let s of filtered()" [class]="'cat-' + s.category">
-          <button class="fav-btn" (click)="toggleFav(s)"
+          <button type="button" class="fav-btn" (click)="toggleFav(s)"
             [class.active]="isFav(spotKey(s))"
             [title]="isFav(spotKey(s)) ? 'Remove from saved' : 'Save this spot'"
             [attr.aria-label]="isFav(spotKey(s)) ? 'Remove saved sweet spot' : 'Save sweet spot'">
@@ -154,7 +162,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
           </div>
           <p class="spot-note">{{ s.note }}</p>
           <div class="spot-action-row">
-            <button class="spot-optimizer-btn" *ngIf="s.category === 'flight'"
+            <button type="button" class="spot-optimizer-btn" *ngIf="s.category === 'flight'"
               (click)="openInOptimizer(s)">
               Find in Optimizer →
             </button>
@@ -163,7 +171,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
               target="_blank" rel="noopener noreferrer">
               🔗 Book →
             </a>
-            <button class="spot-share-btn"
+            <button type="button" class="spot-share-btn"
               (click)="shareSpot(s)"
               [class.copied]="copiedSpotKey() === spotKey(s)">
               {{ copiedSpotKey() === spotKey(s) ? '✓ Copied' : '📋 Share' }}
@@ -176,7 +184,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
         </div>
       </div>
 
-      <div class="empty-filter" *ngIf="filtered().length === 0">
+      <div class="empty-filter" *ngIf="filtered().length === 0" aria-live="polite">
         <p>{{
           activeFilter() === 'saved' ? 'No saved spots yet — star a spot to save it.' :
           activeFilter() === 'covered' ? 'Add balances in Wallet to see which spots you can afford.' :
@@ -184,7 +192,8 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
           searchRaw() ? 'No spots match your search.' :
           'No spots match this filter.'
         }}</p>
-        <button class="spot-clear-btn" *ngIf="searchRaw()" (click)="searchRaw.set('')">Clear search</button>
+        <button type="button" class="spot-clear-btn" *ngIf="searchRaw()" (click)="searchRaw.set('')">Clear search</button>
+        <button type="button" class="spot-clear-btn" *ngIf="!searchRaw() && hasActiveFilters()" (click)="clearFilters()">Clear filters</button>
       </div>
     </div>
   `,
@@ -225,20 +234,27 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .bonuses-strip::-webkit-scrollbar { display: none; }
     .bonus-card {
       background: var(--white); border: 1px solid rgba(217,119,6,0.25);
-      border-radius: 12px; padding: 12px 14px; min-width: 220px; flex-shrink: 0;
+      border-radius: 12px; padding: 12px 14px; min-width: 0;
+      flex: 0 0 min(260px, calc(100vw - 42px)); box-sizing: border-box;
       border-top: 2px solid var(--tally-amber, #d97706);
     }
     .bonus-header {
-      display: flex; align-items: center; gap: 6px; margin-bottom: 3px;
+      display: flex; align-items: center; gap: 6px; margin-bottom: 3px; min-width: 0;
     }
-    .bonus-from { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text3); }
+    .bonus-from {
+      font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--text3);
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
     .bonus-arrow { color: var(--tally-amber, #d97706); font-size: 11px; }
     .bonus-to-icon { font-size: 14px; }
     .bonus-pct {
       font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 700;
-      color: var(--tally-amber, #d97706); margin-left: auto;
+      color: var(--tally-amber, #d97706); margin-left: auto; flex-shrink: 0;
     }
-    .bonus-to { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .bonus-to {
+      font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px;
+      overflow-wrap: anywhere;
+    }
     .bonus-expires {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--tally-red, #dc2626); letter-spacing: 0.06em; margin-bottom: 6px;
@@ -464,13 +480,25 @@ export class SweetspotsComponent {
   private nav = inject(NavigationService);
   private analytics = inject(AnalyticsService);
   private toast = inject(ToastService);
+  private readonly initialUiState = this.loadUiState();
 
-  searchRaw = signal('');
+  searchRaw = signal(this.loadSearchState());
   activeFilter = signal<Filter>(this.loadInitialFilter());
-  activeSort = signal<SortMode>('default');
-  minCppFilter = signal<number>(0);
+  activeSort = signal<SortMode>(this.initialUiState.activeSort ?? 'default');
+  minCppFilter = signal<number>(this.initialUiState.minCppFilter ?? 0);
   private _favs = signal<Set<string>>(this.loadFavs());
   copiedSpotKey = signal<string | null>(null);
+
+  constructor() {
+    effect(() => {
+      this.saveUiState({
+        activeFilter: this.activeFilter(),
+        activeSort: this.activeSort(),
+        minCppFilter: this.minCppFilter(),
+      });
+      this.saveSearchState(this.searchRaw());
+    });
+  }
 
   readonly cppTiers: CppTier[] = CPP_TIERS;
 
@@ -578,15 +606,73 @@ export class SweetspotsComponent {
   private loadInitialFilter(): Filter {
     try {
       const stored = localStorage.getItem(FILTER_KEY) as Filter | null;
-      localStorage.removeItem(FILTER_KEY);
-      return stored && this.isFilter(stored) ? stored : 'all';
+      if (stored) {
+        localStorage.removeItem(FILTER_KEY);
+        return this.isFilter(stored) ? stored : 'all';
+      }
+      return this.initialUiState.activeFilter ?? 'all';
     } catch {
-      return 'all';
+      return this.initialUiState.activeFilter ?? 'all';
     }
   }
 
   private isFilter(value: string): value is Filter {
     return ['all', 'flight', 'hotel', 'promo', 'new', 'saved', 'covered'].includes(value);
+  }
+
+  hasActiveFilters(): boolean {
+    return this.activeFilter() !== 'all' || this.activeSort() !== 'default' || this.minCppFilter() !== 0;
+  }
+
+  clearFilters(): void {
+    this.activeFilter.set('all');
+    this.activeSort.set('default');
+    this.minCppFilter.set(0);
+  }
+
+  private isSortMode(value: unknown): value is SortMode {
+    return value === 'default' || value === 'cpp' || value === 'pts';
+  }
+
+  private isCppTier(value: unknown): value is number {
+    return typeof value === 'number' && CPP_TIERS.some(t => t.val === value);
+  }
+
+  private loadUiState(): SweetSpotsUiState {
+    try {
+      const raw = localStorage.getItem(UI_STATE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as SweetSpotsUiState;
+      const activeFilter = parsed.activeFilter;
+      return {
+        activeFilter: typeof activeFilter === 'string' && this.isFilter(activeFilter) ? activeFilter : undefined,
+        activeSort: this.isSortMode(parsed.activeSort) ? parsed.activeSort : undefined,
+        minCppFilter: this.isCppTier(parsed.minCppFilter) ? parsed.minCppFilter : undefined,
+      };
+    } catch {
+      return {};
+    }
+  }
+
+  private saveUiState(state: SweetSpotsUiState): void {
+    try {
+      localStorage.setItem(UI_STATE_KEY, JSON.stringify(state));
+    } catch {}
+  }
+
+  private loadSearchState(): string {
+    try {
+      return sessionStorage.getItem(SEARCH_STATE_KEY) ?? '';
+    } catch {
+      return '';
+    }
+  }
+
+  private saveSearchState(value: string): void {
+    try {
+      if (value) sessionStorage.setItem(SEARCH_STATE_KEY, value);
+      else sessionStorage.removeItem(SEARCH_STATE_KEY);
+    } catch {}
   }
 
   private cppTier(cpp: string): string {

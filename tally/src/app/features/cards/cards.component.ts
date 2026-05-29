@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../core/services/data.service';
@@ -8,6 +8,15 @@ import { CreditCard } from '../../core/models';
 type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
 type CardSortMode = 'default' | 'cpp' | 'balance';
 type SpendCat = 'travel' | 'dining' | 'groceries' | 'gas' | 'online' | 'general';
+
+const CARD_UI_STATE_KEY = 'tally_cards_ui_v1';
+const CARD_SEARCH_STATE_KEY = 'tally_cards_search_session_v1';
+interface CardUiState {
+  activeCat?: CatFilter;
+  cardSort?: CardSortMode;
+  greatOnly?: boolean;
+  showHeldOnly?: boolean;
+}
 
 /** Typical transfer processing times per source program → partner name */
 const TRANSFER_TIMES: Partial<Record<string, Record<string, string>>> = {
@@ -127,16 +136,16 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Category tabs + great toggle + mine filter -->
       <div class="filter-row">
-        <button *ngFor="let f of catFilters" class="filter-btn"
+        <button type="button" *ngFor="let f of catFilters" class="filter-btn"
           [class.active]="activeCat() === f.id"
           (click)="activeCat.set(f.id)">
           {{ f.label }}
         </button>
-        <button class="filter-btn great-toggle" [class.active]="greatOnly()"
+        <button type="button" class="filter-btn great-toggle" [class.active]="greatOnly()"
           (click)="greatOnly.set(!greatOnly())">
           ✦ Great only
         </button>
-        <button class="filter-btn mine-toggle" [class.active]="showHeldOnly()"
+        <button type="button" class="filter-btn mine-toggle" [class.active]="showHeldOnly()"
           *ngIf="wallet.hasAnyPoints()"
           (click)="showHeldOnly.set(!showHeldOnly())">
           {{ showHeldOnly() ? '★ Mine' : '☆ Mine' }}
@@ -146,7 +155,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       <!-- Sort row -->
       <div class="sort-row">
         <span class="sort-label">Sort:</span>
-        <button *ngFor="let s of cardSortModes"
+        <button type="button" *ngFor="let s of cardSortModes"
           class="sort-btn" [class.active]="cardSort() === s.id"
           (click)="cardSort.set(s.id)">
           {{ s.label }}
@@ -159,13 +168,13 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Best card for spend category -->
       <div class="spend-rec-section">
-        <button class="spend-rec-toggle" (click)="showSpendRec.set(!showSpendRec())">
+        <button type="button" class="spend-rec-toggle" (click)="showSpendRec.set(!showSpendRec())">
           <span>💳 Best card for your spend</span>
           <span class="spend-rec-chevron">{{ showSpendRec() ? '▲' : '▼' }}</span>
         </button>
         <div class="spend-rec-body" *ngIf="showSpendRec()">
           <div class="spend-cat-row">
-            <button *ngFor="let c of spendCats" class="spend-cat-btn"
+            <button type="button" *ngFor="let c of spendCats" class="spend-cat-btn"
               [class.active]="selectedSpendCat() === c.id"
               (click)="selectedSpendCat.set(c.id)">
               {{ c.icon }} {{ c.label }}
@@ -190,7 +199,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Reachable Partners panel — only when user has wallet points -->
       <div class="reach-section" *ngIf="wallet.hasAnyPoints()">
-        <button class="reach-toggle" (click)="showReachable.set(!showReachable())">
+        <button type="button" class="reach-toggle" (click)="showReachable.set(!showReachable())">
           <span>🗺 My reachable partners</span>
           <span class="reach-badge">{{ reachablePartners().length }}</span>
           <span class="reach-chevron">{{ showReachable() ? '▲' : '▼' }}</span>
@@ -216,7 +225,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       <div class="cards-list">
         <div class="cc-card" *ngFor="let card of filteredCards()"
           [class.expanded]="isExpanded(card.id)">
-          <button class="cc-header" (click)="toggleCard(card.id)">
+          <button type="button" class="cc-header" (click)="toggleCard(card.id)">
             <div class="cc-badge" [style.background]="card.color">{{ card.icon }}</div>
             <div class="cc-meta">
               <div class="cc-name">{{ card.name }}</div>
@@ -258,7 +267,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
             <div class="partner-wrap"
               *ngFor="let p of visiblePartners(card)"
               [class.dimmed]="greatOnly() && p.quality !== 'great'">
-              <button class="partner-row"
+              <button type="button" class="partner-row"
                 (click)="togglePartnerDetail(card.id, p.name)">
                 <span class="p-icon">{{ p.icon }}</span>
                 <span class="p-name">{{ p.name }}</span>
@@ -298,14 +307,14 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         </div>
       </div>
 
-      <div class="empty-filter" *ngIf="filteredCards().length === 0">
+      <div class="empty-filter" *ngIf="filteredCards().length === 0" aria-live="polite">
         <p>No programs match your filters.</p>
-        <button class="link-btn" (click)="clearAll()">Clear filters</button>
+        <button type="button" class="link-btn" (click)="clearAll()">Clear filters</button>
       </div>
 
       <!-- Rate My Redemption -->
       <div class="calc-section">
-        <button class="calc-toggle" (click)="showRater.set(!showRater())">
+        <button type="button" class="calc-toggle" (click)="showRater.set(!showRater())">
           <span>🎯 Rate My Redemption</span>
           <span class="calc-chevron">{{ showRater() ? '▲' : '▼' }}</span>
         </button>
@@ -333,7 +342,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- CPP Calculator -->
       <div class="calc-section" style="margin-top:10px">
-        <button class="calc-toggle" (click)="showCalc.set(!showCalc())">
+        <button type="button" class="calc-toggle" (click)="showCalc.set(!showCalc())">
           <span>💡 Points Value Calculator</span>
           <span class="calc-chevron">{{ showCalc() ? '▲' : '▼' }}</span>
         </button>
@@ -362,7 +371,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Transfer Route Finder -->
       <div class="calc-section" style="margin-top:10px">
-        <button class="calc-toggle" (click)="showTransferFinder.set(!showTransferFinder())">
+        <button type="button" class="calc-toggle" (click)="showTransferFinder.set(!showTransferFinder())">
           <span>🔀 Transfer Route Finder</span>
           <span class="calc-chevron">{{ showTransferFinder() ? '▲' : '▼' }}</span>
         </button>
@@ -826,13 +835,26 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 export class CardsComponent {
   data = inject(DataService);
   wallet = inject(WalletService);
+  private readonly initialUiState = this.loadUiState();
 
-  searchRaw = signal('');
+  searchRaw = signal(this.loadSearchState());
 
-  activeCat = signal<CatFilter>('all');
-  cardSort = signal<CardSortMode>('default');
-  greatOnly = signal(false);
-  showHeldOnly = signal(false);
+  activeCat = signal<CatFilter>(this.initialUiState.activeCat ?? 'all');
+  cardSort = signal<CardSortMode>(this.initialUiState.cardSort ?? 'default');
+  greatOnly = signal(this.initialUiState.greatOnly ?? false);
+  showHeldOnly = signal(this.initialUiState.showHeldOnly ?? false);
+
+  constructor() {
+    effect(() => {
+      this.saveUiState({
+        activeCat: this.activeCat(),
+        cardSort: this.cardSort(),
+        greatOnly: this.greatOnly(),
+        showHeldOnly: this.showHeldOnly(),
+      });
+      this.saveSearchState(this.searchRaw());
+    });
+  }
 
   readonly cardSortModes: { id: CardSortMode; label: string }[] = [
     { id: 'default', label: 'Default' },
@@ -958,7 +980,7 @@ export class CardsComponent {
     const q = this.searchRaw().toLowerCase().trim();
     const cat = this.activeCat();
     const great = this.greatOnly();
-    const heldOnly = this.showHeldOnly();
+    const heldOnly = this.showHeldOnly() && this.wallet.hasAnyPoints();
     const sort = this.cardSort();
 
     let cards = this.data.cards.filter(card => {
@@ -1076,6 +1098,51 @@ export class CardsComponent {
     this.cardSort.set('default');
     this.greatOnly.set(false);
     this.showHeldOnly.set(false);
+  }
+
+  private loadUiState(): CardUiState {
+    try {
+      const raw = localStorage.getItem(CARD_UI_STATE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as CardUiState;
+      return {
+        activeCat: this.isCatFilter(parsed.activeCat) ? parsed.activeCat : undefined,
+        cardSort: this.isCardSortMode(parsed.cardSort) ? parsed.cardSort : undefined,
+        greatOnly: typeof parsed.greatOnly === 'boolean' ? parsed.greatOnly : undefined,
+        showHeldOnly: typeof parsed.showHeldOnly === 'boolean' ? parsed.showHeldOnly : undefined,
+      };
+    } catch {
+      return {};
+    }
+  }
+
+  private saveUiState(state: CardUiState): void {
+    try {
+      localStorage.setItem(CARD_UI_STATE_KEY, JSON.stringify(state));
+    } catch {}
+  }
+
+  private loadSearchState(): string {
+    try {
+      return sessionStorage.getItem(CARD_SEARCH_STATE_KEY) ?? '';
+    } catch {
+      return '';
+    }
+  }
+
+  private saveSearchState(value: string): void {
+    try {
+      if (value) sessionStorage.setItem(CARD_SEARCH_STATE_KEY, value);
+      else sessionStorage.removeItem(CARD_SEARCH_STATE_KEY);
+    } catch {}
+  }
+
+  private isCatFilter(value: unknown): value is CatFilter {
+    return value === 'all' || value === 'transferable' || value === 'airline' || value === 'hotel';
+  }
+
+  private isCardSortMode(value: unknown): value is CardSortMode {
+    return value === 'default' || value === 'cpp' || value === 'balance';
   }
 
   // Partner detail expand/collapse

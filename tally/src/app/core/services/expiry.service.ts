@@ -211,11 +211,13 @@ export class ExpiryService {
   private _records = signal<Record<string, ExpiryRecord>>(this.loadLocal());
   private _syncState = signal<SyncState>('idle');
   private _retryTrigger = signal(0);
+  private _pendingCount = signal(this.countPending(this.loadPending()));
 
   private _apiLoaded = false;
 
   readonly records = this._records.asReadonly();
   readonly syncState = this._syncState.asReadonly();
+  readonly pendingCount = this._pendingCount.asReadonly();
 
   private static readonly URGENCY_ORDER: Record<ExpiryStatus['urgency'], number> = {
     expired: 0, critical: 1, warning: 2, safe: 3, never: 4,
@@ -478,7 +480,12 @@ export class ExpiryService {
       } else {
         localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
       }
+      this._pendingCount.set(this.countPending(pending));
     } catch {}
+  }
+
+  private countPending(pending: PendingExpiryChanges): number {
+    return Object.keys(pending.upserts).length + pending.deletes.length;
   }
 
   private markPendingUpsert(cardId: string, lastActivityDate: string): void {

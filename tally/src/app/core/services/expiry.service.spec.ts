@@ -168,5 +168,24 @@ describe('ExpiryService', () => {
     expect(api.setExpiryRecord).toHaveBeenCalledWith('citi_ty', '2026-05-18');
     expect(api.deleteExpiryRecord).toHaveBeenCalledWith('united_mp');
     expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+    expect(service.pendingCount()).toBe(0);
+  });
+
+  it('tracks pending expiry upserts and deletes while offline', () => {
+    network.isOnline.set(false);
+    auth.isProvisioned.set(true);
+    const service = createService();
+
+    service.setLastActivity('citi_ty', '2026-05-18');
+
+    expect(service.pendingCount()).toBe(1);
+
+    service.clearActivity('citi_ty');
+
+    expect(service.pendingCount()).toBe(1);
+    expect(JSON.parse(localStorage.getItem(PENDING_KEY) ?? '{}')).toEqual({
+      upserts: {},
+      deletes: ['citi_ty'],
+    });
   });
 });

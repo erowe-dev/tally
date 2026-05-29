@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, OnDestroy, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expiry.service';
@@ -18,6 +18,7 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
   ihg_rewards:    [{ label: 'Book an IHG stay', url: 'https://ihg.com' }],
   singapore_kf:   [{ label: 'KrisFlyer Portal', url: 'https://www.singaporeair.com/en_UK/sg/ppsclub-krisflyer/krisflyer-spends/' }],
 };
+const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
 
 @Component({
   selector: 'tally-expiry',
@@ -30,23 +31,25 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
 
       <!-- Sync status pill + bulk action row -->
       <div class="pill-row">
-        <div class="sync-pill" [class]="expiry.syncState()">
+        <div class="sync-pill" [class]="expiry.syncState()" aria-live="polite">
           <span class="sync-dot"></span>
           <span class="sync-text">{{ syncLabel(expiry.syncState()) }}</span>
           <button
+            type="button"
             *ngIf="expiry.syncState() === 'error'"
             class="sync-retry"
             (click)="expiry.retryLoad()">Retry</button>
         </div>
-        <button class="bulk-today-btn"
+        <button type="button" class="bulk-today-btn"
           *ngIf="expiry.syncState() !== 'loading'"
           (click)="markAllToday()"
+          [class.confirm]="bulkConfirm()"
           [class.done]="bulkDone()">
-          {{ bulkDone() ? '✓ All updated' : 'Mark all today' }}
+          {{ bulkButtonLabel() }}
         </button>
-        <button class="filter-held-btn" *ngIf="wallet.hasAnyPoints()"
+        <button type="button" class="filter-held-btn" *ngIf="wallet.hasAnyPoints()"
           [class.active]="showHeldOnly()"
-          (click)="showHeldOnly.set(!showHeldOnly())">
+          (click)="toggleHeldOnly()">
           {{ showHeldOnly() ? '★ Mine' : '☆ Mine' }}
         </button>
       </div>
@@ -59,7 +62,7 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
       <ng-container *ngIf="expiry.syncState() !== 'loading'">
 
       <!-- Critical alert banner -->
-      <div class="alert-banner critical" *ngIf="expiry.criticalCount() > 0">
+      <div class="alert-banner critical" *ngIf="expiry.criticalCount() > 0" aria-live="polite">
         <span class="alert-icon">⚠️</span>
         <div>
           <div class="alert-title">{{ expiry.criticalCount() }} program{{ expiry.criticalCount() > 1 ? 's' : '' }} need immediate attention</div>
@@ -68,7 +71,7 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
       </div>
 
       <!-- Warning banner (when no critical but have warnings) -->
-      <div class="alert-banner warning" *ngIf="expiry.criticalCount() === 0 && expiry.warningCount() > 0">
+      <div class="alert-banner warning" *ngIf="expiry.criticalCount() === 0 && expiry.warningCount() > 0" aria-live="polite">
         <span class="alert-icon">🔔</span>
         <div>
           <div class="alert-title">{{ expiry.warningCount() }} program{{ expiry.warningCount() > 1 ? 's' : '' }} need expiry review</div>
@@ -77,7 +80,7 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
       </div>
 
       <!-- All-safe banner -->
-      <div class="alert-banner safe" *ngIf="expiry.criticalCount() === 0 && expiry.warningCount() === 0 && !expiry.hasWarnings()">
+      <div class="alert-banner safe" *ngIf="expiry.criticalCount() === 0 && expiry.warningCount() === 0 && !expiry.hasWarnings()" aria-live="polite">
         <span class="alert-icon">✅</span>
         <div>
           <div class="alert-title">All programs are in good shape</div>
@@ -168,7 +171,7 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
           <div class="date-setter" *ngIf="status.urgency !== 'never'">
             <div class="date-setter-top">
               <label class="field-label">Last activity date</label>
-              <button class="today-btn" (click)="markToday(status.cardId)">✓ Mark Today</button>
+              <button type="button" class="today-btn" (click)="markToday(status.cardId)">✓ Mark Today</button>
             </div>
             <div class="date-row">
               <input
@@ -178,7 +181,7 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
                 (change)="onDateChange(status.cardId, $event)"
                 [max]="todayStr"
               >
-              <button class="clear-btn" *ngIf="getActivityDate(status.cardId)"
+              <button type="button" class="clear-btn" *ngIf="getActivityDate(status.cardId)"
                 (click)="expiry.clearActivity(status.cardId)">
                 Clear
               </button>
@@ -196,9 +199,18 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
         </div>
       </div>
 
+      <div class="filtered-empty" *ngIf="visibleStatuses().length === 0">
+        <div class="filtered-empty-icon">☆</div>
+        <div class="filtered-empty-title">No tracked balances yet</div>
+        <p>Add points in Wallet or turn off Mine to review every program.</p>
+        <button class="filtered-empty-action" type="button" (click)="setHeldOnly(false)">
+          Show all programs
+        </button>
+      </div>
+
       <!-- Calendar export -->
       <div class="calendar-export">
-        <button class="cal-btn" (click)="exportCalendar()" [disabled]="calExportCount() === 0">
+        <button type="button" class="cal-btn" (click)="exportCalendar()" [disabled]="calExportCount() === 0">
           📅 Export reminders to calendar
           <span class="cal-count" *ngIf="calExportCount() > 0">({{ calExportCount() }} events)</span>
         </button>
@@ -228,15 +240,20 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
     .bulk-today-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.1em; padding: 4px 12px; cursor: pointer;
+      letter-spacing: 0.1em; min-height: 40px; padding: 8px 12px; cursor: pointer;
       transition: all 0.15s;
     }
     .bulk-today-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
+    .bulk-today-btn.confirm {
+      border-color: var(--tally-amber);
+      color: var(--tally-amber);
+      background: var(--tally-amber-light);
+    }
     .bulk-today-btn.done { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
     .filter-held-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.1em; padding: 4px 12px; cursor: pointer; transition: all 0.15s;
+      letter-spacing: 0.1em; min-height: 40px; padding: 8px 12px; cursor: pointer; transition: all 0.15s;
     }
     .filter-held-btn.active { border-color: var(--tally-amber, #d97706); color: var(--tally-amber, #d97706); background: rgba(217,119,6,0.07); }
 
@@ -260,6 +277,42 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
     .alert-sub { font-size: 12px; color: var(--tally-red); opacity: 0.8; }
 
     .expiry-list { display: flex; flex-direction: column; gap: 10px; }
+    .filtered-empty {
+      text-align: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 18px;
+      margin: 10px 0 16px;
+    }
+    .filtered-empty-icon {
+      font-size: 24px;
+      color: var(--tally-amber);
+      margin-bottom: 8px;
+    }
+    .filtered-empty-title {
+      font-family: 'Instrument Serif', serif;
+      font-size: 22px;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .filtered-empty p {
+      font-size: 12px;
+      color: var(--text3);
+      line-height: 1.5;
+    }
+    .filtered-empty-action {
+      margin-top: 12px;
+      background: var(--white);
+      border: 1px solid var(--border2);
+      border-radius: 9px;
+      color: var(--tally-green);
+      cursor: pointer;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      padding: 10px 14px;
+    }
 
     .expiry-card {
       background: var(--white); border: 1px solid var(--border);
@@ -340,7 +393,7 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
       display: inline-flex; align-items: center;
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.04em; color: var(--tally-green);
-      text-decoration: none; padding: 3px 0;
+      text-decoration: none; min-height: 36px; padding: 8px 0;
       transition: opacity 0.15s;
     }
     .qa-link:hover { opacity: 0.75; text-decoration: underline; }
@@ -357,7 +410,7 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
     .today-btn {
       background: var(--tally-green); border: none; border-radius: 7px;
       color: white; font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.08em; padding: 4px 10px; cursor: pointer;
+      letter-spacing: 0.08em; min-height: 40px; padding: 8px 12px; cursor: pointer;
       transition: opacity 0.15s;
     }
     .today-btn:hover { opacity: 0.85; }
@@ -366,14 +419,14 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
       background: var(--surface); border: 1.5px solid var(--border2);
       border-radius: 9px; color: var(--text);
       font-family: 'Geist', sans-serif; font-size: 13px;
-      padding: 8px 12px; outline: none; flex: 1;
+      min-height: 44px; padding: 10px 12px; outline: none; flex: 1;
       transition: border-color 0.15s;
     }
     .date-input:focus { border-color: var(--tally-green); }
     .clear-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist', sans-serif; font-size: 12px;
-      padding: 8px 12px; cursor: pointer; white-space: nowrap;
+      min-height: 44px; padding: 10px 12px; cursor: pointer; white-space: nowrap;
       transition: all 0.15s;
     }
     .clear-btn:hover { border-color: var(--tally-red); color: var(--tally-red); }
@@ -395,7 +448,7 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
     .calendar-export { padding: 16px 0 8px; }
     .cal-btn {
       width: 100%; background: var(--surface); border: 1px solid var(--border);
-      border-radius: 10px; padding: 12px 16px;
+      border-radius: 10px; min-height: 48px; padding: 12px 16px;
       font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 500;
       color: var(--text2); cursor: pointer; text-align: left;
       display: flex; align-items: center; gap: 6px;
@@ -436,14 +489,36 @@ const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>
       font-family: 'Geist Mono', monospace; font-size: 7px;
       letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
     }
+    @media (max-width: 380px) {
+      .pill-row > * { flex: 1 1 auto; }
+      .pill-row .sync-pill { flex-basis: 100%; }
+      .bulk-today-btn,
+      .filter-held-btn { flex: 1; }
+      .ec-header { align-items: flex-start; }
+      .date-setter-top { align-items: flex-start; flex-direction: column; gap: 8px; }
+      .today-btn { width: 100%; }
+      .date-row { flex-direction: column; align-items: stretch; }
+      .clear-btn { width: 100%; }
+      .activity-stats { justify-content: space-between; }
+      .as-sep { display: none; }
+    }
   `]
 })
-export class ExpiryComponent {
+export class ExpiryComponent implements OnDestroy {
   expiry = inject(ExpiryService);
   wallet = inject(WalletService);
   todayStr = this.formatLocalDate(new Date());
   bulkDone = signal(false);
-  showHeldOnly = signal(false);
+  bulkConfirm = signal(false);
+  showHeldOnly = signal(this.loadShowHeldOnly());
+  private bulkConfirmTimer: ReturnType<typeof setTimeout> | null = null;
+  private bulkDoneTimer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    effect(() => {
+      this.saveShowHeldOnly(this.showHeldOnly());
+    });
+  }
 
   readonly visibleStatuses = computed(() => {
     const statuses = this.expiry.statuses();
@@ -451,7 +526,14 @@ export class ExpiryComponent {
     return statuses.filter(s => this.wallet.getBalance(s.cardId) > 0);
   });
 
+  ngOnDestroy(): void {
+    if (this.bulkConfirmTimer) clearTimeout(this.bulkConfirmTimer);
+    if (this.bulkDoneTimer) clearTimeout(this.bulkDoneTimer);
+  }
+
   syncLabel(state: SyncState): string {
+    const pending = this.expiry.pendingCount();
+    if (pending > 0) return `${pending} change${pending === 1 ? '' : 's'} pending`;
     switch (state) {
       case 'idle':    return 'Local';
       case 'loading': return 'Syncing…';
@@ -494,6 +576,17 @@ export class ExpiryComponent {
   }
 
   markAllToday(): void {
+    if (!this.bulkConfirm()) {
+      this.bulkConfirm.set(true);
+      if (this.bulkConfirmTimer) clearTimeout(this.bulkConfirmTimer);
+      this.bulkConfirmTimer = setTimeout(() => this.bulkConfirm.set(false), 3000);
+      return;
+    }
+
+    if (this.bulkConfirmTimer) clearTimeout(this.bulkConfirmTimer);
+    this.bulkConfirmTimer = null;
+    this.bulkConfirm.set(false);
+
     // Mark all non-never programs as active today
     for (const status of this.expiry.statuses()) {
       if (status.urgency !== 'never') {
@@ -501,7 +594,42 @@ export class ExpiryComponent {
       }
     }
     this.bulkDone.set(true);
-    setTimeout(() => this.bulkDone.set(false), 3000);
+    if (this.bulkDoneTimer) clearTimeout(this.bulkDoneTimer);
+    this.bulkDoneTimer = setTimeout(() => this.bulkDone.set(false), 3000);
+  }
+
+  toggleHeldOnly(): void {
+    this.setHeldOnly(!this.showHeldOnly());
+  }
+
+  setHeldOnly(value: boolean): void {
+    this.showHeldOnly.set(value);
+  }
+
+  private loadShowHeldOnly(): boolean {
+    try {
+      return sessionStorage.getItem(EXPIRY_UI_STATE_KEY) === 'mine';
+    } catch {
+      return false;
+    }
+  }
+
+  private saveShowHeldOnly(value: boolean): void {
+    try {
+      if (value) {
+        sessionStorage.setItem(EXPIRY_UI_STATE_KEY, 'mine');
+      } else {
+        sessionStorage.removeItem(EXPIRY_UI_STATE_KEY);
+      }
+    } catch {
+      // Ignore storage errors: the filter still works for the current component instance.
+    }
+  }
+
+  bulkButtonLabel(): string {
+    if (this.bulkDone()) return '✓ All updated';
+    if (this.bulkConfirm()) return 'Tap again to confirm';
+    return 'Mark all today';
   }
 
   /** Number of days elapsed since the last recorded activity date */
@@ -582,9 +710,14 @@ export class ExpiryComponent {
       const reminderDate = new Date(s.expiryDate);
       reminderDate.setDate(reminderDate.getDate() - 30);
       const dtStart = this.icsDate(reminderDate);
+      const dtStartEnd = this.icsDate(this.addDays(reminderDate, 1));
 
       // Expiry event
       const dtExpiry = this.icsDate(s.expiryDate);
+      const dtExpiryEnd = this.icsDate(this.addDays(s.expiryDate, 1));
+      const programName = this.escapeIcsText(s.programName);
+      const note = this.escapeIcsText(s.note);
+      const quickActions = this.escapeIcsText(s.quickActions.map(a => `- ${a}`).join('\n'));
 
       // 30-day reminder
       lines.push(
@@ -592,9 +725,9 @@ export class ExpiryComponent {
         `UID:tally-remind-${s.cardId}-${now}`,
         `DTSTAMP:${now}`,
         `DTSTART;VALUE=DATE:${dtStart}`,
-        `DTEND;VALUE=DATE:${dtStart}`,
-        `SUMMARY:⏱ ${s.programName} — 30 days to expiry`,
-        `DESCRIPTION:Your ${s.programName} points will expire on ${s.expiryDate?.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} if you don't take action.\\n\\n${s.note}\\n\\nEasy ways to reset:\\n${s.quickActions.map(a => '• ' + a).join('\\n')}`,
+        `DTEND;VALUE=DATE:${dtStartEnd}`,
+        `SUMMARY:${programName} - 30 days to expiry`,
+        `DESCRIPTION:${this.escapeIcsText(`Your ${s.programName} points will expire on ${s.expiryDate?.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} if you do not take action.`)}\\n\\n${note}\\n\\nEasy ways to reset:\\n${quickActions}`,
         'END:VEVENT',
       );
 
@@ -604,9 +737,9 @@ export class ExpiryComponent {
         `UID:tally-expire-${s.cardId}-${now}`,
         `DTSTAMP:${now}`,
         `DTSTART;VALUE=DATE:${dtExpiry}`,
-        `DTEND;VALUE=DATE:${dtExpiry}`,
-        `SUMMARY:🔴 ${s.programName} points expire TODAY`,
-        `DESCRIPTION:${s.programName} points are expiring today. Act immediately or points may be lost.`,
+        `DTEND;VALUE=DATE:${dtExpiryEnd}`,
+        `SUMMARY:${programName} points expire TODAY`,
+        `DESCRIPTION:${this.escapeIcsText(`${s.programName} points are expiring today. Act immediately or points may be lost.`)}`,
         'END:VEVENT',
       );
     }
@@ -614,13 +747,10 @@ export class ExpiryComponent {
     lines.push('END:VCALENDAR');
 
     const ics = lines.join('\r\n');
-    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tally-expiry-reminders-${this.todayStr}.ics`;
-    a.click();
-    URL.revokeObjectURL(url);
+    this.downloadBlob(
+      new Blob([ics], { type: 'text/calendar;charset=utf-8' }),
+      `tally-expiry-reminders-${this.todayStr}.ics`,
+    );
   }
 
   private icsDate(date: Date): string {
@@ -628,5 +758,32 @@ export class ExpiryComponent {
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     return `${y}${m}${d}`;
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+  }
+
+  private escapeIcsText(value: string): string {
+    return value
+      .replace(/\\/g, '\\\\')
+      .replace(/\r?\n/g, '\\n')
+      .replace(/,/g, '\\,')
+      .replace(/;/g, '\\;');
+  }
+
+  private downloadBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 }

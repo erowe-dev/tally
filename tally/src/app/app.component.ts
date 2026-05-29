@@ -1,6 +1,7 @@
-import { Component, signal, computed, inject, effect, PLATFORM_ID, isDevMode } from '@angular/core';
+import { Component, OnDestroy, signal, computed, inject, effect, PLATFORM_ID, isDevMode } from '@angular/core';
 import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { SwUpdate } from '@angular/service-worker';
+import { Subscription } from 'rxjs';
 import { NavTab } from './core/models';
 import { WalletService } from './core/services/wallet.service';
 import { ExpiryService } from './core/services/expiry.service';
@@ -24,6 +25,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
+const ACTIVE_TAB_KEY = 'tally_active_tab_v1';
 
 @Component({
   selector: 'app-root',
@@ -52,23 +54,23 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
           <div class="install-title">Add Tally to Home Screen</div>
           <div class="install-sub">Access your wallet offline, instantly</div>
         </div>
-        <button class="install-btn" (click)="triggerInstall()">Install</button>
-        <button class="install-dismiss" (click)="dismissInstall()" aria-label="Dismiss">✕</button>
+        <button type="button" class="install-btn" (click)="triggerInstall()">Install</button>
+        <button type="button" class="install-dismiss" (click)="dismissInstall()" aria-label="Dismiss">✕</button>
       </div>
 
       <!-- SW update banner -->
-      <div class="update-banner" *ngIf="showUpdateBanner()">
+      <div class="update-banner" *ngIf="showUpdateBanner()" aria-live="polite">
         <span class="update-icon">✦</span>
         <div class="update-body">
           <div class="update-title">Update available</div>
           <div class="update-sub">Reload to get the latest version</div>
         </div>
-        <button class="update-btn" (click)="reloadPage()">Reload</button>
-        <button class="update-dismiss" (click)="showUpdateBanner.set(false)" aria-label="Dismiss">✕</button>
+        <button type="button" class="update-btn" (click)="reloadPage()">Reload</button>
+        <button type="button" class="update-dismiss" (click)="showUpdateBanner.set(false)" aria-label="Dismiss">✕</button>
       </div>
 
       <!-- Offline banner -->
-      <div class="offline-banner" *ngIf="!network.isOnline()">
+      <div class="offline-banner" *ngIf="!network.isOnline()" aria-live="polite">
         <span>⚡</span> You're offline — changes save locally and sync when you reconnect.
       </div>
 
@@ -98,12 +100,12 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
           <div *ngIf="!auth.user()?.picture" class="user-avatar-fallback">
             {{ userInitial() }}
           </div>
-          <button class="sign-out-btn" (click)="auth.logout()">Sign out</button>
+          <button type="button" class="sign-out-btn" (click)="auth.logout()">Sign out</button>
         </div>
       </header>
 
       <!-- Expiry critical ribbon — shown when authenticated and any program needs urgent action -->
-      <button class="expiry-ribbon"
+      <button type="button" class="expiry-ribbon"
         *ngIf="auth.isAuthenticated() && expiry.criticalCount() > 0 && activeTab() !== 'expiry'"
         (click)="handleTabChange('expiry')">
         <span class="expiry-ribbon-icon">⚠️</span>
@@ -156,10 +158,10 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
           <div class="login-sub">
             Wallet, Optimizer, and Expiry sync to your account across devices.
           </div>
-          <button class="login-btn" (click)="auth.login()">Sign in / Create account</button>
+          <button type="button" class="login-btn" (click)="auth.login()">Sign in / Create account</button>
           <div class="login-public-note">
             Just browsing?
-            <button class="link-btn" (click)="handleTabChange('cards')">View Cards & Partners</button>
+            <button type="button" class="link-btn" (click)="handleTabChange('cards')">View Cards & Partners</button>
           </div>
         </div>
 
@@ -200,13 +202,13 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
     .install-btn {
       background: var(--tally-green); color: var(--on-accent); border: none; border-radius: 8px;
       font-family: 'Geist', sans-serif; font-size: 12px; font-weight: 500;
-      padding: 6px 14px; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s;
+      padding: 8px 14px; min-height: 40px; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s;
     }
     .install-btn:hover { opacity: 0.85; }
     .install-dismiss {
       background: none; border: none; color: var(--tally-green);
       font-size: 13px; cursor: pointer; padding: 4px; flex-shrink: 0; opacity: 0.6;
-      line-height: 1;
+      line-height: 1; min-width: 40px; min-height: 40px;
     }
     .install-dismiss:hover { opacity: 1; }
 
@@ -264,13 +266,13 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
     /* Header */
     .app-header {
       padding: calc(env(safe-area-inset-top,0px) + 14px) 20px 14px;
-      display: flex; align-items: center; justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
       border-bottom: 1px solid var(--border);
       background: var(--shell-translucent);
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       position: sticky; top: 0; z-index: 100;
     }
-    .header-right { text-align: right; flex: 1; }
+    .header-right { text-align: right; flex: 1; min-width: 0; }
     .pts-label {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase;
@@ -294,7 +296,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
     .sign-out-btn {
       background: none; border: 1px solid var(--border); border-radius: 7px;
       color: var(--text3); font-family: 'Geist', sans-serif; font-size: 11px;
-      padding: 5px 10px; cursor: pointer; white-space: nowrap;
+      min-height: 40px; padding: 8px 10px; cursor: pointer; white-space: nowrap;
       transition: all 0.15s;
     }
     .sign-out-btn:hover { border-color: var(--text2); color: var(--text2); }
@@ -303,7 +305,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
     .expiry-ribbon {
       width: 100%; background: var(--tally-red-light);
       border: none; border-bottom: 1px solid rgba(220,38,38,0.15);
-      padding: 9px 16px; cursor: pointer;
+      min-height: 48px; padding: 10px 16px; cursor: pointer;
       display: flex; align-items: center; gap: 8px;
       -webkit-tap-highlight-color: transparent;
       transition: background 0.15s;
@@ -321,7 +323,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
     /* Main scroll area */
     .app-main {
       flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
     }
     .app-main::-webkit-scrollbar { display: none; }
 
@@ -352,7 +354,7 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
     .login-btn:hover { background: var(--tally-green-mid); }
     .login-public-note {
       font-family: 'Geist', sans-serif; font-size: 13px; color: var(--text3);
-      display: flex; align-items: center; gap: 4px;
+      display: flex; align-items: center; justify-content: center; gap: 4px; flex-wrap: wrap;
     }
     .link-btn {
       background: none; border: none; color: var(--tally-green);
@@ -360,9 +362,16 @@ const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
       cursor: pointer; text-decoration: underline; padding: 8px 10px;
       min-height: 36px;
     }
+    @media (max-width: 380px) {
+      .app-header { padding-inline: 14px; }
+      .pts-value { font-size: 14px; }
+      .user-menu { gap: 6px; margin-left: 0; }
+      .sign-out-btn { font-size: 10px; padding-inline: 8px; }
+      .expiry-ribbon-text { font-size: 11px; }
+    }
   `],
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
   wallet = inject(WalletService);
   expiry = inject(ExpiryService);
   auth = inject(AuthService);
@@ -373,6 +382,7 @@ export class AppComponent {
   private document = inject(DOCUMENT);
   private swUpdate = inject(SwUpdate, { optional: true });
   private browserWindow = isPlatformBrowser(this.platformId) ? this.document.defaultView : null;
+  private swUpdateSub: Subscription | null = null;
 
   activeTab = signal<NavTab>('cards'); // default to public tab
   optimizerPrefill = signal<{ fromCity?: string; toCity?: string; cabin?: string } | null>(null);
@@ -383,6 +393,23 @@ export class AppComponent {
 
   // SW update banner
   showUpdateBanner = signal(false);
+
+  private readonly onVisibilityChange = (): void => {
+    if (this.document.visibilityState === 'visible') {
+      this.swUpdate?.checkForUpdate().catch(() => {});
+    }
+  };
+
+  private readonly onBeforeInstallPrompt = (e: Event): void => {
+    e.preventDefault(); // prevent the mini-infobar on mobile Chrome
+    this._deferredPrompt = e as BeforeInstallPromptEvent;
+    this.showInstallBanner.set(true);
+  };
+
+  private readonly onAppInstalled = (): void => {
+    this.showInstallBanner.set(false);
+    this._deferredPrompt = null;
+  };
 
   constructor() {
     // Watch for cross-component navigation requests (e.g. "Open in Optimizer" from Sweet Spots)
@@ -396,7 +423,13 @@ export class AppComponent {
       this.nav.clear();
     });
 
-    // Honor ?tab= query param (used by PWA shortcuts in manifest)
+    // Restore the last selected tab for a PWA-like return experience.
+    const storedTab = this.safeLocalStorageGet(ACTIVE_TAB_KEY) as NavTab | null;
+    if (storedTab && (this.TAB_ORDER as string[]).includes(storedTab)) {
+      this.handleTabChange(storedTab);
+    }
+
+    // Honor ?tab= query param (used by PWA shortcuts in manifest), overriding stored state.
     const tabParam = new URLSearchParams(this.browserWindow?.location.search ?? '').get('tab') as NavTab | null;
     if (tabParam && (this.TAB_ORDER as string[]).includes(tabParam)) {
       this.handleTabChange(tabParam);
@@ -404,15 +437,11 @@ export class AppComponent {
 
     // SW update — show reload banner when a new version is available
     if (!isDevMode() && this.swUpdate?.isEnabled && this.browserWindow) {
-      this.swUpdate.versionUpdates.subscribe(evt => {
+      this.swUpdateSub = this.swUpdate.versionUpdates.subscribe(evt => {
         if (evt.type === 'VERSION_READY') this.showUpdateBanner.set(true);
       });
       // Proactively check on tab focus
-      this.document.addEventListener('visibilitychange', () => {
-        if (this.document.visibilityState === 'visible') {
-          this.swUpdate!.checkForUpdate().catch(() => {});
-        }
-      });
+      this.document.addEventListener('visibilitychange', this.onVisibilityChange);
     }
 
     // PWA install prompt — only in browser, not SSR, not already standalone
@@ -423,17 +452,17 @@ export class AppComponent {
       const canShow = Date.now() - dismissedAt > sevenDays;
 
       if (canShow) {
-        this.browserWindow.addEventListener('beforeinstallprompt', (e: Event) => {
-          e.preventDefault(); // prevent the mini-infobar on mobile Chrome
-          this._deferredPrompt = e as BeforeInstallPromptEvent;
-          this.showInstallBanner.set(true);
-        });
-        this.browserWindow.addEventListener('appinstalled', () => {
-          this.showInstallBanner.set(false);
-          this._deferredPrompt = null;
-        });
+        this.browserWindow.addEventListener('beforeinstallprompt', this.onBeforeInstallPrompt);
+        this.browserWindow.addEventListener('appinstalled', this.onAppInstalled);
       }
     }
+  }
+
+  ngOnDestroy(): void {
+    this.swUpdateSub?.unsubscribe();
+    this.document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    this.browserWindow?.removeEventListener('beforeinstallprompt', this.onBeforeInstallPrompt);
+    this.browserWindow?.removeEventListener('appinstalled', this.onAppInstalled);
   }
 
   readonly userInitial = computed(() => {
@@ -468,10 +497,12 @@ export class AppComponent {
       // Show the login prompt inline rather than hard-redirecting —
       // user can still see what tab they tried to access
       this.activeTab.set(tab);
+      this.safeLocalStorageSet(ACTIVE_TAB_KEY, tab);
       this.analytics.track('tab_viewed', { tab });
       return;
     }
     this.activeTab.set(tab);
+    this.safeLocalStorageSet(ACTIVE_TAB_KEY, tab);
     this.analytics.track('tab_viewed', { tab });
   }
 

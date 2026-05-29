@@ -56,8 +56,17 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
 body { font-family: 'Geist', system-ui, sans-serif; background: var(--off); color: var(--text); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; }
+button, [role="button"], a, input, select, textarea { touch-action: manipulation; }
+button { min-height: 44px; }
+input, select, textarea { min-height: 44px; }
+:focus-visible { outline: 2px solid var(--tally-green); outline-offset: 2px; }
 
 .page-content { padding: 24px 20px 0; }
+
+@media (max-width: 380px) {
+  .page-content { padding-inline: 14px; }
+}
 
 .section-eyebrow {
   font-family: 'Geist Mono', monospace;
@@ -77,11 +86,13 @@ body { font-family: 'Geist', system-ui, sans-serif; background: var(--off); colo
   display: inline-flex; align-items: center; gap: 6px;
   font-family: 'Geist Mono', monospace; font-size: 10px;
   letter-spacing: 0.08em; text-transform: uppercase;
-  padding: 4px 10px; border-radius: 20px;
+  min-height: 32px; padding: 5px 10px; border-radius: 20px;
   border: 1px solid var(--border);
   color: var(--text3); background: var(--surface);
   transition: all 0.3s;
+  max-width: 100%;
 }
+.sync-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sync-pill.synced { border-color: rgba(26,122,74,0.3); color: var(--tally-green); background: var(--tally-green-light); }
 .sync-pill.error  { border-color: rgba(220,38,38,0.3); color: var(--tally-red); background: var(--tally-red-light); }
 .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }

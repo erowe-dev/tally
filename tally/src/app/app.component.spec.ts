@@ -101,6 +101,7 @@ describe('AppComponent', () => {
   let expiry: MockExpiryService;
 
   beforeEach(async () => {
+    localStorage.clear();
     auth = new MockAuthService();
     wallet = new MockWalletService();
     expiry = new MockExpiryService();
@@ -262,5 +263,28 @@ describe('AppComponent', () => {
     const signOut = fixture.debugElement.query(By.css('.sign-out-btn'));
     signOut.triggerEventHandler('click');
     expect(auth.logout).toHaveBeenCalled();
+  });
+
+  it('persists the selected public tab and restores it on the next app instance', () => {
+    let fixture = TestBed.createComponent(AppComponent);
+    fixture.componentInstance.handleTabChange('sweetspots');
+    fixture.detectChanges();
+
+    expect(localStorage.getItem('tally_active_tab_v1')).toBe('sweetspots');
+
+    fixture.destroy();
+    fixture = TestBed.createComponent(AppComponent);
+
+    expect(fixture.componentInstance.activeTab()).toBe('sweetspots');
+  });
+
+  it('restores a protected tab as sign-in intent when signed out', () => {
+    localStorage.setItem('tally_active_tab_v1', 'wallet');
+
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeTab()).toBe('wallet');
+    expect(fixture.nativeElement.querySelector('.login-title')?.textContent).toContain('Sign in to continue');
   });
 });
