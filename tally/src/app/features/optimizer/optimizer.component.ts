@@ -368,7 +368,8 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
               class="field-input"
               type="date"
               [ngModel]="earliestDeparture"
-              (ngModelChange)="onEarliestDepartureChange($event)">
+              (input)="onEarliestDepartureChange($any($event.target).value)"
+              (change)="onEarliestDepartureChange($any($event.target).value)">
           </div>
           <div class="field">
             <label class="field-label" for="optimizer-latest">Latest return</label>
@@ -379,7 +380,8 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
               type="date"
               [min]="minLatestReturnDate()"
               [ngModel]="latestReturn"
-              (ngModelChange)="onLatestReturnChange($event)">
+              (input)="onLatestReturnChange($any($event.target).value)"
+              (change)="onLatestReturnChange($any($event.target).value)">
           </div>
         </div>
         <div class="field-row compact-row">
