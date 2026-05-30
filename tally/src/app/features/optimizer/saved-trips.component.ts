@@ -83,7 +83,7 @@ import { TripsService } from '../../core/services/trips.service';
   styles: [`
     .saved-section-header {
       display: flex; align-items: center; justify-content: space-between;
-      margin-top: 28px; margin-bottom: 12px;
+      gap: 10px; flex-wrap: wrap; margin-top: 28px; margin-bottom: 12px;
     }
     .saved-sync-note {
       display: block; margin-top: -4px;
@@ -193,7 +193,7 @@ import { TripsService } from '../../core/services/trips.service';
       cursor: pointer; min-width: 56px; min-height: 44px; padding: 8px; flex-shrink: 0;
       font-family: 'Geist Mono', monospace; letter-spacing: 0.05em;
     }
-    @media (max-width: 430px) {
+    @media (max-width: 640px) {
       .saved-card {
         display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: flex-start;

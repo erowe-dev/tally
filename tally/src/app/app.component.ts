@@ -185,7 +185,7 @@ interface TabChangeOptions {
   `,
   styles: [`
     .app-shell {
-      width: 100%; max-width: 1180px; margin: 0 auto;
+      width: 100%; margin: 0 auto;
       min-height: 100dvh; display: flex; flex-direction: column;
       background: var(--off);
       --bottom-nav-clearance: calc(env(safe-area-inset-bottom, 0px) + 96px);
@@ -379,10 +379,6 @@ interface TabChangeOptions {
       .expiry-ribbon-text { font-size: 11px; }
     }
     @media (min-width: 760px) {
-      .app-shell {
-        border-left: 1px solid var(--border);
-        border-right: 1px solid var(--border);
-      }
       .app-header {
         padding-inline: 32px;
       }

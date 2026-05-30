@@ -41,7 +41,7 @@ interface NavItem { id: NavTab; label: string; icon: string; }
   styles: [`
     .bottom-nav {
       position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-      width: 100%; max-width: 1180px;
+      width: 100%;
       background: var(--shell-translucent);
       backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       border-top: 1px solid var(--border);
@@ -100,8 +100,6 @@ interface NavItem { id: NavTab; label: string; icon: string; }
     @media (min-width: 760px) {
       .bottom-nav {
         padding-inline: 24px;
-        border-left: 1px solid var(--border);
-        border-right: 1px solid var(--border);
       }
       .nav-btn {
         flex-direction: row;

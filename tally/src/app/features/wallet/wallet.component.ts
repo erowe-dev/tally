@@ -164,9 +164,9 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
                   type="button"
                   class="goal-toggle held-toggle"
                   [class.active]="isHeldProgram(card.id)"
-                  [attr.aria-pressed]="isExplicitHeldProgram(card.id)"
+                  [attr.aria-pressed]="isHeldProgram(card.id)"
                   (click)="toggleHeldProgram(card.id); $event.stopPropagation()">
-                  {{ isExplicitHeldProgram(card.id) ? 'Have' : 'I have this' }}
+                  {{ isHeldProgram(card.id) ? 'Have' : 'I have this' }}
                 </button>
                 <div class="input-wrap" (click)="toggleExpand(card.id)">
                   <input
@@ -928,11 +928,17 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--text3); letter-spacing: 0.06em; text-align: center;
     }
-    @media (max-width: 380px) {
+    @media (min-width: 760px) {
+      .wallet-row { grid-template-columns: 38px minmax(220px, 1fr) minmax(240px, auto); }
+      .quick-add { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
       .wallet-row {
         grid-template-columns: 38px minmax(0, 1fr);
         align-items: start;
       }
+      .wallet-filter-bar { flex-direction: row; }
+      .wallet-filter-btn { flex: 0 0 auto; }
       .program-actions {
         grid-column: 1 / -1;
         width: 100%;
@@ -1205,7 +1211,7 @@ export class WalletComponent {
   toggleHeldProgram(cardId: string): void {
     const current = this.prefs.preferences().heldProgramIds ?? [];
     const next = new Set(current);
-    if (next.has(cardId)) {
+    if (next.has(cardId) || this.wallet.getBalance(cardId) > 0) {
       next.delete(cardId);
     } else {
       next.add(cardId);

@@ -91,12 +91,6 @@ input, select, textarea { min-height: 44px; }
   }
 
   tally-optimizer {
-    .fields {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
     .field-row,
     .field-row.compact-row { margin-bottom: 0; }
 
@@ -125,6 +119,20 @@ input, select, textarea { min-height: 44px; }
     .disclaimer { grid-column: 1 / -1; }
 
     .result-card { margin-bottom: 0; }
+  }
+}
+
+@media (min-width: 1280px) {
+  .page-content { padding-inline: 48px; }
+}
+
+@media (min-width: 1024px) {
+  tally-optimizer {
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
   }
 }
 

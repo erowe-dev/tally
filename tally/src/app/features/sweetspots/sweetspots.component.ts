@@ -310,6 +310,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       background: var(--white); border: 1px solid var(--border);
       border-radius: 14px; padding: 18px;
       position: relative; overflow: hidden;
+      display: flex; flex-direction: column;
     }
     .spot-card::before {
       content: ''; position: absolute;
@@ -472,7 +473,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .fav-btn.active { color: var(--tally-amber, #d97706); }
 
     /* Reposition route/badge to account for fav button */
-    .spot-route { padding-right: 70px; padding-left: 24px; }
+    .spot-route { padding-right: 70px; padding-left: 54px; }
     .category-badge { right: 14px; }
 
     /* Saved filter count badge */
@@ -500,11 +501,34 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       .spot-card {
         min-height: 100%;
       }
+      .spot-note { flex: 1; }
+      .spot-action-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
       .spot-optimizer-btn,
       .spot-book-link,
       .spot-share-btn {
-        flex-grow: 0;
+        width: 100%;
       }
+    }
+    @media (max-width: 520px) {
+      .filter-row,
+      .sort-row,
+      .cpp-filter-row,
+      .cpp-tiers {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+      }
+      .filter-row::-webkit-scrollbar,
+      .sort-row::-webkit-scrollbar,
+      .cpp-filter-row::-webkit-scrollbar,
+      .cpp-tiers::-webkit-scrollbar { display: none; }
+      .filter-btn,
+      .sort-btn,
+      .cpp-tier-btn { flex: 0 0 auto; white-space: nowrap; }
     }
     @media (max-width: 360px) {
       .spot-card {
@@ -512,14 +536,14 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       }
       .spot-route {
         padding-right: 62px;
-        padding-left: 26px;
+        padding-left: 54px;
+      }
+      .spot-stats {
+        grid-template-columns: 1fr 1fr;
       }
       .category-badge,
       .new-badge {
         right: 10px;
-      }
-      .spot-stats {
-        gap: 6px;
       }
       .stat {
         padding: 9px 6px;

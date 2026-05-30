@@ -149,7 +149,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
           ✦ Great only
         </button>
         <button type="button" class="filter-btn mine-toggle" [class.active]="showHeldOnly()"
-          *ngIf="wallet.hasAnyPoints()"
+          *ngIf="hasAnyHeldPrograms()"
           [attr.aria-pressed]="showHeldOnly()"
           (click)="showHeldOnly.set(!showHeldOnly())">
           {{ showHeldOnly() ? '★ Mine' : '☆ Mine' }}
@@ -572,7 +572,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .partner-wrap { transition: opacity 0.2s; border-radius: 8px; overflow: hidden; }
     .partner-wrap.dimmed { opacity: 0.28; }
     .partner-row {
-      display: flex; align-items: center; gap: 10px;
+      display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 10px; align-items: center; gap: 10px;
       width: 100%; background: none; border: none; cursor: pointer;
       padding: 6px 0; text-align: left;
       -webkit-tap-highlight-color: transparent;
@@ -844,20 +844,34 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     @media (min-width: 760px) {
       .cards-list {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
         align-items: start;
       }
       .spend-results,
       .reach-list,
-      .tf-results,
       .calc-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       }
+      .tf-results {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      }
+      .spend-note { grid-column: 1 / -1; }
       .tf-inputs {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+    }
+    @media (max-width: 520px) {
+      .cc-header {
+        display: grid;
+        grid-template-columns: 46px minmax(0, 1fr) auto;
+        align-items: start;
+      }
+      .cc-right { flex-direction: column; align-items: flex-end; gap: 4px; }
+      .tf-row { align-items: flex-start; flex-wrap: wrap; }
+      .tf-coverage { width: 100%; text-align: left; padding-left: 40px; white-space: normal; }
     }
     @media (max-width: 360px) {
       .cc-header {
@@ -884,6 +898,14 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       .spend-result-row {
         align-items: flex-start;
       }
+      .partner-row {
+        grid-template-columns: 22px minmax(0, 1fr) 10px;
+      }
+      .p-ratio {
+        grid-column: 2;
+        white-space: normal;
+      }
+      .p-expand-icon { grid-column: 3; grid-row: 1; }
       .tf-coverage {
         white-space: normal;
       }

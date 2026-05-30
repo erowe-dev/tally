@@ -407,17 +407,18 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       letter-spacing: 0.04em; color: var(--tally-green);
       text-decoration: none; min-height: 44px; padding: 8px 0;
       transition: opacity 0.15s;
+      max-width: 100%; overflow-wrap: anywhere; white-space: normal;
     }
     .qa-link:hover { opacity: 0.75; text-decoration: underline; }
 
     .date-setter { border-top: 1px solid var(--border); padding-top: 12px; }
     .date-setter-top {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px;
     }
     .field-label {
       font-family: 'Geist Mono', monospace;
       font-size: 9px; letter-spacing: 0.15em; color: var(--text3);
-      text-transform: uppercase; display: block;
+      text-transform: uppercase; display: block; min-width: 0; overflow-wrap: anywhere;
     }
     .today-btn {
       background: var(--tally-green); border: none; border-radius: 7px;
@@ -440,7 +441,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist', sans-serif; font-size: 12px;
       min-height: 44px; padding: 10px 12px; cursor: pointer; white-space: nowrap;
-      transition: all 0.15s;
+      transition: all 0.15s; flex: 0 0 auto;
     }
     .clear-btn:hover { border-color: var(--tally-red); color: var(--tally-red); }
 
@@ -502,7 +503,19 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       font-family: 'Geist Mono', monospace; font-size: 7px;
       letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
     }
-    @media (max-width: 380px) {
+    @media (min-width: 760px) {
+      .bulk-today-btn { margin-left: auto; }
+      .date-input { min-width: 12rem; }
+      .expiry-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        align-items: start;
+      }
+      .activity-stats {
+        justify-content: flex-start;
+      }
+    }
+    @media (max-width: 520px) {
       .pill-row > * { flex: 1 1 auto; }
       .pill-row .sync-pill { flex-basis: 100%; }
       .bulk-today-btn,
@@ -514,16 +527,6 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       .clear-btn { width: 100%; }
       .activity-stats { justify-content: space-between; }
       .as-sep { display: none; }
-    }
-    @media (min-width: 760px) {
-      .expiry-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-        align-items: start;
-      }
-      .activity-stats {
-        justify-content: flex-start;
-      }
     }
   `]
 })
@@ -588,7 +591,11 @@ export class ExpiryComponent implements OnDestroy {
 
   onDateChange(cardId: string, event: Event): void {
     const val = (event.target as HTMLInputElement).value;
-    if (val) this.expiry.setLastActivity(cardId, val);
+    if (val) {
+      this.expiry.setLastActivity(cardId, val);
+    } else {
+      this.expiry.clearActivity(cardId);
+    }
   }
 
   /** Returns 0–100 for the urgency bar fill based on days remaining */
@@ -706,7 +713,7 @@ export class ExpiryComponent implements OnDestroy {
   readonly activityStats = computed((): {
     total: number; tracked: number; coveragePct: number; avgWindowMonths: number | null;
   } | null => {
-    const statuses = this.expiry.statuses();
+    const statuses = this.visibleStatuses();
     const records = this.expiry.records();
     // Only count programs that actually expire (not 'never')
     const expirable = statuses.filter(s => s.urgency !== 'never');

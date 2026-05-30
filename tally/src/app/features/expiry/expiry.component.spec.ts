@@ -108,6 +108,16 @@ describe('ExpiryComponent', () => {
     expect(sessionStorage.getItem(UI_KEY)).toBeNull();
   });
 
+  it('clears activity when the native date input is emptied', () => {
+    const component = createComponent();
+    const input = document.createElement('input');
+    input.value = '';
+
+    component.onDateChange('united_mp', { target: input } as unknown as Event);
+
+    expect(expiry.clearActivity).toHaveBeenCalledOnceWith('united_mp');
+  });
+
   it('requires a second tap before marking all expirable programs today', fakeAsync(() => {
     const component = createComponent();
 

@@ -415,11 +415,26 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         <div class="field-row">
           <div class="field">
             <label class="field-label" for="optimizer-checkin">Check-in</label>
-            <input #hotelCheckInInput id="optimizer-checkin" class="field-input" type="date" [(ngModel)]="hotelCheckIn" (ngModelChange)="clearValidation()">
+            <input
+              #hotelCheckInInput
+              id="optimizer-checkin"
+              class="field-input"
+              type="date"
+              [ngModel]="hotelCheckIn"
+              (input)="onHotelCheckInChange($any($event.target).value)"
+              (change)="onHotelCheckInChange($any($event.target).value)">
           </div>
           <div class="field">
             <label class="field-label" for="optimizer-checkout">Check-out</label>
-            <input #hotelCheckOutInput id="optimizer-checkout" class="field-input" type="date" [(ngModel)]="hotelCheckOut" (ngModelChange)="clearValidation()">
+            <input
+              #hotelCheckOutInput
+              id="optimizer-checkout"
+              class="field-input"
+              type="date"
+              [min]="minHotelCheckOutDate()"
+              [ngModel]="hotelCheckOut"
+              (input)="onHotelCheckOutChange($any($event.target).value)"
+              (change)="onHotelCheckOutChange($any($event.target).value)">
           </div>
         </div>
         <div class="field-row">
@@ -1102,7 +1117,6 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .rc-bar { height: 100%; background: var(--tally-green); border-radius: 99px; transition: width 0.5s cubic-bezier(0.34,1.56,0.64,1); }
     .rc-cpp { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--tally-green-mid); white-space: nowrap; }
 
-    /* Wallet coverage bar */
     .rc-coverage {
       display: flex; align-items: center; gap: 8px;
       margin-top: 6px; margin-bottom: 8px;
@@ -1120,7 +1134,6 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .rc-cov-label.covered { color: var(--tally-green); }
     .rc-cov-sep { margin: 0 2px; opacity: 0.5; }
 
-    /* Points gap nudge */
     .rc-gap-row {
       display: flex; align-items: flex-start; gap: 6px;
       margin-top: 4px; margin-bottom: 4px;
@@ -1135,7 +1148,6 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     }
     .rc-gap-hint { color: var(--text3); }
 
-    /* Expiry cross-reference warning */
     .rc-expiry-warn {
       display: flex; align-items: flex-start; gap: 6px;
       margin-top: 4px; margin-bottom: 4px;
@@ -1154,7 +1166,6 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     }
     .rc-expiry-warn.critical .rce-text { color: var(--tally-red, #dc2626); }
 
-    /* No results */
     .no-results { text-align: center; padding: 32px 16px; }
     .no-results-icon { font-size: 32px; margin-bottom: 10px; }
     .no-results-title {
@@ -1285,6 +1296,15 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       .card-action-row {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .rc-coverage {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 5px;
+      }
+      .rc-cov-label {
+        white-space: normal;
+        overflow-wrap: anywhere;
       }
       .howto-btn,
       .save-btn,
@@ -1493,6 +1513,22 @@ export class OptimizerComponent implements OnChanges {
     return this.nextDateString(this.earliestDeparture);
   }
 
+  onHotelCheckInChange(value: string): void {
+    this.hotelCheckIn = value;
+    this.ensureHotelCheckOutAfterCheckIn();
+    this.clearValidation();
+  }
+
+  onHotelCheckOutChange(value: string): void {
+    this.hotelCheckOut = value;
+    this.ensureHotelCheckOutAfterCheckIn();
+    this.clearValidation();
+  }
+
+  minHotelCheckOutDate(): string | null {
+    return this.nextDateString(this.hotelCheckIn);
+  }
+
   private getValidationError(): string | null {
     if (this.tripType() === 'flight') {
       if (!this.fromCity.trim() || !this.toCity.trim()) {
@@ -1564,6 +1600,7 @@ export class OptimizerComponent implements OnChanges {
     this.hotelTravelers = this.toBoundedInt(this.hotelTravelers, 1, 9, 2);
     this.hotelRooms = this.toBoundedInt(this.hotelRooms, 1, 5, 1);
     if (this.tripType() === 'flight') this.ensureLatestReturnAfterDeparture();
+    if (this.tripType() === 'hotel') this.ensureHotelCheckOutAfterCheckIn();
   }
 
   private ensureLatestReturnAfterDeparture(): void {
@@ -1584,6 +1621,34 @@ export class OptimizerComponent implements OnChanges {
     if (!input) return;
 
     const value = this.latestReturn;
+    const applyValue = () => {
+      if (input.value !== value) {
+        input.value = value;
+      }
+    };
+
+    applyValue();
+    window.setTimeout(applyValue, 0);
+  }
+
+  private ensureHotelCheckOutAfterCheckIn(): void {
+    if (!this.hotelCheckIn) return;
+
+    const checkIn = this.localDateValue(this.hotelCheckIn);
+    if (!checkIn) return;
+
+    const checkOut = this.hotelCheckOut ? this.localDateValue(this.hotelCheckOut) : null;
+    if (checkOut && checkOut > checkIn) return;
+
+    this.hotelCheckOut = this.formatDateInputValue(this.addDays(checkIn, 1));
+    this.syncHotelCheckOutInputValue();
+  }
+
+  private syncHotelCheckOutInputValue(): void {
+    const input = this.hotelCheckOutInput?.nativeElement;
+    if (!input) return;
+
+    const value = this.hotelCheckOut;
     const applyValue = () => {
       if (input.value !== value) {
         input.value = value;
