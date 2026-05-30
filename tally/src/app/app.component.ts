@@ -240,13 +240,13 @@ interface TabChangeOptions {
       background: var(--info-text); color: var(--off); border: none; border-radius: 8px;
       font-family: 'Geist', sans-serif; font-size: 12px; font-weight: 500;
       padding: 6px 14px; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s;
-      min-height: 36px;
+      min-height: 44px;
     }
     .update-btn:hover { opacity: 0.85; }
     .update-dismiss {
       background: none; border: none; color: var(--info-text);
       font-size: 13px; cursor: pointer; padding: 4px; flex-shrink: 0; opacity: 0.6;
-      line-height: 1; min-width: 36px; min-height: 36px;
+      line-height: 1; min-width: 44px; min-height: 44px; border-radius: 50%;
     }
     .update-dismiss:hover { opacity: 1; }
 
@@ -420,7 +420,7 @@ export class AppComponent implements OnDestroy {
 
   private readonly onVisibilityChange = (): void => {
     if (this.document.visibilityState === 'visible') {
-      this.swUpdate?.checkForUpdate().catch(() => {});
+      this.checkForServiceWorkerUpdate();
     }
   };
 
@@ -471,6 +471,7 @@ export class AppComponent implements OnDestroy {
       this.swUpdateSub = this.swUpdate.versionUpdates.subscribe(evt => {
         if (evt.type === 'VERSION_READY') this.showUpdateBanner.set(true);
       });
+      this.checkForServiceWorkerUpdate();
       // Proactively check on tab focus
       this.document.addEventListener('visibilitychange', this.onVisibilityChange);
     }
@@ -623,7 +624,16 @@ export class AppComponent implements OnDestroy {
   }
 
   reloadPage(): void {
-    this.browserWindow?.location.reload();
+    const reload = () => this.browserWindow?.location.reload();
+    if (!isDevMode() && this.swUpdate?.isEnabled) {
+      this.swUpdate.activateUpdate().then(reload).catch(reload);
+      return;
+    }
+    reload();
+  }
+
+  private checkForServiceWorkerUpdate(): void {
+    this.swUpdate?.checkForUpdate().catch(() => {});
   }
 
   private safeLocalStorageGet(key: string): string | null {
