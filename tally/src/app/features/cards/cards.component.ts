@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DataService } from '../../core/services/data.service';
 import { WalletService } from '../../core/services/wallet.service';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { CreditCard } from '../../core/models';
 
 type CatFilter = 'all' | 'transferable' | 'airline' | 'hotel';
@@ -895,6 +896,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 export class CardsComponent {
   data = inject(DataService);
   wallet = inject(WalletService);
+  prefs = inject(PreferencesService);
   private readonly initialUiState = this.loadUiState();
 
   searchRaw = signal(this.loadSearchState());
@@ -903,6 +905,7 @@ export class CardsComponent {
   cardSort = signal<CardSortMode>(this.initialUiState.cardSort ?? 'default');
   greatOnly = signal(this.initialUiState.greatOnly ?? false);
   showHeldOnly = signal(this.initialUiState.showHeldOnly ?? false);
+  readonly heldProgramIdSet = computed(() => new Set(this.prefs.preferences().heldProgramIds ?? []));
 
   constructor() {
     effect(() => {
@@ -1040,14 +1043,14 @@ export class CardsComponent {
     const q = this.searchRaw().toLowerCase().trim();
     const cat = this.activeCat();
     const great = this.greatOnly();
-    const heldOnly = this.showHeldOnly() && this.wallet.hasAnyPoints();
+    const heldOnly = this.showHeldOnly() && this.hasAnyHeldPrograms();
     const sort = this.cardSort();
 
     let cards = this.data.cards.filter(card => {
       if (cat !== 'all' && card.category !== cat) return false;
 
-      // Mine filter: only show programs with a balance
-      if (heldOnly && this.wallet.getBalance(card.id) <= 0) return false;
+      // Mine filter: show saved programs and programs with balances.
+      if (heldOnly && !this.isHeldProgram(card.id)) return false;
 
       // Search: match program name, card names, or any partner name
       if (q) {
@@ -1075,6 +1078,14 @@ export class CardsComponent {
 
     return cards;
   });
+
+  hasAnyHeldPrograms(): boolean {
+    return this.wallet.hasAnyPoints() || this.heldProgramIdSet().size > 0;
+  }
+
+  isHeldProgram(cardId: string): boolean {
+    return this.heldProgramIdSet().has(cardId) || this.wallet.getBalance(cardId) > 0;
+  }
 
   /** Partners to display for a card — filtered when search targets partner names */
   visiblePartners(card: CreditCard) {

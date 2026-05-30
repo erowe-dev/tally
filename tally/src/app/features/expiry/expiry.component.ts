@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ExpiryService, ExpiryStatus, SyncState } from '../../core/services/expiry.service';
 import { WalletService } from '../../core/services/wallet.service';
+import { PreferencesService } from '../../core/services/preferences.service';
 
 /** Direct links to the fastest activity-reset action for each program */
 const PORTAL_LINKS: Partial<Record<string, Array<{ label: string; url: string }>>> = {
@@ -48,7 +49,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
           [class.done]="bulkDone()">
           {{ bulkButtonLabel() }}
         </button>
-        <button type="button" class="filter-held-btn" *ngIf="wallet.hasAnyPoints()"
+        <button type="button" class="filter-held-btn" *ngIf="hasAnyHeldPrograms()"
           [class.active]="showHeldOnly()"
           (click)="toggleHeldOnly()">
           {{ showHeldOnly() ? '★ Mine' : '☆ Mine' }}
@@ -204,7 +205,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       <div class="filtered-empty" *ngIf="visibleStatuses().length === 0">
         <div class="filtered-empty-icon">☆</div>
         <div class="filtered-empty-title">No tracked balances yet</div>
-        <p>Add points in Wallet or turn off Mine to review every program.</p>
+        <p>Save programs in Wallet or turn off Mine to review every program.</p>
         <button class="filtered-empty-action" type="button" (click)="setHeldOnly(false)">
           Show all programs
         </button>
@@ -529,6 +530,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
 export class ExpiryComponent implements OnDestroy {
   expiry = inject(ExpiryService);
   wallet = inject(WalletService);
+  prefs = inject(PreferencesService);
   todayStr = this.formatLocalDate(new Date());
   bulkDone = signal(false);
   bulkConfirm = signal(false);
@@ -545,12 +547,14 @@ export class ExpiryComponent implements OnDestroy {
   readonly visibleStatuses = computed(() => {
     const statuses = this.expiry.statuses();
     if (!this.showHeldOnly()) return statuses;
-    return statuses.filter(s => this.wallet.getBalance(s.cardId) > 0);
+    return statuses.filter(s => this.isHeldProgram(s.cardId));
   });
 
   readonly bulkMarkableCount = computed(() =>
     this.visibleStatuses().filter(status => status.urgency !== 'never').length
   );
+
+  readonly heldProgramIdSet = computed(() => new Set(this.prefs.preferences().heldProgramIds ?? []));
 
   ngOnDestroy(): void {
     if (this.bulkConfirmTimer) clearTimeout(this.bulkConfirmTimer);
@@ -632,6 +636,14 @@ export class ExpiryComponent implements OnDestroy {
 
   setHeldOnly(value: boolean): void {
     this.showHeldOnly.set(value);
+  }
+
+  hasAnyHeldPrograms(): boolean {
+    return this.wallet.hasAnyPoints() || this.heldProgramIdSet().size > 0;
+  }
+
+  isHeldProgram(cardId: string): boolean {
+    return this.heldProgramIdSet().has(cardId) || this.wallet.getBalance(cardId) > 0;
   }
 
   private loadShowHeldOnly(): boolean {

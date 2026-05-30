@@ -9,6 +9,7 @@ const router = Router();
 const CABIN_TYPES = new Set(['economy', 'premium', 'business', 'first']);
 const FLEXIBILITY_TYPES = new Set(['exact', 'plus_minus_3', 'plus_minus_7', 'month', 'next_60_days']);
 const IATA_RE = /^[A-Z]{3}$/;
+const MAX_PROGRAMS = 30;
 
 router.get(
   '/',
@@ -60,6 +61,7 @@ function parsePreferences(body: Record<string, unknown>): ParseResult<{
   preferredCabin?: string | null;
   maxStops?: number | null;
   preferredPrograms?: Prisma.InputJsonValue;
+  heldProgramIds?: Prisma.InputJsonValue;
   hotelChains?: Prisma.InputJsonValue;
   defaultTravelers?: number | null;
   dateFlexibility?: string | null;
@@ -70,6 +72,7 @@ function parsePreferences(body: Record<string, unknown>): ParseResult<{
     preferredCabin?: string | null;
     maxStops?: number | null;
     preferredPrograms?: Prisma.InputJsonValue;
+    heldProgramIds?: Prisma.InputJsonValue;
     hotelChains?: Prisma.InputJsonValue;
     defaultTravelers?: number | null;
     dateFlexibility?: string | null;
@@ -100,6 +103,12 @@ function parsePreferences(body: Record<string, unknown>): ParseResult<{
     const programs = parseStringArray(body['preferredPrograms'], 30, false);
     if ('error' in programs) return programs;
     data.preferredPrograms = programs.data;
+  }
+
+  if ('heldProgramIds' in body) {
+    const heldPrograms = parseStringArray(body['heldProgramIds'], MAX_PROGRAMS, false);
+    if ('error' in heldPrograms) return heldPrograms;
+    data.heldProgramIds = heldPrograms.data;
   }
 
   if ('hotelChains' in body) {
@@ -137,6 +146,7 @@ function toPreferenceDto(preferences: UserPreference) {
     preferredCabin: preferences.preferredCabin ?? 'business',
     maxStops: preferences.maxStops ?? 1,
     preferredPrograms: asStringArray(preferences.preferredPrograms),
+    heldProgramIds: asStringArray(preferences.heldProgramIds),
     hotelChains: asStringArray(preferences.hotelChains),
     defaultTravelers: preferences.defaultTravelers ?? 1,
     dateFlexibility: preferences.dateFlexibility ?? 'plus_minus_3',
@@ -179,7 +189,8 @@ function parseStringArray(value: unknown, maxItems: number, iataOnly: boolean): 
   const result: string[] = [];
   for (const item of value) {
     if (typeof item !== 'string') return { error: 'Array values must be strings' };
-    const normalized = item.trim().toUpperCase().slice(0, 80);
+    const trimmed = item.trim().slice(0, 80);
+    const normalized = iataOnly ? trimmed.toUpperCase() : trimmed;
     if (!normalized) continue;
     if (iataOnly && !IATA_RE.test(normalized)) return { error: 'Airport codes must be three-letter IATA codes' };
     result.push(normalized);

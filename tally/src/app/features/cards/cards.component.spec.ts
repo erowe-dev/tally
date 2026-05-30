@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DataService } from '../../core/services/data.service';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { WalletService } from '../../core/services/wallet.service';
 import { CardsComponent } from './cards.component';
 
@@ -11,10 +12,15 @@ class MockWalletService {
   }
 }
 
+class MockPreferencesService {
+  preferences = signal({ heldProgramIds: [] as string[] });
+}
+
 describe('CardsComponent', () => {
   const UI_KEY = 'tally_cards_ui_v1';
   const SEARCH_KEY = 'tally_cards_search_session_v1';
   let fixture: ComponentFixture<CardsComponent>;
+  let prefs: MockPreferencesService;
 
   const cards = [
     {
@@ -46,11 +52,13 @@ describe('CardsComponent', () => {
   beforeEach(async () => {
     localStorage.clear();
     sessionStorage.clear();
+    prefs = new MockPreferencesService();
 
     await TestBed.configureTestingModule({
       imports: [CardsComponent],
       providers: [
         { provide: WalletService, useValue: new MockWalletService() },
+        { provide: PreferencesService, useValue: prefs },
         { provide: DataService, useValue: { cards, transferBonuses: [] } },
       ],
     }).compileComponents();
@@ -93,6 +101,15 @@ describe('CardsComponent', () => {
     expect(component.cardSort()).toBe('default');
     expect(component.showHeldOnly()).toBeTrue();
     expect(component.filteredCards().length).toBe(2);
+  });
+
+  it('includes held zero-balance programs in the Mine filter', () => {
+    prefs.preferences.set({ heldProgramIds: ['hyatt'] });
+    localStorage.setItem(UI_KEY, JSON.stringify({ showHeldOnly: true }));
+
+    const component = createComponent();
+
+    expect(component.filteredCards().map(card => card.id)).toEqual(['hyatt']);
   });
 
   it('writes filter state durably and removes empty session search', () => {

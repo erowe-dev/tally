@@ -80,6 +80,7 @@ model UserPreference {
   preferredCabin    String?
   maxStops          Int?
   preferredPrograms Json     @default("[]")
+  heldProgramIds    Json     @default("[]")
   hotelChains       Json     @default("[]")
   defaultTravelers  Int?
   dateFlexibility   String?

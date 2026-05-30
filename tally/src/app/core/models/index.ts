@@ -105,6 +105,7 @@ export interface UserPreference {
   preferredCabin: CabinClass;
   maxStops: 0 | 1 | 2;
   preferredPrograms: string[];
+  heldProgramIds: string[];
   hotelChains: string[];
   defaultTravelers: number;
   dateFlexibility: DateFlexibility;

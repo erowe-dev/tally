@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ExpiryService, ExpiryStatus } from '../../core/services/expiry.service';
+import { PreferencesService } from '../../core/services/preferences.service';
 import { WalletService } from '../../core/services/wallet.service';
 import { ExpiryComponent } from './expiry.component';
 
@@ -17,6 +18,10 @@ class MockExpiryService {
   retryLoad = jasmine.createSpy('retryLoad');
 }
 
+class MockPreferencesService {
+  preferences = signal({ heldProgramIds: [] as string[] });
+}
+
 class MockWalletService {
   hasAnyPoints = signal(true);
   balances = new Map<string, number>();
@@ -31,6 +36,7 @@ describe('ExpiryComponent', () => {
   let fixture: ComponentFixture<ExpiryComponent>;
   let expiry: MockExpiryService;
   let wallet: MockWalletService;
+  let prefs: MockPreferencesService;
 
   const statuses: ExpiryStatus[] = [
     {
@@ -59,6 +65,7 @@ describe('ExpiryComponent', () => {
     sessionStorage.clear();
     expiry = new MockExpiryService();
     wallet = new MockWalletService();
+    prefs = new MockPreferencesService();
     expiry.statuses.set(statuses);
     wallet.balances.set('united_mp', 10000);
 
@@ -67,6 +74,7 @@ describe('ExpiryComponent', () => {
       providers: [
         { provide: ExpiryService, useValue: expiry },
         { provide: WalletService, useValue: wallet },
+        { provide: PreferencesService, useValue: prefs },
       ],
     }).compileComponents();
   });
@@ -141,6 +149,15 @@ describe('ExpiryComponent', () => {
 
     tick(3000);
   }));
+
+  it('includes held zero-balance programs in Mine', () => {
+    prefs.preferences.set({ heldProgramIds: ['amex_mr'] });
+    const component = createComponent();
+
+    component.setHeldOnly(true);
+
+    expect(component.visibleStatuses().map(s => s.cardId)).toEqual(['amex_mr', 'united_mp']);
+  });
 
   it('resets the bulk confirmation when the user waits', fakeAsync(() => {
     const component = createComponent();

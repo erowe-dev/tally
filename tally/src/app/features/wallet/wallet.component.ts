@@ -20,6 +20,8 @@ interface WalletGoalState {
   expanded: boolean;
 }
 
+type WalletProgramFilter = 'all' | 'held' | 'balance';
+
 @Component({
   selector: 'tally-wallet',
   standalone: true,
@@ -124,7 +126,19 @@ interface WalletGoalState {
 
       <!-- Program groups -->
       <ng-container *ngIf="wallet.syncState() !== 'loading'">
-        <div *ngFor="let group of programGroups" class="program-group">
+        <div class="action-row wallet-filter-bar" role="group" aria-label="Wallet program filter">
+          <button
+            type="button"
+            *ngFor="let filter of walletFilters"
+            class="goal-toggle wallet-filter-btn"
+            [class.active]="walletProgramFilter() === filter.id"
+            [attr.aria-pressed]="walletProgramFilter() === filter.id"
+            (click)="setWalletProgramFilter(filter.id)">
+            {{ filter.label }} {{ filter.count() }}
+          </button>
+        </div>
+
+        <div *ngFor="let group of visibleProgramGroups()" class="program-group">
           <div class="group-header">
             <span class="group-icon">{{ group.icon }}</span>
             <span class="group-label">{{ group.label }}</span>
@@ -144,34 +158,48 @@ interface WalletGoalState {
                   [class]="'expiry-badge expiry-badge-' + badge.level">
                   {{ badge.label }}
                 </div>
-                <!-- Quick-add buttons — only show when expanded -->
-                <div class="quick-add" *ngIf="expandedCard() === card.id">
-                  <button type="button" *ngFor="let inc of quickIncrements"
-                    class="qa-btn"
-                    [attr.aria-label]="'Add ' + inc.toLocaleString() + ' points to ' + card.name"
-                    (click)="quickAdd(card.id, inc)">
-                    +{{ formatInc(inc) }}
-                  </button>
+              </div>
+              <div class="program-actions">
+                <button
+                  type="button"
+                  class="goal-toggle held-toggle"
+                  [class.active]="isHeldProgram(card.id)"
+                  [attr.aria-pressed]="isExplicitHeldProgram(card.id)"
+                  (click)="toggleHeldProgram(card.id); $event.stopPropagation()">
+                  {{ isExplicitHeldProgram(card.id) ? 'Have' : 'I have this' }}
+                </button>
+                <div class="input-wrap" (click)="toggleExpand(card.id)">
+                  <input
+                    class="balance-input"
+                    type="number"
+                    inputmode="numeric"
+                    placeholder="0"
+                    [attr.aria-label]="card.name + ' point balance'"
+                    [value]="wallet.getBalance(card.id) || null"
+                    (click)="$event.stopPropagation()"
+                    (focus)="expandedCard.set(card.id)"
+                    (input)="onInput(card.id, $event)"
+                    min="0" max="50000000" step="1000">
+                  <div class="row-value" *ngIf="wallet.getBalance(card.id) > 0">
+                    ~\${{ rowValue(card) | number }}
+                  </div>
                 </div>
               </div>
-              <div class="input-wrap" (click)="toggleExpand(card.id)">
-                <input
-                  class="balance-input"
-                  type="number"
-                  inputmode="numeric"
-                  placeholder="0"
-                  [attr.aria-label]="card.name + ' point balance'"
-                  [value]="wallet.getBalance(card.id) || null"
-                  (click)="$event.stopPropagation()"
-                  (focus)="expandedCard.set(card.id)"
-                  (input)="onInput(card.id, $event)"
-                  min="0" max="50000000" step="1000">
-                <div class="row-value" *ngIf="wallet.getBalance(card.id) > 0">
-                  ~\${{ rowValue(card) | number }}
-                </div>
+              <!-- Quick-add buttons — only show when expanded -->
+              <div class="quick-add" *ngIf="expandedCard() === card.id">
+                <button type="button" *ngFor="let inc of quickIncrements"
+                  class="qa-btn"
+                  [attr.aria-label]="'Add ' + inc.toLocaleString() + ' points to ' + card.name"
+                  (click)="quickAdd(card.id, inc)">
+                  +{{ formatInc(inc) }}
+                </button>
               </div>
             </div>
           </div>
+        </div>
+        <div class="summary-note" *ngIf="visibleProgramGroups().length === 0">
+          <strong>No programs match this filter.</strong>
+          <span>Save a program with “I have this” or add a balance to bring it into Mine.</span>
         </div>
       </ng-container>
 
@@ -500,6 +528,9 @@ interface WalletGoalState {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       color: var(--tally-green); letter-spacing: 0.04em;
     }
+    .wallet-filter-bar { justify-content: flex-start; margin: 8px 0 16px; overflow-x: auto; }
+    .wallet-filter-btn, .held-toggle { white-space: nowrap; }
+    .wallet-filter-btn.active, .held-toggle.active { border-color: rgba(26,122,74,0.35); background: var(--tally-green-light); color: var(--tally-green); }
 
     /* Card list */
     .wallet-list { display: flex; flex-direction: column; gap: 8px; }
@@ -507,7 +538,8 @@ interface WalletGoalState {
     .wallet-row {
       background: var(--white); border: 1px solid var(--border);
       border-radius: 14px; padding: 12px 14px;
-      display: flex; align-items: center; gap: 12px;
+      display: grid; grid-template-columns: 38px minmax(0, 1fr) auto;
+      align-items: center; gap: 12px;
       min-height: 70px;
     }
     .card-badge {
@@ -515,7 +547,7 @@ interface WalletGoalState {
       display: flex; align-items: center; justify-content: center;
       font-size: 14px; flex-shrink: 0;
     }
-    .card-info { flex: 1; min-width: 0; }
+    .card-info { min-width: 0; }
     .card-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-sub { font-size: 10px; color: var(--text3); font-family: 'Geist Mono', monospace; margin-top: 1px; }
     /* Personalized Insights */
@@ -632,6 +664,8 @@ interface WalletGoalState {
       min-width: 102px;
       scroll-margin-bottom: 120px;
     }
+    .program-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+    .held-toggle { background: var(--surface); }
     .row-value {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--tally-green-mid, #2d8a5a); letter-spacing: 0.04em;
@@ -639,7 +673,8 @@ interface WalletGoalState {
 
     /* Quick-add increments */
     .quick-add {
-      display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px;
+      grid-column: 1 / -1;
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px;
       animation: fadeIn 0.15s ease;
     }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -895,19 +930,25 @@ interface WalletGoalState {
     }
     @media (max-width: 380px) {
       .wallet-row {
-        display: grid;
         grid-template-columns: 38px minmax(0, 1fr);
         align-items: start;
       }
+      .program-actions {
+        grid-column: 1 / -1;
+        width: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(112px, 1.1fr);
+      }
       .input-wrap {
-        grid-column: 2;
         width: 100%;
         min-width: 0;
         align-items: stretch;
       }
       .balance-input { width: 100%; text-align: left; }
       .row-value { text-align: right; }
-      .quick-add { grid-column: 1 / -1; }
+      .held-toggle { min-width: 0; }
+      .quick-add { gap: 5px; }
+      .qa-btn { flex: 1 1 calc(50% - 6px); }
       .at-risk-banner { align-items: flex-start; flex-wrap: wrap; }
       .arb-action { width: 100%; }
       .goal-inputs,
@@ -932,6 +973,7 @@ export class WalletComponent {
   private readonly initialGoal = this.loadGoal();
 
   expandedCard = signal<string | null>(null);
+  walletProgramFilter = signal<WalletProgramFilter>('all');
   readonly quickIncrements = [5_000, 10_000, 25_000, 50_000, 100_000];
 
   // Goal tracker
@@ -1114,8 +1156,67 @@ export class WalletComponent {
     },
   ];
 
+  readonly heldProgramIdSet = computed(() => new Set(this.prefs.preferences().heldProgramIds ?? []));
+
+  readonly heldProgramCount = computed(() =>
+    this.data.cards.filter(card => this.isHeldProgram(card.id)).length
+  );
+
+  readonly balanceProgramCount = computed(() =>
+    this.data.cards.filter(card => this.wallet.getBalance(card.id) > 0).length
+  );
+
+  readonly walletFilters: Array<{ id: WalletProgramFilter; label: string; count: () => number }> = [
+    { id: 'all', label: 'All', count: () => this.data.cards.length },
+    { id: 'held', label: 'Mine', count: () => this.heldProgramCount() },
+    { id: 'balance', label: 'With Balance', count: () => this.balanceProgramCount() },
+  ];
+
+  readonly visibleProgramGroups = computed(() => {
+    const filter = this.walletProgramFilter();
+    return this.programGroups
+      .map(group => ({
+        ...group,
+        cards: group.cards.filter(card => {
+          if (filter === 'held') return this.isHeldProgram(card.id);
+          if (filter === 'balance') return this.wallet.getBalance(card.id) > 0;
+          return true;
+        }),
+      }))
+      .filter(group => group.cards.length > 0);
+  });
+
   groupTotal(cards: CreditCard[]): number {
     return cards.reduce((sum, c) => sum + this.wallet.getBalance(c.id), 0);
+  }
+
+  setWalletProgramFilter(filter: WalletProgramFilter): void {
+    this.walletProgramFilter.set(filter);
+  }
+
+  isExplicitHeldProgram(cardId: string): boolean {
+    return this.heldProgramIdSet().has(cardId);
+  }
+
+  isHeldProgram(cardId: string): boolean {
+    return this.isExplicitHeldProgram(cardId) || this.wallet.getBalance(cardId) > 0;
+  }
+
+  toggleHeldProgram(cardId: string): void {
+    const current = this.prefs.preferences().heldProgramIds ?? [];
+    const next = new Set(current);
+    if (next.has(cardId)) {
+      next.delete(cardId);
+    } else {
+      next.add(cardId);
+    }
+    this.prefs.updatePreferences({ heldProgramIds: Array.from(next) });
+  }
+
+  private ensureHeldProgram(cardId: string): void {
+    const current = this.prefs.preferences().heldProgramIds ?? [];
+    if (current.includes(cardId)) return;
+    this.prefs.updatePreferences({ heldProgramIds: [...current, cardId] });
   }
 
   syncLabel(): string {
@@ -1142,6 +1243,7 @@ export class WalletComponent {
 
   quickAdd(cardId: string, amount: number): void {
     this.wallet.setBalance(cardId, Math.min(MAX_BALANCE, this.wallet.getBalance(cardId) + amount));
+    this.ensureHeldProgram(cardId);
   }
 
   formatInc(n: number): string {
@@ -1153,6 +1255,7 @@ export class WalletComponent {
     const val = Math.min(MAX_BALANCE, parseInt(input.value) || 0);
     if (String(val) !== input.value && input.value !== '') input.value = String(val);
     this.wallet.setBalance(cardId, val);
+    if (val > 0) this.ensureHeldProgram(cardId);
   }
 
   copyShare(): void {

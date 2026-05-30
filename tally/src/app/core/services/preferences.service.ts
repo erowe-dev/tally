@@ -6,11 +6,13 @@ import { ToastService } from './toast.service';
 import { CabinClass, DateFlexibility, UserPreference } from '../models';
 
 const STORAGE_KEY = 'tally_preferences_v1';
+const MAX_PROGRAMS = 30;
 const DEFAULT_PREFERENCES: UserPreference = {
   homeAirports: ['OMA'],
   preferredCabin: 'business',
   maxStops: 1,
   preferredPrograms: [],
+  heldProgramIds: [],
   hotelChains: [],
   defaultTravelers: 1,
   dateFlexibility: 'plus_minus_3',
@@ -139,8 +141,9 @@ function sanitizePreferences(value: Partial<UserPreference>): UserPreference {
     maxStops: value.maxStops === 0 || value.maxStops === 1 || value.maxStops === 2
       ? value.maxStops
       : DEFAULT_PREFERENCES.maxStops,
-    preferredPrograms: stringArray(value.preferredPrograms).slice(0, 20),
-    hotelChains: stringArray(value.hotelChains).slice(0, 20),
+    preferredPrograms: uniqueStringArray(value.preferredPrograms).slice(0, 20),
+    heldProgramIds: uniqueStringArray(value.heldProgramIds).slice(0, MAX_PROGRAMS),
+    hotelChains: uniqueStringArray(value.hotelChains).slice(0, 20),
     defaultTravelers: clampInteger(value.defaultTravelers, 1, 9, DEFAULT_PREFERENCES.defaultTravelers),
     dateFlexibility: isDateFlexibility(value.dateFlexibility) ? value.dateFlexibility : DEFAULT_PREFERENCES.dateFlexibility,
     pointValuationCpp: clampNumber(value.pointValuationCpp, 0.1, 10, DEFAULT_PREFERENCES.pointValuationCpp),
@@ -160,6 +163,10 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === 'string').map(item => item.trim()).filter(Boolean)
     : [];
+}
+
+function uniqueStringArray(value: unknown): string[] {
+  return [...new Set(stringArray(value))];
 }
 
 function clampInteger(value: unknown, min: number, max: number, fallback: number): number {

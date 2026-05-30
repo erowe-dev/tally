@@ -26,8 +26,13 @@ class MockPreferencesService {
   preferences = signal({
     homeAirports: [],
     preferredCabin: 'business',
+    maxStops: 1,
+    preferredPrograms: [],
+    heldProgramIds: [],
+    hotelChains: [],
     defaultTravelers: 2,
     dateFlexibility: 'plus_minus_7',
+    pointValuationCpp: 1.6,
   });
   updatePreferences = jasmine.createSpy('updatePreferences');
 }
@@ -115,5 +120,29 @@ describe('WalletComponent', () => {
 
     expect(component.goalPts).toBe(0);
     expect(JSON.parse(localStorage.getItem(GOAL_KEY) ?? '{}').points).toBe(0);
+  });
+
+  it('toggles held programs without changing balances', () => {
+    const prefs = TestBed.inject(PreferencesService) as unknown as MockPreferencesService;
+    const wallet = TestBed.inject(WalletService) as unknown as MockWalletService;
+    const component = createComponent();
+
+    component.toggleHeldProgram('hyatt');
+
+    expect(prefs.updatePreferences).toHaveBeenCalledWith({ heldProgramIds: ['hyatt'] });
+    expect(wallet.setBalance).not.toHaveBeenCalled();
+  });
+
+  it('marks a program held when a positive balance is entered', () => {
+    const prefs = TestBed.inject(PreferencesService) as unknown as MockPreferencesService;
+    const wallet = TestBed.inject(WalletService) as unknown as MockWalletService;
+    const component = createComponent();
+    const input = document.createElement('input');
+    input.value = '25000';
+
+    component.onInput('amex_mr', { target: input } as unknown as Event);
+
+    expect(wallet.setBalance).toHaveBeenCalledWith('amex_mr', 25000);
+    expect(prefs.updatePreferences).toHaveBeenCalledWith({ heldProgramIds: ['amex_mr'] });
   });
 });
