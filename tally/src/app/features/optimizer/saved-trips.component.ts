@@ -155,13 +155,13 @@ import { TripsService } from '../../core/services/trips.service';
     .reanalyze-btn {
       background: none; border: 1px solid var(--border); border-radius: 6px;
       color: var(--text3); font-size: 10px; line-height: 1;
-      min-width: 72px; min-height: 40px; cursor: pointer; padding: 8px 10px; transition: all 0.15s;
+      min-width: 72px; min-height: 44px; cursor: pointer; padding: 8px 10px; transition: all 0.15s;
       font-family: 'Geist Mono', monospace; letter-spacing: 0.05em;
     }
     .reanalyze-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .delete-btn {
       background: none; border: none; color: var(--text3); font-size: 10px;
-      line-height: 1; cursor: pointer; min-width: 72px; min-height: 40px; padding: 8px 10px;
+      line-height: 1; cursor: pointer; min-width: 72px; min-height: 44px; padding: 8px 10px;
       border-radius: 4px; transition: color 0.15s; flex-shrink: 0;
       font-family: 'Geist Mono', monospace; letter-spacing: 0.05em;
     }
@@ -186,11 +186,11 @@ import { TripsService } from '../../core/services/trips.service';
     .note-save-btn {
       background: var(--tally-green); border: none; border-radius: 6px;
       color: white; font-family: 'Geist Mono', monospace; font-size: 9px;
-      padding: 8px 10px; cursor: pointer; flex-shrink: 0; letter-spacing: 0.06em;
+      min-height: 44px; padding: 8px 10px; cursor: pointer; flex-shrink: 0; letter-spacing: 0.06em;
     }
     .note-cancel-btn {
       background: none; border: none; color: var(--text3); font-size: 9px;
-      cursor: pointer; min-width: 56px; min-height: 40px; padding: 8px; flex-shrink: 0;
+      cursor: pointer; min-width: 56px; min-height: 44px; padding: 8px; flex-shrink: 0;
       font-family: 'Geist Mono', monospace; letter-spacing: 0.05em;
     }
     @media (max-width: 430px) {

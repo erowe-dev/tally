@@ -210,13 +210,13 @@ interface TabChangeOptions {
     .install-btn {
       background: var(--tally-green); color: var(--on-accent); border: none; border-radius: 8px;
       font-family: 'Geist', sans-serif; font-size: 12px; font-weight: 500;
-      padding: 8px 14px; min-height: 40px; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s;
+      padding: 8px 14px; min-height: 44px; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s;
     }
     .install-btn:hover { opacity: 0.85; }
     .install-dismiss {
       background: none; border: none; color: var(--tally-green);
       font-size: 13px; cursor: pointer; padding: 4px; flex-shrink: 0; opacity: 0.6;
-      line-height: 1; min-width: 40px; min-height: 40px;
+      line-height: 1; min-width: 44px; min-height: 44px; border-radius: 50%;
     }
     .install-dismiss:hover { opacity: 1; }
 
@@ -304,7 +304,7 @@ interface TabChangeOptions {
     .sign-out-btn {
       background: none; border: 1px solid var(--border); border-radius: 7px;
       color: var(--text3); font-family: 'Geist', sans-serif; font-size: 11px;
-      min-height: 40px; padding: 8px 10px; cursor: pointer; white-space: nowrap;
+      min-height: 44px; padding: 8px 10px; cursor: pointer; white-space: nowrap;
       transition: all 0.15s;
     }
     .sign-out-btn:hover { border-color: var(--text2); color: var(--text2); }
@@ -369,7 +369,7 @@ interface TabChangeOptions {
       background: none; border: none; color: var(--tally-green);
       font-family: 'Geist', sans-serif; font-size: 13px;
       cursor: pointer; text-decoration: underline; padding: 8px 10px;
-      min-height: 36px;
+      min-height: 44px;
     }
     @media (max-width: 380px) {
       .app-header { padding-inline: 14px; }

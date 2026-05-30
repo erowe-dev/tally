@@ -219,7 +219,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .spot-search-input::-webkit-search-cancel-button { display: none; }
     .spot-search-clear {
       background: none; border: none; cursor: pointer; padding: 4px;
-      min-width: 36px; min-height: 36px;
+      min-width: 44px; min-height: 44px; border-radius: 50%;
       font-size: 12px; color: var(--text3); line-height: 1;
     }
 
@@ -275,7 +275,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.08em; color: var(--text3); cursor: pointer;
       transition: all 0.15s;
-      min-height: 36px; max-width: 100%;
+      min-height: 44px; max-width: 100%;
     }
     .filter-btn.active {
       background: var(--tally-green); border-color: var(--tally-green);
@@ -295,7 +295,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.06em; color: var(--text3); cursor: pointer;
       transition: all 0.15s;
-      min-height: 36px;
+      min-height: 44px;
     }
     .sort-btn.active { border-color: var(--tally-green); color: var(--tally-green); }
 
@@ -393,7 +393,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       border-radius: 8px; color: var(--tally-green);
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; padding: 5px 12px; cursor: pointer;
-      transition: all 0.15s; min-height: 36px; flex: 1 1 132px;
+      transition: all 0.15s; min-height: 44px; flex: 1 1 132px;
     }
     .spot-optimizer-btn:hover { background: var(--tally-green); color: var(--on-accent); }
     .spot-book-link {
@@ -401,14 +401,14 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       background: none; border: 1px solid rgba(26,122,74,0.3); border-radius: 8px;
       color: var(--tally-green); font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; padding: 5px 10px;
-      text-decoration: none; transition: all 0.15s; min-height: 36px; flex: 1 1 96px;
+      text-decoration: none; transition: all 0.15s; min-height: 44px; flex: 1 1 96px;
     }
     .spot-book-link:hover { background: var(--tally-green-light); }
     .spot-share-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; padding: 5px 10px; cursor: pointer;
-      transition: all 0.15s; min-height: 36px; flex: 1 1 96px;
+      transition: all 0.15s; min-height: 44px; flex: 1 1 96px;
     }
     .spot-share-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .spot-share-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
@@ -438,7 +438,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       border-radius: 20px; padding: 4px 10px;
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.06em; color: var(--text3); cursor: pointer;
-      transition: all 0.15s; white-space: nowrap; min-height: 36px;
+      transition: all 0.15s; white-space: nowrap; min-height: 44px;
     }
     .cpp-tier-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .cpp-tier-btn.active { background: var(--tally-green); border-color: var(--tally-green); color: var(--on-accent); }
@@ -447,7 +447,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .spot-clear-btn {
       background: none; border: none; color: var(--tally-green); font-size: 13px;
       cursor: pointer; text-decoration: underline; padding: 8px; margin-top: 4px;
-      min-height: 40px;
+      min-height: 44px;
     }
 
     /* "New" badge on recently added spots */
@@ -465,7 +465,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       background: none; border: none; cursor: pointer;
       font-size: 16px; color: var(--border2); line-height: 1;
       padding: 4px; transition: color 0.15s, transform 0.15s;
-      min-width: 36px; min-height: 36px;
+      min-width: 44px; min-height: 44px; border-radius: 50%;
       -webkit-tap-highlight-color: transparent;
     }
     .fav-btn:hover { color: var(--tally-amber, #d97706); transform: scale(1.15); }

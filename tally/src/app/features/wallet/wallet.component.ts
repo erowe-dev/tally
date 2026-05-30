@@ -647,7 +647,7 @@ interface WalletGoalState {
       background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2);
       border-radius: 6px; color: var(--tally-green);
       font-family: 'Geist Mono', monospace; font-size: 9px; letter-spacing: 0.06em;
-      min-height: 36px; padding: 8px 10px; cursor: pointer; transition: background 0.12s;
+      min-height: 44px; padding: 8px 10px; cursor: pointer; transition: background 0.12s;
     }
     .qa-btn:hover { background: rgba(26,122,74,0.15); }
 

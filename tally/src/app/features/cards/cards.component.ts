@@ -441,7 +441,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .search-input::-webkit-search-cancel-button { display: none; }
     .search-clear {
       background: none; border: none; cursor: pointer; padding: 4px;
-      min-width: 36px; min-height: 36px;
+      min-width: 44px; min-height: 44px; border-radius: 50%;
       font-size: 12px; color: var(--text3); line-height: 1;
     }
 
@@ -457,7 +457,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       background: none; border: 1px solid var(--border); border-radius: 16px;
       padding: 3px 10px; font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.06em; color: var(--text3); cursor: pointer; transition: all 0.15s;
-      min-height: 36px;
+      min-height: 44px;
     }
     .sort-btn.active { border-color: var(--tally-green); color: var(--tally-green); }
 
@@ -471,7 +471,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.08em; color: var(--text3); cursor: pointer;
       transition: all 0.15s;
-      min-height: 36px; max-width: 100%;
+      min-height: 44px; max-width: 100%;
     }
     .filter-btn.active {
       background: var(--tally-green); border-color: var(--tally-green);
@@ -620,6 +620,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       background: none; border: none; cursor: pointer;
       color: var(--tally-green); font-size: 14px; padding: 8px;
       text-decoration: underline; text-underline-offset: 3px;
+      min-height: 44px;
     }
 
     /* Best card for spend */
@@ -645,7 +646,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       border-radius: 20px; padding: 5px 11px;
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.05em; color: var(--text3); cursor: pointer;
-      transition: all 0.15s; min-height: 36px;
+      transition: all 0.15s; min-height: 44px;
     }
     .spend-cat-btn.active {
       background: var(--tally-green); border-color: var(--tally-green); color: white;

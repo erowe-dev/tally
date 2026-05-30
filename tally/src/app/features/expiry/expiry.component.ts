@@ -242,7 +242,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
     .bulk-today-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.1em; min-height: 40px; padding: 8px 12px; cursor: pointer;
+      letter-spacing: 0.1em; min-height: 44px; padding: 8px 12px; cursor: pointer;
       transition: all 0.15s;
     }
     .bulk-today-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
@@ -259,7 +259,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
     .filter-held-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.1em; min-height: 40px; padding: 8px 12px; cursor: pointer; transition: all 0.15s;
+      letter-spacing: 0.1em; min-height: 44px; padding: 8px 12px; cursor: pointer; transition: all 0.15s;
     }
     .filter-held-btn.active { border-color: var(--tally-amber, #d97706); color: var(--tally-amber, #d97706); background: rgba(217,119,6,0.07); }
 
@@ -318,6 +318,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       font-size: 10px;
       letter-spacing: 0.08em;
       padding: 10px 14px;
+      min-height: 44px;
     }
 
     .expiry-card {
@@ -403,7 +404,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       display: inline-flex; align-items: center;
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.04em; color: var(--tally-green);
-      text-decoration: none; min-height: 36px; padding: 8px 0;
+      text-decoration: none; min-height: 44px; padding: 8px 0;
       transition: opacity 0.15s;
     }
     .qa-link:hover { opacity: 0.75; text-decoration: underline; }
@@ -420,7 +421,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
     .today-btn {
       background: var(--tally-green); border: none; border-radius: 7px;
       color: white; font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.08em; min-height: 40px; padding: 8px 12px; cursor: pointer;
+      letter-spacing: 0.08em; min-height: 44px; padding: 8px 12px; cursor: pointer;
       transition: opacity 0.15s;
     }
     .today-btn:hover { opacity: 0.85; }
