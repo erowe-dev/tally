@@ -362,11 +362,24 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         <div class="field-row">
           <div class="field">
             <label class="field-label" for="optimizer-earliest">Earliest departure</label>
-            <input #earliestDepartureInput id="optimizer-earliest" class="field-input" type="date" [(ngModel)]="earliestDeparture" (ngModelChange)="clearValidation()">
+            <input
+              #earliestDepartureInput
+              id="optimizer-earliest"
+              class="field-input"
+              type="date"
+              [ngModel]="earliestDeparture"
+              (ngModelChange)="onEarliestDepartureChange($event)">
           </div>
           <div class="field">
             <label class="field-label" for="optimizer-latest">Latest return</label>
-            <input #latestReturnInput id="optimizer-latest" class="field-input" type="date" [(ngModel)]="latestReturn" (ngModelChange)="clearValidation()">
+            <input
+              #latestReturnInput
+              id="optimizer-latest"
+              class="field-input"
+              type="date"
+              [min]="minLatestReturnDate()"
+              [ngModel]="latestReturn"
+              (ngModelChange)="onLatestReturnChange($event)">
           </div>
         </div>
         <div class="field-row compact-row">
@@ -1462,6 +1475,22 @@ export class OptimizerComponent implements OnChanges {
     if (this.validationError()) this.validationError.set(null);
   }
 
+  onEarliestDepartureChange(value: string): void {
+    this.earliestDeparture = value;
+    this.ensureLatestReturnAfterDeparture();
+    this.clearValidation();
+  }
+
+  onLatestReturnChange(value: string): void {
+    this.latestReturn = value;
+    this.ensureLatestReturnAfterDeparture();
+    this.clearValidation();
+  }
+
+  minLatestReturnDate(): string | null {
+    return this.nextDateString(this.earliestDeparture);
+  }
+
   private getValidationError(): string | null {
     if (this.tripType() === 'flight') {
       if (!this.fromCity.trim() || !this.toCity.trim()) {
@@ -1476,8 +1505,8 @@ export class OptimizerComponent implements OnChanges {
         if (!depart || !returns) {
           return 'Use valid departure and return dates.';
         }
-        if (returns < depart) {
-          return 'Latest return cannot be before earliest departure.';
+        if (returns <= depart) {
+          return 'Latest return needs to be after earliest departure.';
         }
       }
       if (!Number.isFinite(this.tripLengthMin) || !Number.isFinite(this.tripLengthMax) || this.tripLengthMin < 1 || this.tripLengthMax < 1) {
@@ -1532,6 +1561,19 @@ export class OptimizerComponent implements OnChanges {
     this.hotelNights = this.toBoundedInt(this.hotelNights, 1, 30, 5);
     this.hotelTravelers = this.toBoundedInt(this.hotelTravelers, 1, 9, 2);
     this.hotelRooms = this.toBoundedInt(this.hotelRooms, 1, 5, 1);
+    if (this.tripType() === 'flight') this.ensureLatestReturnAfterDeparture();
+  }
+
+  private ensureLatestReturnAfterDeparture(): void {
+    if (!this.earliestDeparture) return;
+
+    const depart = this.localDateValue(this.earliestDeparture);
+    if (!depart) return;
+
+    const returns = this.latestReturn ? this.localDateValue(this.latestReturn) : null;
+    if (returns && returns > depart) return;
+
+    this.latestReturn = this.formatDateInputValue(this.addDays(depart, 1));
   }
 
   private toBoundedInt(value: unknown, min: number, max: number, fallback: number): number {
@@ -1705,6 +1747,24 @@ export class OptimizerComponent implements OnChanges {
     const [year, month, day] = value.split('-').map(Number);
     if (!year || !month || !day) return null;
     return new Date(year, month - 1, day);
+  }
+
+  private nextDateString(value: string): string | null {
+    const date = value ? this.localDateValue(value) : null;
+    return date ? this.formatDateInputValue(this.addDays(date, 1)) : null;
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const next = new Date(date);
+    next.setDate(next.getDate() + days);
+    return next;
+  }
+
+  private formatDateInputValue(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   /** Percentage of required points the user already has (0–100, capped at 100) */
