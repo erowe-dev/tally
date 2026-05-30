@@ -593,7 +593,7 @@ interface WalletGoalState {
     }
     .arb-action {
       background: var(--tally-red, #dc2626); color: white;
-      border: none; border-radius: 8px; padding: 8px 12px; min-height: 40px;
+      border: none; border-radius: 8px; padding: 8px 12px; min-height: 44px;
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; cursor: pointer; flex-shrink: 0;
       transition: opacity 0.15s;
@@ -697,7 +697,7 @@ interface WalletGoalState {
     .goal-toggle {
       background: none; border: 1px solid var(--border2); border-radius: 7px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.06em; min-height: 40px; padding: 8px 12px; cursor: pointer; transition: all 0.15s;
+      letter-spacing: 0.06em; min-height: 44px; padding: 8px 12px; cursor: pointer; transition: all 0.15s;
     }
     .goal-toggle:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .goal-inputs { display: flex; gap: 8px; margin-bottom: 12px; }
