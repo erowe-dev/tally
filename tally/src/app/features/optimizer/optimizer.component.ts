@@ -1576,6 +1576,14 @@ export class OptimizerComponent implements OnChanges {
     if (returns && returns > depart) return;
 
     this.latestReturn = this.formatDateInputValue(this.addDays(depart, 1));
+    this.syncLatestReturnInputValue();
+  }
+
+  private syncLatestReturnInputValue(): void {
+    const input = this.latestReturnInput?.nativeElement;
+    if (input && input.value !== this.latestReturn) {
+      input.value = this.latestReturn;
+    }
   }
 
   private toBoundedInt(value: unknown, min: number, max: number, fallback: number): number {
