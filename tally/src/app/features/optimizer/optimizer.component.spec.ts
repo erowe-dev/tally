@@ -1,5 +1,5 @@
 import { signal } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { AirportSearchService } from '../../core/services/airport-search.service';
 import { DataService } from '../../core/services/data.service';
@@ -110,4 +110,16 @@ describe('OptimizerComponent', () => {
 
     expect(component.latestReturn).toBe('2026-06-11');
   });
+
+  it('syncs the visible latest return input after clamping an invalid date', fakeAsync(() => {
+    const latestInput = fixture.nativeElement.querySelector('#optimizer-latest') as HTMLInputElement;
+    component.earliestDeparture = '2026-06-10';
+    latestInput.value = '2026-06-09';
+
+    component.onLatestReturnChange(latestInput.value);
+    tick();
+
+    expect(component.latestReturn).toBe('2026-06-11');
+    expect(latestInput.value).toBe('2026-06-11');
+  }));
 });

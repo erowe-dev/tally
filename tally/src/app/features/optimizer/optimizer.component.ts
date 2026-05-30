@@ -1581,9 +1581,17 @@ export class OptimizerComponent implements OnChanges {
 
   private syncLatestReturnInputValue(): void {
     const input = this.latestReturnInput?.nativeElement;
-    if (input && input.value !== this.latestReturn) {
-      input.value = this.latestReturn;
-    }
+    if (!input) return;
+
+    const value = this.latestReturn;
+    const applyValue = () => {
+      if (input.value !== value) {
+        input.value = value;
+      }
+    };
+
+    applyValue();
+    window.setTimeout(applyValue, 0);
   }
 
   private toBoundedInt(value: unknown, min: number, max: number, fallback: number): number {
