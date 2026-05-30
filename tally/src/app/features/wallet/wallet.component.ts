@@ -147,7 +147,9 @@ interface WalletGoalState {
                 <!-- Quick-add buttons — only show when expanded -->
                 <div class="quick-add" *ngIf="expandedCard() === card.id">
                   <button type="button" *ngFor="let inc of quickIncrements"
-                    class="qa-btn" (click)="quickAdd(card.id, inc)">
+                    class="qa-btn"
+                    [attr.aria-label]="'Add ' + inc.toLocaleString() + ' points to ' + card.name"
+                    (click)="quickAdd(card.id, inc)">
                     +{{ formatInc(inc) }}
                   </button>
                 </div>
@@ -158,8 +160,10 @@ interface WalletGoalState {
                   type="number"
                   inputmode="numeric"
                   placeholder="0"
+                  [attr.aria-label]="card.name + ' point balance'"
                   [value]="wallet.getBalance(card.id) || null"
-                  (click)="$event.stopPropagation(); toggleExpand(card.id)"
+                  (click)="$event.stopPropagation()"
+                  (focus)="expandedCard.set(card.id)"
                   (input)="onInput(card.id, $event)"
                   min="0" max="50000000" step="1000">
                 <div class="row-value" *ngIf="wallet.getBalance(card.id) > 0">
@@ -250,9 +254,9 @@ interface WalletGoalState {
         </div>
         <ng-container *ngIf="showGoal()">
           <div class="goal-inputs">
-            <input class="goal-name-input" [ngModel]="goalName" (ngModelChange)="updateGoalName($event)" placeholder="e.g. Tokyo Business Class">
+            <input class="goal-name-input" aria-label="Point goal name" [ngModel]="goalName" (ngModelChange)="updateGoalName($event)" placeholder="e.g. Tokyo Business Class">
             <input class="goal-pts-input" type="number" inputmode="numeric" [ngModel]="goalPts" (ngModelChange)="updateGoalPoints($event)"
-              placeholder="60000" min="0" step="5000">
+              aria-label="Point goal amount" placeholder="60000" min="0" step="5000">
           </div>
           <div class="goal-progress" *ngIf="goalPts > 0">
             <div class="goal-bar-wrap">
@@ -625,7 +629,8 @@ interface WalletGoalState {
 
     .input-wrap {
       display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
-      min-width: 102px; cursor: pointer;
+      min-width: 102px;
+      scroll-margin-bottom: 120px;
     }
     .row-value {
       font-family: 'Geist Mono', monospace; font-size: 9px;

@@ -27,6 +27,13 @@ interface BeforeInstallPromptEvent extends Event {
 const INSTALL_DISMISS_KEY = 'tally_install_dismissed_v1';
 const ACTIVE_TAB_KEY = 'tally_active_tab_v1';
 
+interface TabChangeOptions {
+  restoreScroll?: boolean;
+  syncUrl?: boolean;
+  replaceUrl?: boolean;
+  track?: boolean;
+}
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -178,9 +185,10 @@ const ACTIVE_TAB_KEY = 'tally_active_tab_v1';
   `,
   styles: [`
     .app-shell {
-      max-width: 430px; margin: 0 auto;
+      width: 100%; max-width: 1180px; margin: 0 auto;
       min-height: 100dvh; display: flex; flex-direction: column;
       background: var(--off);
+      --bottom-nav-clearance: calc(env(safe-area-inset-bottom, 0px) + 96px);
     }
 
     /* PWA Install banner */
@@ -323,7 +331,8 @@ const ACTIVE_TAB_KEY = 'tally_active_tab_v1';
     /* Main scroll area */
     .app-main {
       flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
-      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+      padding-bottom: var(--bottom-nav-clearance);
+      scroll-padding-bottom: calc(var(--bottom-nav-clearance) + 24px);
     }
     .app-main::-webkit-scrollbar { display: none; }
 
@@ -369,6 +378,19 @@ const ACTIVE_TAB_KEY = 'tally_active_tab_v1';
       .sign-out-btn { font-size: 10px; padding-inline: 8px; }
       .expiry-ribbon-text { font-size: 11px; }
     }
+    @media (min-width: 760px) {
+      .app-shell {
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+      }
+      .app-header {
+        padding-inline: 32px;
+      }
+      .login-sub,
+      .login-btn {
+        max-width: 360px;
+      }
+    }
   `],
 })
 export class AppComponent implements OnDestroy {
@@ -383,6 +405,8 @@ export class AppComponent implements OnDestroy {
   private swUpdate = inject(SwUpdate, { optional: true });
   private browserWindow = isPlatformBrowser(this.platformId) ? this.document.defaultView : null;
   private swUpdateSub: Subscription | null = null;
+  private readonly tabScrollPositions = new Map<NavTab, number>();
+  private pendingScrollRestore: number | null = null;
 
   activeTab = signal<NavTab>('cards'); // default to public tab
   optimizerPrefill = signal<{ fromCity?: string; toCity?: string; cabin?: string } | null>(null);
@@ -411,6 +435,11 @@ export class AppComponent implements OnDestroy {
     this._deferredPrompt = null;
   };
 
+  private readonly onPopState = (): void => {
+    const tab = this.getUrlTab() ?? 'cards';
+    this.handleTabChange(tab, { syncUrl: false });
+  };
+
   constructor() {
     // Watch for cross-component navigation requests (e.g. "Open in Optimizer" from Sweet Spots)
     effect(() => {
@@ -426,14 +455,16 @@ export class AppComponent implements OnDestroy {
     // Restore the last selected tab for a PWA-like return experience.
     const storedTab = this.safeLocalStorageGet(ACTIVE_TAB_KEY) as NavTab | null;
     if (storedTab && (this.TAB_ORDER as string[]).includes(storedTab)) {
-      this.handleTabChange(storedTab);
+      this.handleTabChange(storedTab, { restoreScroll: false, syncUrl: false, track: false });
     }
 
     // Honor ?tab= query param (used by PWA shortcuts in manifest), overriding stored state.
-    const tabParam = new URLSearchParams(this.browserWindow?.location.search ?? '').get('tab') as NavTab | null;
-    if (tabParam && (this.TAB_ORDER as string[]).includes(tabParam)) {
-      this.handleTabChange(tabParam);
+    const tabParam = this.getUrlTab();
+    if (tabParam) {
+      this.handleTabChange(tabParam, { restoreScroll: false, replaceUrl: true, track: false });
     }
+
+    this.browserWindow?.addEventListener('popstate', this.onPopState);
 
     // SW update — show reload banner when a new version is available
     if (!isDevMode() && this.swUpdate?.isEnabled && this.browserWindow) {
@@ -460,9 +491,13 @@ export class AppComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.swUpdateSub?.unsubscribe();
+    if (this.pendingScrollRestore !== null) {
+      this.browserWindow?.clearTimeout(this.pendingScrollRestore);
+    }
     this.document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.browserWindow?.removeEventListener('beforeinstallprompt', this.onBeforeInstallPrompt);
     this.browserWindow?.removeEventListener('appinstalled', this.onAppInstalled);
+    this.browserWindow?.removeEventListener('popstate', this.onPopState);
   }
 
   readonly userInitial = computed(() => {
@@ -492,18 +527,74 @@ export class AppComponent implements OnDestroy {
     this.safeLocalStorageSet(INSTALL_DISMISS_KEY, Date.now().toString());
   }
 
-  handleTabChange(tab: NavTab): void {
+  handleTabChange(tab: NavTab, options: TabChangeOptions = {}): void {
+    const {
+      restoreScroll = true,
+      syncUrl = true,
+      replaceUrl = false,
+      track = true,
+    } = options;
+
+    if (tab === this.activeTab()) {
+      if (restoreScroll) this.restoreTabScroll(tab, { forceTop: true });
+      if (syncUrl) this.syncTabUrl(tab, { replace: true });
+      return;
+    }
+
+    this.rememberActiveTabScroll();
+
     if (this.PROTECTED_TABS.has(tab) && !this.auth.isAuthenticated()) {
       // Show the login prompt inline rather than hard-redirecting —
       // user can still see what tab they tried to access
       this.activeTab.set(tab);
       this.safeLocalStorageSet(ACTIVE_TAB_KEY, tab);
-      this.analytics.track('tab_viewed', { tab });
+      if (syncUrl) this.syncTabUrl(tab, { replace: replaceUrl });
+      if (track) this.analytics.track('tab_viewed', { tab });
+      if (restoreScroll) this.restoreTabScroll(tab);
       return;
     }
     this.activeTab.set(tab);
     this.safeLocalStorageSet(ACTIVE_TAB_KEY, tab);
-    this.analytics.track('tab_viewed', { tab });
+    if (syncUrl) this.syncTabUrl(tab, { replace: replaceUrl });
+    if (track) this.analytics.track('tab_viewed', { tab });
+    if (restoreScroll) this.restoreTabScroll(tab);
+  }
+
+  private rememberActiveTabScroll(): void {
+    if (!this.browserWindow) return;
+    this.tabScrollPositions.set(this.activeTab(), this.browserWindow.scrollY);
+  }
+
+  private restoreTabScroll(tab: NavTab, options: { forceTop?: boolean } = {}): void {
+    if (!this.browserWindow) return;
+    if (this.pendingScrollRestore !== null) {
+      this.browserWindow.clearTimeout(this.pendingScrollRestore);
+    }
+
+    const top = options.forceTop ? 0 : (this.tabScrollPositions.get(tab) ?? 0);
+    this.pendingScrollRestore = this.browserWindow.setTimeout(() => {
+      this.browserWindow?.scrollTo({ top, left: 0, behavior: 'auto' });
+      this.pendingScrollRestore = null;
+    });
+  }
+
+  private getUrlTab(): NavTab | null {
+    const tab = new URLSearchParams(this.browserWindow?.location.search ?? '').get('tab') as NavTab | null;
+    return tab && (this.TAB_ORDER as string[]).includes(tab) ? tab : null;
+  }
+
+  private syncTabUrl(tab: NavTab, options: { replace?: boolean } = {}): void {
+    if (!this.browserWindow) return;
+
+    const url = new URL(this.browserWindow.location.href);
+    url.searchParams.set('tab', tab);
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    if (next === `${this.browserWindow.location.pathname}${this.browserWindow.location.search}${this.browserWindow.location.hash}`) {
+      return;
+    }
+
+    const method = options.replace ? 'replaceState' : 'pushState';
+    this.browserWindow.history[method]({ tallyTab: tab }, '', next);
   }
 
   private readonly TAB_ORDER: NavTab[] = ['optimizer', 'wallet', 'cards', 'sweetspots', 'expiry'];

@@ -68,6 +68,72 @@ input, select, textarea { min-height: 44px; }
   .page-content { padding-inline: 14px; }
 }
 
+@media (min-width: 760px) {
+  .page-content { padding: 32px 32px 0; }
+
+  tally-wallet {
+    .prefs-grid,
+    .spend-sim-body,
+    .goal-inputs,
+    .tc-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .wallet-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      align-items: start;
+    }
+
+    .insights-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 10px;
+    }
+
+    .insights-label { grid-column: 1 / -1; }
+    .insight-card { margin-bottom: 0; }
+  }
+
+  tally-optimizer {
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field-row,
+    .field-row.compact-row { margin-bottom: 0; }
+
+    .fields .field-row:has(.full),
+    .field-note { grid-column: 1 / -1; }
+
+    .quick-wins-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 12px;
+    }
+
+    .qw-header,
+    .qw-empty { grid-column: 1 / -1; }
+
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 12px;
+    }
+
+    .results-header,
+    .strategy-summary,
+    .result-filters,
+    .no-affordable,
+    .disclaimer { grid-column: 1 / -1; }
+
+    .result-card { margin-bottom: 0; }
+  }
+}
+
 .section-eyebrow {
   font-family: 'Geist Mono', monospace;
   font-size: 10px; letter-spacing: 0.18em;

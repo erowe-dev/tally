@@ -1,5 +1,5 @@
 import { Component, Input, Output, EventEmitter, Type, signal } from '@angular/core';
-import { ComponentFixture, DeferBlockState, TestBed } from '@angular/core/testing';
+import { ComponentFixture, DeferBlockState, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { SwUpdate } from '@angular/service-worker';
 import { AppComponent } from './app.component';
@@ -99,12 +99,15 @@ describe('AppComponent', () => {
   let auth: MockAuthService;
   let wallet: MockWalletService;
   let expiry: MockExpiryService;
+  let analytics: MockAnalyticsService;
 
   beforeEach(async () => {
     localStorage.clear();
+    window.history.replaceState(null, '', '/');
     auth = new MockAuthService();
     wallet = new MockWalletService();
     expiry = new MockExpiryService();
+    analytics = new MockAnalyticsService();
 
     await TestBed.configureTestingModule({
       imports: [AppComponent],
@@ -114,7 +117,7 @@ describe('AppComponent', () => {
         { provide: ExpiryService, useValue: expiry },
         { provide: NetworkService, useValue: new MockNetworkService() },
         { provide: NavigationService, useValue: new MockNavigationService() },
-        { provide: AnalyticsService, useValue: new MockAnalyticsService() },
+        { provide: AnalyticsService, useValue: analytics },
         { provide: SwUpdate, useValue: { isEnabled: false, versionUpdates: { subscribe: () => ({ unsubscribe() {} }) } } },
       ],
     })
@@ -278,6 +281,36 @@ describe('AppComponent', () => {
     expect(fixture.componentInstance.activeTab()).toBe('sweetspots');
   });
 
+  it('syncs tab changes into the URL for reloads and sharing', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.handleTabChange('sweetspots');
+
+    expect(window.location.search).toBe('?tab=sweetspots');
+  });
+
+  it('honors a valid tab from the URL on startup', () => {
+    window.history.replaceState(null, '', '/?tab=sweetspots');
+
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeTab()).toBe('sweetspots');
+    expect(analytics.track).not.toHaveBeenCalledWith('tab_viewed', jasmine.anything());
+  });
+
+  it('uses browser back and forward state to change tabs', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.componentInstance.handleTabChange('sweetspots');
+    fixture.detectChanges();
+
+    window.history.pushState({ tallyTab: 'cards' }, '', '/?tab=cards');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+
+    expect(fixture.componentInstance.activeTab()).toBe('cards');
+  });
+
   it('restores a protected tab as sign-in intent when signed out', () => {
     localStorage.setItem('tally_active_tab_v1', 'wallet');
 
@@ -287,4 +320,31 @@ describe('AppComponent', () => {
     expect(fixture.componentInstance.activeTab()).toBe('wallet');
     expect(fixture.nativeElement.querySelector('.login-title')?.textContent).toContain('Sign in to continue');
   });
+
+  it('restores each tab to its remembered scroll position', fakeAsync(() => {
+    const scrollToSpy = spyOn(window, 'scrollTo');
+    spyOnProperty(window, 'scrollY', 'get').and.returnValues(360, 920, 920);
+
+    const fixture = TestBed.createComponent(AppComponent);
+    tick();
+
+    fixture.componentInstance.handleTabChange('sweetspots');
+    tick();
+    expect(scrollToSpy.calls.mostRecent().args[0] as unknown).toEqual({ top: 0, left: 0, behavior: 'auto' });
+
+    fixture.componentInstance.handleTabChange('cards');
+    tick();
+    expect(scrollToSpy.calls.mostRecent().args[0] as unknown).toEqual({ top: 360, left: 0, behavior: 'auto' });
+  }));
+
+  it('scrolls the active tab to top when selected again', fakeAsync(() => {
+    const scrollToSpy = spyOn(window, 'scrollTo');
+    const fixture = TestBed.createComponent(AppComponent);
+    tick();
+
+    fixture.componentInstance.handleTabChange('cards');
+    tick();
+
+    expect(scrollToSpy.calls.mostRecent().args[0] as unknown).toEqual({ top: 0, left: 0, behavior: 'auto' });
+  }));
 });

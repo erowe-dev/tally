@@ -43,6 +43,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
         <button type="button" class="bulk-today-btn"
           *ngIf="expiry.syncState() !== 'loading'"
           (click)="markAllToday()"
+          [disabled]="bulkMarkableCount() === 0"
           [class.confirm]="bulkConfirm()"
           [class.done]="bulkDone()">
           {{ bulkButtonLabel() }}
@@ -177,6 +178,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
               <input
                 type="date"
                 class="date-input"
+                [attr.aria-label]="'Last activity date for ' + status.programName"
                 [value]="getActivityDate(status.cardId)"
                 (change)="onDateChange(status.cardId, $event)"
                 [max]="todayStr"
@@ -244,6 +246,10 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       transition: all 0.15s;
     }
     .bulk-today-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
+    .bulk-today-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
     .bulk-today-btn.confirm {
       border-color: var(--tally-amber);
       color: var(--tally-amber);
@@ -328,12 +334,16 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
     .expiry-card.expired  { border-left-color: var(--tally-red); background: var(--tally-red-light); opacity: 0.9; }
 
     .ec-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
-    .ec-left { flex: 1; }
-    .ec-program { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .ec-left { flex: 1; min-width: 0; }
+    .ec-program {
+      font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px;
+      overflow-wrap: anywhere;
+    }
     .ec-urgency-label {
       display: flex; align-items: center; gap: 6px;
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3);
+      line-height: 1.35;
     }
     .urgency-dot {
       width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
@@ -420,6 +430,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       border-radius: 9px; color: var(--text);
       font-family: 'Geist', sans-serif; font-size: 13px;
       min-height: 44px; padding: 10px 12px; outline: none; flex: 1;
+      min-width: 0;
       transition: border-color 0.15s;
     }
     .date-input:focus { border-color: var(--tally-green); }
@@ -451,7 +462,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       border-radius: 10px; min-height: 48px; padding: 12px 16px;
       font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 500;
       color: var(--text2); cursor: pointer; text-align: left;
-      display: flex; align-items: center; gap: 6px;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
       transition: border-color 0.15s; margin-bottom: 6px;
     }
     .cal-btn:hover:not(:disabled) { border-color: var(--tally-green); color: var(--tally-green); }
@@ -502,6 +513,16 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       .activity-stats { justify-content: space-between; }
       .as-sep { display: none; }
     }
+    @media (min-width: 760px) {
+      .expiry-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        align-items: start;
+      }
+      .activity-stats {
+        justify-content: flex-start;
+      }
+    }
   `]
 })
 export class ExpiryComponent implements OnDestroy {
@@ -525,6 +546,10 @@ export class ExpiryComponent implements OnDestroy {
     if (!this.showHeldOnly()) return statuses;
     return statuses.filter(s => this.wallet.getBalance(s.cardId) > 0);
   });
+
+  readonly bulkMarkableCount = computed(() =>
+    this.visibleStatuses().filter(status => status.urgency !== 'never').length
+  );
 
   ngOnDestroy(): void {
     if (this.bulkConfirmTimer) clearTimeout(this.bulkConfirmTimer);
@@ -576,6 +601,8 @@ export class ExpiryComponent implements OnDestroy {
   }
 
   markAllToday(): void {
+    if (this.bulkMarkableCount() === 0) return;
+
     if (!this.bulkConfirm()) {
       this.bulkConfirm.set(true);
       if (this.bulkConfirmTimer) clearTimeout(this.bulkConfirmTimer);
@@ -587,8 +614,8 @@ export class ExpiryComponent implements OnDestroy {
     this.bulkConfirmTimer = null;
     this.bulkConfirm.set(false);
 
-    // Mark all non-never programs as active today
-    for (const status of this.expiry.statuses()) {
+    // Mark all currently visible non-never programs as active today.
+    for (const status of this.visibleStatuses()) {
       if (status.urgency !== 'never') {
         this.expiry.setLastActivity(status.cardId, this.todayStr);
       }
@@ -627,9 +654,10 @@ export class ExpiryComponent implements OnDestroy {
   }
 
   bulkButtonLabel(): string {
+    if (this.bulkMarkableCount() === 0) return 'Nothing to update';
     if (this.bulkDone()) return '✓ All updated';
     if (this.bulkConfirm()) return 'Tap again to confirm';
-    return 'Mark all today';
+    return this.showHeldOnly() ? 'Mark mine today' : 'Mark all today';
   }
 
   /** Number of days elapsed since the last recorded activity date */

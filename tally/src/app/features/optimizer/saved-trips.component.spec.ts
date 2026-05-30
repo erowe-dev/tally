@@ -95,6 +95,32 @@ describe('SavedTripsComponent', () => {
     expect(component.clearConfirm()).toBeFalse();
   }));
 
+  it('clears queued deletes and note edits when clear all is confirmed', fakeAsync(() => {
+    const component = fixture.componentInstance;
+
+    component.startEditNote('trip_1', 'draft');
+    component.queueDeleteTrip(savedTrip);
+    component.clearAllTrips();
+    component.clearAllTrips();
+    tick(5000);
+
+    expect(trips.clearAll).toHaveBeenCalled();
+    expect(trips.deleteTrip).not.toHaveBeenCalled();
+    expect(component.pendingDeleteTrips()).toEqual([]);
+    expect(component.editingNoteId()).toBeNull();
+  }));
+
+  it('trims saved notes before persisting', () => {
+    const component = fixture.componentInstance;
+
+    component.startEditNote('trip_1', ' old ');
+    component.pendingNote = '  window seats if possible  ';
+    component.commitNote('trip_1');
+
+    expect(trips.updateNotes).toHaveBeenCalledOnceWith('trip_1', 'window seats if possible');
+    expect(component.editingNoteId()).toBeNull();
+  });
+
   it('resets clear confirmation when the user waits', fakeAsync(() => {
     const component = fixture.componentInstance;
 

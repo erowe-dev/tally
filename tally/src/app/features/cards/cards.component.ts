@@ -138,15 +138,18 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       <div class="filter-row">
         <button type="button" *ngFor="let f of catFilters" class="filter-btn"
           [class.active]="activeCat() === f.id"
+          [attr.aria-pressed]="activeCat() === f.id"
           (click)="activeCat.set(f.id)">
           {{ f.label }}
         </button>
         <button type="button" class="filter-btn great-toggle" [class.active]="greatOnly()"
+          [attr.aria-pressed]="greatOnly()"
           (click)="greatOnly.set(!greatOnly())">
           ✦ Great only
         </button>
         <button type="button" class="filter-btn mine-toggle" [class.active]="showHeldOnly()"
           *ngIf="wallet.hasAnyPoints()"
+          [attr.aria-pressed]="showHeldOnly()"
           (click)="showHeldOnly.set(!showHeldOnly())">
           {{ showHeldOnly() ? '★ Mine' : '☆ Mine' }}
         </button>
@@ -157,6 +160,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         <span class="sort-label">Sort:</span>
         <button type="button" *ngFor="let s of cardSortModes"
           class="sort-btn" [class.active]="cardSort() === s.id"
+          [attr.aria-pressed]="cardSort() === s.id"
           (click)="cardSort.set(s.id)">
           {{ s.label }}
         </button>
@@ -168,7 +172,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Best card for spend category -->
       <div class="spend-rec-section">
-        <button type="button" class="spend-rec-toggle" (click)="showSpendRec.set(!showSpendRec())">
+        <button type="button" class="spend-rec-toggle" [attr.aria-expanded]="showSpendRec()" (click)="showSpendRec.set(!showSpendRec())">
           <span>💳 Best card for your spend</span>
           <span class="spend-rec-chevron">{{ showSpendRec() ? '▲' : '▼' }}</span>
         </button>
@@ -176,6 +180,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
           <div class="spend-cat-row">
             <button type="button" *ngFor="let c of spendCats" class="spend-cat-btn"
               [class.active]="selectedSpendCat() === c.id"
+              [attr.aria-pressed]="selectedSpendCat() === c.id"
               (click)="selectedSpendCat.set(c.id)">
               {{ c.icon }} {{ c.label }}
             </button>
@@ -199,7 +204,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Reachable Partners panel — only when user has wallet points -->
       <div class="reach-section" *ngIf="wallet.hasAnyPoints()">
-        <button type="button" class="reach-toggle" (click)="showReachable.set(!showReachable())">
+        <button type="button" class="reach-toggle" [attr.aria-expanded]="showReachable()" (click)="showReachable.set(!showReachable())">
           <span>🗺 My reachable partners</span>
           <span class="reach-badge">{{ reachablePartners().length }}</span>
           <span class="reach-chevron">{{ showReachable() ? '▲' : '▼' }}</span>
@@ -225,7 +230,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       <div class="cards-list">
         <div class="cc-card" *ngFor="let card of filteredCards()"
           [class.expanded]="isExpanded(card.id)">
-          <button type="button" class="cc-header" (click)="toggleCard(card.id)">
+          <button type="button" class="cc-header" [attr.aria-expanded]="isExpanded(card.id)" (click)="toggleCard(card.id)">
             <div class="cc-badge" [style.background]="card.color">{{ card.icon }}</div>
             <div class="cc-meta">
               <div class="cc-name">{{ card.name }}</div>
@@ -268,6 +273,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
               *ngFor="let p of visiblePartners(card)"
               [class.dimmed]="greatOnly() && p.quality !== 'great'">
               <button type="button" class="partner-row"
+                [attr.aria-expanded]="isPartnerExpanded(card.id, p.name)"
                 (click)="togglePartnerDetail(card.id, p.name)">
                 <span class="p-icon">{{ p.icon }}</span>
                 <span class="p-name">{{ p.name }}</span>
@@ -314,7 +320,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Rate My Redemption -->
       <div class="calc-section">
-        <button type="button" class="calc-toggle" (click)="showRater.set(!showRater())">
+        <button type="button" class="calc-toggle" [attr.aria-expanded]="showRater()" (click)="showRater.set(!showRater())">
           <span>🎯 Rate My Redemption</span>
           <span class="calc-chevron">{{ showRater() ? '▲' : '▼' }}</span>
         </button>
@@ -342,7 +348,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- CPP Calculator -->
       <div class="calc-section" style="margin-top:10px">
-        <button type="button" class="calc-toggle" (click)="showCalc.set(!showCalc())">
+        <button type="button" class="calc-toggle" [attr.aria-expanded]="showCalc()" (click)="showCalc.set(!showCalc())">
           <span>💡 Points Value Calculator</span>
           <span class="calc-chevron">{{ showCalc() ? '▲' : '▼' }}</span>
         </button>
@@ -371,7 +377,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Transfer Route Finder -->
       <div class="calc-section" style="margin-top:10px">
-        <button type="button" class="calc-toggle" (click)="showTransferFinder.set(!showTransferFinder())">
+        <button type="button" class="calc-toggle" [attr.aria-expanded]="showTransferFinder()" (click)="showTransferFinder.set(!showTransferFinder())">
           <span>🔀 Transfer Route Finder</span>
           <span class="calc-chevron">{{ showTransferFinder() ? '▲' : '▼' }}</span>
         </button>
@@ -429,7 +435,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .search-input {
       flex: 1; border: none; background: transparent; outline: none;
       font-family: 'Geist', sans-serif; font-size: 14px; color: var(--text);
-      padding: 11px 0;
+      padding: 11px 0; min-width: 0;
     }
     .search-input::placeholder { color: var(--text3); }
     .search-input::-webkit-search-cancel-button { display: none; }
@@ -465,7 +471,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.08em; color: var(--text3); cursor: pointer;
       transition: all 0.15s;
-      min-height: 36px;
+      min-height: 36px; max-width: 100%;
     }
     .filter-btn.active {
       background: var(--tally-green); border-color: var(--tally-green);
@@ -475,7 +481,8 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       background: var(--tally-amber, #d97706); border-color: var(--tally-amber, #d97706);
     }
     .mine-toggle.active {
-      background: #6366f1; border-color: #6366f1;
+      background: var(--tally-green-mid); border-color: var(--tally-green-mid);
+      color: var(--on-accent);
     }
 
     /* Count */
@@ -495,7 +502,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       -webkit-tap-highlight-color: transparent; text-align: left;
     }
     .cc-header:hover { background: var(--surface); }
-    .cc-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .cc-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0; }
     .cc-chevron {
       font-size: 8px; color: var(--text3); transition: transform 0.2s; line-height: 1;
     }
@@ -505,7 +512,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       font-size: 17px; flex-shrink: 0;
     }
     .cc-meta { flex: 1; min-width: 0; }
-    .cc-name { font-size: 14px; font-weight: 600; color: var(--text); }
+    .cc-name { font-size: 14px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
     .cc-cards {
       font-size: 10px; color: var(--text3);
       font-family: 'Geist Mono', monospace; letter-spacing: 0.04em;
@@ -571,7 +578,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     }
     .partner-row:hover { background: var(--surface); border-radius: 6px; }
     .p-icon { font-size: 15px; width: 22px; text-align: center; flex-shrink: 0; }
-    .p-name { flex: 1; font-size: 12px; color: var(--text); font-weight: 500; }
+    .p-name { flex: 1; min-width: 0; font-size: 12px; color: var(--text); font-weight: 500; overflow-wrap: anywhere; }
     .p-ratio { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--text3); white-space: nowrap; }
     .p-ratio.great { color: var(--tally-green); }
     .p-ratio.good  { color: var(--tally-amber, #d97706); }
@@ -624,6 +631,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       color: var(--text2); cursor: pointer; display: flex;
       align-items: center; justify-content: space-between;
       transition: border-color 0.15s;
+      min-height: 44px; gap: 12px;
     }
     .spend-rec-toggle:hover { border-color: var(--tally-green); }
     .spend-rec-chevron { font-size: 10px; color: var(--text3); }
@@ -637,7 +645,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       border-radius: 20px; padding: 5px 11px;
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.05em; color: var(--text3); cursor: pointer;
-      transition: all 0.15s;
+      transition: all 0.15s; min-height: 36px;
     }
     .spend-cat-btn.active {
       background: var(--tally-green); border-color: var(--tally-green); color: white;
@@ -657,8 +665,8 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       font-size: 12px; flex-shrink: 0;
     }
     .spend-info { flex: 1; min-width: 0; }
-    .spend-name { font-size: 12px; font-weight: 600; color: var(--text); }
-    .spend-cards { font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--text3); margin-top: 1px; }
+    .spend-name { font-size: 12px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+    .spend-cards { font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--text3); margin-top: 1px; overflow-wrap: anywhere; }
     .spend-rate {
       font-family: 'Geist Mono', monospace; font-size: 17px;
       color: var(--text2); flex-shrink: 0; text-align: right;
@@ -678,7 +686,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .reach-toggle {
       width: 100%; background: none; border: none; cursor: pointer;
       display: flex; align-items: center; gap: 8px;
-      padding: 13px 16px; text-align: left;
+      padding: 13px 16px; text-align: left; min-height: 44px;
       font-family: 'Geist', sans-serif; font-size: 13px;
       font-weight: 500; color: var(--text);
       -webkit-tap-highlight-color: transparent;
@@ -705,7 +713,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     }
     .reach-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
     .reach-info { flex: 1; min-width: 0; }
-    .reach-name { font-size: 12px; font-weight: 500; color: var(--text); }
+    .reach-name { font-size: 12px; font-weight: 500; color: var(--text); overflow-wrap: anywhere; }
     .reach-via {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--text3); letter-spacing: 0.04em; margin-top: 1px;
@@ -733,7 +741,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     }
     .tf-source-info { flex: 1; min-width: 0; }
     .tf-source-name { font-size: 12px; font-weight: 600; color: var(--text); }
-    .tf-source-ratio { font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--text3); margin-top: 1px; }
+    .tf-source-ratio { font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--text3); margin-top: 1px; overflow-wrap: anywhere; }
     .tf-coverage {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       color: var(--text3); text-align: right; flex-shrink: 0;
@@ -777,6 +785,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       display: flex; align-items: center; justify-content: space-between;
       font-family: 'Geist', sans-serif; font-size: 13px; color: var(--text2);
       transition: border-color 0.15s; -webkit-tap-highlight-color: transparent;
+      min-height: 44px; gap: 12px; text-align: left;
     }
     .calc-toggle:hover { border-color: var(--tally-green); }
     .calc-chevron { font-size: 8px; color: var(--text3); }
@@ -803,7 +812,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .calc-input:focus { border-color: var(--tally-green); }
     .calc-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
     .calc-row {
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 9px; padding: 9px 12px; transition: border-color 0.15s;
     }
@@ -818,7 +827,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     }
     .calc-val {
       font-family: 'Geist Mono', monospace; font-size: 16px;
-      color: var(--tally-green); font-weight: 600;
+      color: var(--tally-green); font-weight: 600; margin-left: auto;
     }
     .calc-rating {
       font-family: 'Geist Mono', monospace; font-size: 8px;
@@ -829,6 +838,56 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .calc-rating.good  { color: var(--tally-amber, #d97706); }
     .calc-note {
       font-size: 11px; color: var(--text3); line-height: 1.5; font-style: italic;
+    }
+    @media (min-width: 760px) {
+      .cards-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        align-items: start;
+      }
+      .spend-results,
+      .reach-list,
+      .tf-results,
+      .calc-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+      .tf-inputs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 360px) {
+      .cc-header {
+        align-items: flex-start;
+        gap: 10px;
+        padding: 14px;
+      }
+      .cc-right {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+      }
+      .cc-partner-count {
+        display: none;
+      }
+      .partners,
+      .calc-body,
+      .spend-rec-body {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+      .partner-row,
+      .tf-row,
+      .spend-result-row {
+        align-items: flex-start;
+      }
+      .tf-coverage {
+        white-space: normal;
+      }
+      .rater-inputs {
+        flex-direction: column;
+      }
     }
   `]
 })

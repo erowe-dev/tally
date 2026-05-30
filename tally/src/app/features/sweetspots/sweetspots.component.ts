@@ -91,6 +91,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       <div class="filter-row">
         <button type="button" *ngFor="let f of filters" class="filter-btn"
           [class.active]="activeFilter() === f.id"
+          [attr.aria-pressed]="activeFilter() === f.id"
           (click)="activeFilter.set(f.id)">
           {{ f.label }}
           <span class="fav-count" *ngIf="f.id === 'saved' && favCount() > 0">{{ favCount() }}</span>
@@ -103,6 +104,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
         <span class="sort-label">Sort:</span>
         <button type="button" *ngFor="let s of sortModes" class="sort-btn"
           [class.active]="activeSort() === s.id"
+          [attr.aria-pressed]="activeSort() === s.id"
           (click)="activeSort.set(s.id)">
           {{ s.label }}
         </button>
@@ -114,6 +116,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
         <div class="cpp-tiers">
           <button type="button" *ngFor="let t of cppTiers" class="cpp-tier-btn"
             [class.active]="minCppFilter() === t.val"
+            [attr.aria-pressed]="minCppFilter() === t.val"
             (click)="minCppFilter.set(t.val)">
             {{ t.label }}
           </button>
@@ -210,7 +213,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .spot-search-input {
       flex: 1; border: none; background: transparent; outline: none;
       font-family: 'Geist', sans-serif; font-size: 14px; color: var(--text);
-      padding: 11px 0;
+      padding: 11px 0; min-width: 0;
     }
     .spot-search-input::placeholder { color: var(--text3); }
     .spot-search-input::-webkit-search-cancel-button { display: none; }
@@ -229,7 +232,8 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     }
     .bonuses-strip {
       display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
-      scrollbar-width: none;
+      scrollbar-width: none; overscroll-behavior-inline: contain;
+      scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
     }
     .bonuses-strip::-webkit-scrollbar { display: none; }
     .bonus-card {
@@ -237,6 +241,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       border-radius: 12px; padding: 12px 14px; min-width: 0;
       flex: 0 0 min(260px, calc(100vw - 42px)); box-sizing: border-box;
       border-top: 2px solid var(--tally-amber, #d97706);
+      scroll-snap-align: start;
     }
     .bonus-header {
       display: flex; align-items: center; gap: 6px; margin-bottom: 3px; min-width: 0;
@@ -270,7 +275,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.08em; color: var(--text3); cursor: pointer;
       transition: all 0.15s;
-      min-height: 36px;
+      min-height: 36px; max-width: 100%;
     }
     .filter-btn.active {
       background: var(--tally-green); border-color: var(--tally-green);
@@ -278,7 +283,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     }
 
     .sort-row {
-      display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap;
     }
     .sort-label {
       font-family: 'Geist Mono', monospace; font-size: 9px;
@@ -326,7 +331,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .spot-route {
       font-family: 'Instrument Serif', serif;
       font-size: 20px; font-weight: 400; color: var(--text); margin-bottom: 4px;
-      padding-right: 70px;
+      padding-right: 70px; overflow-wrap: anywhere;
     }
     :host ::ng-deep .spot-route .arrow { color: var(--tally-green); font-style: italic; }
 
@@ -338,8 +343,9 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .stat {
       background: var(--surface); border-radius: 10px; padding: 10px;
       text-align: center; display: flex; flex-direction: column; gap: 2px;
+      min-width: 0;
     }
-    .stat-val { font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--tally-green); }
+    .stat-val { font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--tally-green); overflow-wrap: anywhere; }
     .stat-val.cpp { color: var(--tally-green-mid); }
     .stat-label {
       font-family: 'Geist Mono', monospace; font-size: 8px;
@@ -351,6 +357,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .chip {
       border-radius: 6px; padding: 3px 8px;
       font-family: 'Geist Mono', monospace; font-size: 9px; letter-spacing: 0.05em;
+      overflow-wrap: anywhere;
     }
     .card-chip { background: var(--surface); border: 1px solid var(--border); color: var(--text2); }
     .prog-chip { background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2); color: var(--tally-green); }
@@ -368,6 +375,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       border-radius: 6px; padding: 3px 10px;
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.06em; color: var(--tally-amber, #d97706);
+      max-width: 100%; overflow-wrap: anywhere;
     }
     .cov-count {
       display: inline-flex; align-items: center; justify-content: center;
@@ -380,27 +388,27 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
     }
     .spot-optimizer-btn {
-      display: inline-block;
+      display: inline-flex; align-items: center; justify-content: center; text-align: center;
       background: none; border: 1px solid var(--tally-green);
       border-radius: 8px; color: var(--tally-green);
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; padding: 5px 12px; cursor: pointer;
-      transition: all 0.15s; min-height: 36px;
+      transition: all 0.15s; min-height: 36px; flex: 1 1 132px;
     }
     .spot-optimizer-btn:hover { background: var(--tally-green); color: var(--on-accent); }
     .spot-book-link {
-      display: inline-flex; align-items: center;
+      display: inline-flex; align-items: center; justify-content: center; text-align: center;
       background: none; border: 1px solid rgba(26,122,74,0.3); border-radius: 8px;
       color: var(--tally-green); font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; padding: 5px 10px;
-      text-decoration: none; transition: all 0.15s; min-height: 36px;
+      text-decoration: none; transition: all 0.15s; min-height: 36px; flex: 1 1 96px;
     }
     .spot-book-link:hover { background: var(--tally-green-light); }
     .spot-share-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; padding: 5px 10px; cursor: pointer;
-      transition: all 0.15s; margin-left: auto; min-height: 36px;
+      transition: all 0.15s; min-height: 36px; flex: 1 1 96px;
     }
     .spot-share-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .spot-share-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
@@ -412,6 +420,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       border-radius: 20px; padding: 2px 10px;
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.06em; color: var(--tally-amber, #b45309);
+      max-width: 100%; overflow-wrap: anywhere;
     }
 
     /* CPP min filter */
@@ -438,6 +447,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .spot-clear-btn {
       background: none; border: none; color: var(--tally-green); font-size: 13px;
       cursor: pointer; text-decoration: underline; padding: 8px; margin-top: 4px;
+      min-height: 40px;
     }
 
     /* "New" badge on recently added spots */
@@ -471,6 +481,49 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       background: var(--tally-amber, #d97706); color: var(--on-accent);
       font-family: 'Geist Mono', monospace; font-size: 8px;
       width: 14px; height: 14px; border-radius: 50%; margin-left: 4px;
+    }
+    @media (min-width: 760px) {
+      .bonuses-strip {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        overflow-x: visible;
+      }
+      .bonus-card {
+        flex-basis: auto;
+        width: auto;
+      }
+      .spots-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        align-items: start;
+      }
+      .spot-card {
+        min-height: 100%;
+      }
+      .spot-optimizer-btn,
+      .spot-book-link,
+      .spot-share-btn {
+        flex-grow: 0;
+      }
+    }
+    @media (max-width: 360px) {
+      .spot-card {
+        padding: 16px 14px;
+      }
+      .spot-route {
+        padding-right: 62px;
+        padding-left: 26px;
+      }
+      .category-badge,
+      .new-badge {
+        right: 10px;
+      }
+      .spot-stats {
+        gap: 6px;
+      }
+      .stat {
+        padding: 9px 6px;
+      }
     }
   `]
 })

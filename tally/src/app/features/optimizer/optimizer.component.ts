@@ -1,4 +1,4 @@
-import { Component, signal, computed, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, ElementRef, ViewChild, signal, computed, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { OptimizerService } from '../../core/services/optimizer.service';
@@ -279,6 +279,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
           <div class="field">
             <label class="field-label" for="optimizer-from">From</label>
             <input
+              #fromInput
               id="optimizer-from"
               class="field-input"
               [class.invalid]="validationError() && !fromCity.trim()"
@@ -300,6 +301,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
           <div class="field">
             <label class="field-label" for="optimizer-to">To</label>
             <input
+              #toInput
               id="optimizer-to"
               class="field-input"
               [class.invalid]="validationError() && !toCity.trim()"
@@ -360,21 +362,21 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         <div class="field-row">
           <div class="field">
             <label class="field-label" for="optimizer-earliest">Earliest departure</label>
-            <input id="optimizer-earliest" class="field-input" type="date" [(ngModel)]="earliestDeparture" (ngModelChange)="clearValidation()">
+            <input #earliestDepartureInput id="optimizer-earliest" class="field-input" type="date" [(ngModel)]="earliestDeparture" (ngModelChange)="clearValidation()">
           </div>
           <div class="field">
             <label class="field-label" for="optimizer-latest">Latest return</label>
-            <input id="optimizer-latest" class="field-input" type="date" [(ngModel)]="latestReturn" (ngModelChange)="clearValidation()">
+            <input #latestReturnInput id="optimizer-latest" class="field-input" type="date" [(ngModel)]="latestReturn" (ngModelChange)="clearValidation()">
           </div>
         </div>
         <div class="field-row compact-row">
           <div class="field">
             <label class="field-label" for="optimizer-min-nights">Trip length min</label>
-            <input id="optimizer-min-nights" class="field-input" type="number" min="1" max="45" [(ngModel)]="tripLengthMin" (ngModelChange)="clearValidation()">
+            <input #tripLengthMinInput id="optimizer-min-nights" class="field-input" type="number" min="1" max="45" [(ngModel)]="tripLengthMin" (ngModelChange)="clearValidation()">
           </div>
           <div class="field">
             <label class="field-label" for="optimizer-max-nights">Trip length max</label>
-            <input id="optimizer-max-nights" class="field-input" type="number" min="1" max="60" [(ngModel)]="tripLengthMax" (ngModelChange)="clearValidation()">
+            <input #tripLengthMaxInput id="optimizer-max-nights" class="field-input" type="number" min="1" max="60" [(ngModel)]="tripLengthMax" (ngModelChange)="clearValidation()">
           </div>
         </div>
       </div>
@@ -385,6 +387,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
           <div class="field full">
             <label class="field-label" for="optimizer-hotel-dest">Destination</label>
             <input
+              #hotelDestInput
               id="optimizer-hotel-dest"
               class="field-input"
               [(ngModel)]="hotelDest"
@@ -397,11 +400,11 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         <div class="field-row">
           <div class="field">
             <label class="field-label" for="optimizer-checkin">Check-in</label>
-            <input id="optimizer-checkin" class="field-input" type="date" [(ngModel)]="hotelCheckIn" (ngModelChange)="clearValidation()">
+            <input #hotelCheckInInput id="optimizer-checkin" class="field-input" type="date" [(ngModel)]="hotelCheckIn" (ngModelChange)="clearValidation()">
           </div>
           <div class="field">
             <label class="field-label" for="optimizer-checkout">Check-out</label>
-            <input id="optimizer-checkout" class="field-input" type="date" [(ngModel)]="hotelCheckOut" (ngModelChange)="clearValidation()">
+            <input #hotelCheckOutInput id="optimizer-checkout" class="field-input" type="date" [(ngModel)]="hotelCheckOut" (ngModelChange)="clearValidation()">
           </div>
         </div>
         <div class="field-row">
@@ -456,7 +459,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         </div>
       </div>
 
-      <div class="validation-banner" *ngIf="validationError() as error" aria-live="assertive">
+      <div id="optimizer-validation-error" class="validation-banner" *ngIf="validationError() as error" aria-live="assertive">
         {{ error }}
       </div>
 
@@ -464,6 +467,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         type="button"
         class="btn-analyze"
         [class.needs-attention]="validationError()"
+        [attr.aria-describedby]="validationError() ? 'optimizer-validation-error' : null"
         (click)="analyze()">
         {{ validationError() ? 'Review inputs' : 'Analyze Transfers →' }}
       </button>
@@ -788,12 +792,6 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .field-input.invalid { border-color: var(--tally-red); background: var(--tally-red-light); }
     .field-input::placeholder { color: var(--text3); font-weight: 400; }
     select.field-input option { background: var(--white); color: var(--text); }
-    .field-input.is-disabled {
-      background: var(--surface);
-      color: var(--text3);
-      cursor: not-allowed;
-      opacity: 1;
-    }
     .field-note {
       margin: -2px 0 12px;
       font-family: 'Geist Mono', monospace;
@@ -966,7 +964,6 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       display: flex; justify-content: space-between; align-items: center;
       margin-top: 24px; margin-bottom: 12px; gap: 10px; flex-wrap: wrap;
     }
-    .results-hint { font-family: 'Geist Mono', monospace; font-size: 10px; color: var(--tally-green); }
     .related-spots-btn {
       border: 1px solid var(--border); border-radius: 999px;
       background: var(--white); color: var(--tally-green);
@@ -1049,9 +1046,12 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     }
     .result-card.best { border-color: var(--tally-green); background: var(--tally-green-light); }
 
-    .rc-top { display: flex; gap: 12px; margin-bottom: 12px; }
-    .rc-left { flex: 1; }
-    .rc-program { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .rc-top { display: flex; gap: 12px; margin-bottom: 12px; min-width: 0; }
+    .rc-left { flex: 1; min-width: 0; }
+    .rc-program {
+      font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px;
+      overflow-wrap: anywhere;
+    }
     .covered-badge {
       display: inline-block; margin-left: 6px;
       color: var(--tally-green); font-size: 12px; font-weight: 700;
@@ -1062,7 +1062,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       color: var(--tally-amber, #d97706); letter-spacing: 0.06em;
     }
     .rc-partner { font-size: 11px; color: var(--text2); margin-bottom: 2px; }
-    .rc-note { font-size: 11px; color: var(--text3); font-style: italic; }
+    .rc-note { font-size: 11px; color: var(--text3); font-style: italic; overflow-wrap: anywhere; }
     .rc-pts { text-align: right; flex-shrink: 0; }
     .rc-pts {
       font-family: 'Geist Mono', monospace;
@@ -1157,7 +1157,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     }
 
     .best-badge {
-      position: absolute; top: 12px; right: 12px;
+      display: inline-flex; align-items: center; margin-top: 10px;
       background: var(--tally-green); color: white;
       font-family: 'Geist Mono', monospace; font-size: 8px;
       letter-spacing: 0.12em; padding: 3px 7px; border-radius: 4px;
@@ -1264,7 +1264,9 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       .saved-search-list {
         margin-inline: -2px;
       }
-      .rc-top { align-items: flex-start; }
+      .rc-top { align-items: flex-start; flex-wrap: wrap; }
+      .rc-pts { width: 100%; text-align: left; }
+      .rc-pts small, .rc-cash { text-align: left; }
       .card-action-row {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1280,6 +1282,15 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
 })
 export class OptimizerComponent implements OnChanges {
   @Input() prefill: { fromCity?: string; toCity?: string; cabin?: string } | null = null;
+  @ViewChild('fromInput') private fromInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('toInput') private toInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('earliestDepartureInput') private earliestDepartureInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('latestReturnInput') private latestReturnInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('tripLengthMinInput') private tripLengthMinInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('tripLengthMaxInput') private tripLengthMaxInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('hotelDestInput') private hotelDestInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('hotelCheckInInput') private hotelCheckInInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('hotelCheckOutInput') private hotelCheckOutInput?: ElementRef<HTMLInputElement>;
   private optimizer = inject(OptimizerService);
   private data = inject(DataService);
   wallet = inject(WalletService);
@@ -1410,6 +1421,7 @@ export class OptimizerComponent implements OnChanges {
     if (error) {
       this.results.set([]);
       this.analyzed.set(false);
+      queueMicrotask(() => this.focusInvalidField(error));
       return;
     }
 
@@ -1493,6 +1505,24 @@ export class OptimizerComponent implements OnChanges {
     }
 
     return null;
+  }
+
+  private focusInvalidField(error: string): void {
+    const target =
+      error.includes('both origin') || error.includes('Origin') ? (!this.fromCity.trim() ? this.fromInput : this.toInput) :
+      error.includes('departure') ? this.earliestDepartureInput :
+      error.includes('return') ? this.latestReturnInput :
+      error.includes('Trip length minimum') ? this.tripLengthMaxInput :
+      error.includes('Trip length') ? this.tripLengthMinInput :
+      error.includes('check-in') ? this.hotelCheckInInput :
+      error.includes('Check-out') ? this.hotelCheckOutInput :
+      error.includes('Hotel nights') ? this.hotelDestInput :
+      undefined;
+
+    const element = target?.nativeElement;
+    if (!element) return;
+    element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    element.focus({ preventScroll: true });
   }
 
   private normalizePlanningInputs(): void {

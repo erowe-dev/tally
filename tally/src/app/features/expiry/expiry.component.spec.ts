@@ -117,6 +117,31 @@ describe('ExpiryComponent', () => {
     expect(component.bulkDone()).toBeFalse();
   }));
 
+  it('marks only visible expirable programs when Mine is enabled', fakeAsync(() => {
+    expiry.statuses.set([
+      ...statuses,
+      {
+        cardId: 'aa_aadvantage',
+        programName: 'American AAdvantage',
+        daysRemaining: 80,
+        urgency: 'warning',
+        expiryDate: new Date(2026, 7, 17),
+        note: 'Activity extends expiry.',
+        actionNeeded: 'Add activity before expiry.',
+        quickActions: ['Shop through portal'],
+      },
+    ]);
+    const component = createComponent();
+
+    component.setHeldOnly(true);
+    component.markAllToday();
+    component.markAllToday();
+
+    expect(expiry.setLastActivity).toHaveBeenCalledOnceWith('united_mp', component.todayStr);
+
+    tick(3000);
+  }));
+
   it('resets the bulk confirmation when the user waits', fakeAsync(() => {
     const component = createComponent();
 

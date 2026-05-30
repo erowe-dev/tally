@@ -17,7 +17,12 @@ import { TripsService } from '../../core/services/trips.service';
             {{ trips.localOnlyCount() }} waiting to sync
           </span>
         </div>
-        <button type="button" class="clear-all-btn" [class.confirm]="clearConfirm()" (click)="clearAllTrips()">
+        <button
+          type="button"
+          class="clear-all-btn"
+          [class.confirm]="clearConfirm()"
+          (click)="clearAllTrips()"
+          [attr.aria-label]="clearConfirm() ? 'Confirm clearing all saved trips' : 'Clear all saved trips'">
           {{ clearConfirm() ? 'Confirm clear?' : 'Clear all' }}
         </button>
       </div>
@@ -46,28 +51,31 @@ import { TripsService } from '../../core/services/trips.service';
           </div>
 
           <div class="saved-note-area">
-            <input *ngIf="editingNoteId() !== trip.id"
+            <button *ngIf="editingNoteId() !== trip.id"
+              type="button"
               class="saved-note-preview"
-              readonly
-              [value]="trip.notes || ''"
-              placeholder="Add a note..."
+              [class.has-note]="trip.notes"
+              [attr.aria-label]="trip.notes ? 'Edit note for ' + trip.programName : 'Add note for ' + trip.programName"
               (click)="startEditNote(trip.id, trip.notes || '')"
-            />
+            >
+              {{ trip.notes || 'Add a note...' }}
+            </button>
             <div class="saved-note-edit" *ngIf="editingNoteId() === trip.id">
               <input class="saved-note-input" [(ngModel)]="pendingNote"
                 placeholder="Add a note..." maxlength="500"
                 (keyup.enter)="commitNote(trip.id)"
-                (keyup.escape)="editingNoteId.set(null)">
+                (keyup.escape)="cancelEditNote()"
+                [attr.aria-label]="'Saved trip note for ' + trip.programName">
               <button type="button" class="note-save-btn" (click)="commitNote(trip.id)">Save</button>
-              <button type="button" class="note-cancel-btn" (click)="editingNoteId.set(null)">x</button>
+              <button type="button" class="note-cancel-btn" (click)="cancelEditNote()" aria-label="Cancel note edit">Cancel</button>
             </div>
           </div>
           <div class="saved-date">{{ formatTripDate(trip.createdAt) }}</div>
         </div>
         <div class="saved-pts">{{ trip.ptsRequired | number }}<small>pts</small></div>
         <div class="saved-actions">
-          <button type="button" class="reanalyze-btn" (click)="reanalyze.emit(trip)" title="Re-run analysis">↺</button>
-          <button type="button" class="delete-btn" (click)="queueDeleteTrip(trip)" title="Remove">x</button>
+          <button type="button" class="reanalyze-btn" (click)="reanalyze.emit(trip)" [attr.aria-label]="'Re-run analysis for ' + trip.programName">Re-run</button>
+          <button type="button" class="delete-btn" (click)="queueDeleteTrip(trip)" [attr.aria-label]="'Remove ' + trip.programName">Remove</button>
         </div>
       </div>
     </div>
@@ -97,6 +105,7 @@ import { TripsService } from '../../core/services/trips.service';
       background: var(--white); border: 1px solid var(--border);
       border-radius: 12px; padding: 12px 14px;
       display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+      scroll-margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 110px);
     }
     .trip-type-icon {
       width: 28px; height: 28px; border-radius: 50%; background: var(--surface);
@@ -131,6 +140,7 @@ import { TripsService } from '../../core/services/trips.service';
     .saved-meta {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       color: var(--text3); letter-spacing: 0.04em;
+      overflow-wrap: anywhere;
     }
     .saved-date {
       font-family: 'Geist Mono', monospace; font-size: 9px;
@@ -141,17 +151,19 @@ import { TripsService } from '../../core/services/trips.service';
       color: var(--tally-green); text-align: right; flex-shrink: 0;
     }
     .saved-pts small { display: block; font-size: 9px; color: var(--text3); }
-    .saved-actions { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+    .saved-actions { display: flex; flex-direction: column; align-items: stretch; gap: 4px; flex-shrink: 0; }
     .reanalyze-btn {
       background: none; border: 1px solid var(--border); border-radius: 6px;
-      color: var(--text3); font-size: 14px; line-height: 1;
-      min-width: 40px; cursor: pointer; padding: 8px; transition: all 0.15s;
+      color: var(--text3); font-size: 10px; line-height: 1;
+      min-width: 72px; min-height: 40px; cursor: pointer; padding: 8px 10px; transition: all 0.15s;
+      font-family: 'Geist Mono', monospace; letter-spacing: 0.05em;
     }
     .reanalyze-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .delete-btn {
-      background: none; border: none; color: var(--text3); font-size: 18px;
-      line-height: 1; cursor: pointer; min-width: 40px; padding: 8px;
+      background: none; border: none; color: var(--text3); font-size: 10px;
+      line-height: 1; cursor: pointer; min-width: 72px; min-height: 40px; padding: 8px 10px;
       border-radius: 4px; transition: color 0.15s; flex-shrink: 0;
+      font-family: 'Geist Mono', monospace; letter-spacing: 0.05em;
     }
     .delete-btn:hover { color: var(--tally-red); }
     .saved-note-area { margin-top: 4px; }
@@ -159,9 +171,13 @@ import { TripsService } from '../../core/services/trips.service';
       width: 100%; background: none; border: none; outline: none; cursor: pointer;
       font-family: 'Geist', sans-serif; font-size: 11px; color: var(--text3);
       padding: 8px 0; line-height: 1.4; text-align: left;
+      overflow-wrap: anywhere;
     }
-    .saved-note-preview:not([value=""]):not([value]) { color: var(--text2); }
-    .saved-note-edit { display: flex; gap: 4px; align-items: center; }
+    .saved-note-preview.has-note { color: var(--text2); }
+    .saved-note-preview:focus-visible {
+      border-radius: 6px; box-shadow: 0 0 0 3px rgba(26,122,74,0.16);
+    }
+    .saved-note-edit { display: flex; gap: 4px; align-items: center; min-width: 0; }
     .saved-note-input {
       flex: 1; background: var(--surface); border: 1.5px solid var(--tally-green);
       border-radius: 7px; font-family: 'Geist', sans-serif; font-size: 11px;
@@ -173,8 +189,9 @@ import { TripsService } from '../../core/services/trips.service';
       padding: 8px 10px; cursor: pointer; flex-shrink: 0; letter-spacing: 0.06em;
     }
     .note-cancel-btn {
-      background: none; border: none; color: var(--text3); font-size: 12px;
-      cursor: pointer; min-width: 40px; padding: 8px; flex-shrink: 0;
+      background: none; border: none; color: var(--text3); font-size: 9px;
+      cursor: pointer; min-width: 56px; min-height: 40px; padding: 8px; flex-shrink: 0;
+      font-family: 'Geist Mono', monospace; letter-spacing: 0.05em;
     }
     @media (max-width: 430px) {
       .saved-card {
@@ -183,6 +200,19 @@ import { TripsService } from '../../core/services/trips.service';
       }
       .saved-actions {
         grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; width: 100%;
+      }
+      .saved-note-edit { flex-wrap: wrap; }
+      .saved-note-input { flex-basis: 100%; }
+      .note-save-btn,
+      .note-cancel-btn { flex: 1; }
+    }
+    @media (min-width: 760px) {
+      .saved-card {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) minmax(88px, auto) auto;
+      }
+      .saved-actions {
+        flex-direction: row;
       }
     }
   `],
@@ -217,12 +247,18 @@ export class SavedTripsComponent implements OnDestroy {
   }
 
   commitNote(tripId: string): void {
-    this.trips.updateNotes(tripId, this.pendingNote);
+    this.trips.updateNotes(tripId, this.pendingNote.trim());
+    this.editingNoteId.set(null);
+  }
+
+  cancelEditNote(): void {
+    this.pendingNote = '';
     this.editingNoteId.set(null);
   }
 
   queueDeleteTrip(trip: SavedTrip): void {
     if (this.deleteTimers.has(trip.id)) return;
+    if (this.editingNoteId() === trip.id) this.cancelEditNote();
     this.pendingDeletes.update(pending => ({ ...pending, [trip.id]: trip }));
     const timer = setTimeout(() => {
       this.pendingDeletes.update(pending => {
@@ -258,6 +294,10 @@ export class SavedTripsComponent implements OnDestroy {
     if (this.clearConfirmTimer) clearTimeout(this.clearConfirmTimer);
     this.clearConfirmTimer = null;
     this.clearConfirm.set(false);
+    this.deleteTimers.forEach(timer => clearTimeout(timer));
+    this.deleteTimers.clear();
+    this.pendingDeletes.set({});
+    this.cancelEditNote();
     this.trips.clearAll();
   }
 

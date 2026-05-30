@@ -41,13 +41,14 @@ interface NavItem { id: NavTab; label: string; icon: string; }
   styles: [`
     .bottom-nav {
       position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-      width: 100%; max-width: 430px;
+      width: 100%; max-width: 1180px;
       background: var(--shell-translucent);
       backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       border-top: 1px solid var(--border);
       padding: 8px 8px calc(env(safe-area-inset-bottom, 0px) + 8px);
       display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
       z-index: 200;
+      contain: layout paint;
     }
     .nav-btn {
       background: none; border: none;
@@ -91,10 +92,25 @@ interface NavItem { id: NavTab; label: string; icon: string; }
       font-size: 9px; font-family: 'Geist Mono', monospace;
       letter-spacing: 0.08em; color: var(--text3); text-transform: uppercase;
       max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap; line-height: 1.2;
     }
     .nav-btn.active .nav-label { color: var(--tally-green); }
     .nav-btn.locked .nav-icon { opacity: 0.5; }
     .nav-btn.locked .nav-label { opacity: 0.5; }
+    @media (min-width: 760px) {
+      .bottom-nav {
+        padding-inline: 24px;
+        border-left: 1px solid var(--border);
+        border-right: 1px solid var(--border);
+      }
+      .nav-btn {
+        flex-direction: row;
+        gap: 8px;
+      }
+      .nav-label {
+        font-size: 10px;
+      }
+    }
   `],
 })
 export class BottomNavComponent {
