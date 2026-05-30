@@ -59,9 +59,16 @@ const OPTIMIZER_KEY = 'tally_optimizer_used';
     }
     .ob-dismiss {
       background: none; border: none; color: var(--tally-green); opacity: 0.5;
-      font-size: 14px; cursor: pointer; padding: 2px 4px; line-height: 1;
+      width: 44px; min-height: 44px; border-radius: 50%;
+      font-size: 14px; cursor: pointer; padding: 0; line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
     }
     .ob-dismiss:hover { opacity: 1; }
+    .ob-dismiss:focus-visible {
+      opacity: 1;
+      outline: 3px solid rgba(26, 122, 74, 0.2);
+      outline-offset: 2px;
+    }
     .ob-sub {
       font-family: 'Geist', sans-serif; font-size: 12px;
       color: var(--tally-green); opacity: 0.7; margin-bottom: 14px;
