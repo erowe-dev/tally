@@ -41,9 +41,15 @@ export class ErrorReporterService {
       message: err.message.slice(0, 500),
       stack: err.stack?.slice(0, 2000),
       context,
-      url: this.browserWindow?.location.href,
+      url: this.safeUrl(),
       timestamp: new Date().toISOString(),
     };
+  }
+
+  private safeUrl(): string | undefined {
+    const location = this.browserWindow?.location;
+    if (!location) return undefined;
+    return `${location.origin}${location.pathname}`;
   }
 }
 

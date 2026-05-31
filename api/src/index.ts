@@ -16,6 +16,7 @@ import waitlistRouter from './routes/waitlist';
 import preferencesRouter from './routes/preferences';
 import searchesRouter from './routes/searches';
 import searchRouter from './routes/search';
+import telemetryRouter from './routes/telemetry';
 
 const app = express();
 const port = parseInt(process.env['PORT'] ?? '3000', 10);
@@ -115,6 +116,7 @@ app.use('/api/waitlist', waitlistRouter);
 app.use('/api/preferences', preferencesRouter);
 app.use('/api/searches', searchesRouter);
 app.use('/api/search', searchRouter);
+app.use('/api/telemetry', telemetryRouter);
 
 // Fallback error handler — any error that reaches here is unexpected.
 // Keeps the response shape consistent and avoids leaking stack traces.

@@ -10,11 +10,11 @@ export const environment = {
   },
   apiUrl: 'https://tally-api-theta.vercel.app',
   analytics: {
-    enabled: false,
-    endpoint: '',
+    enabled: true,
+    endpoint: 'https://tally-api-theta.vercel.app/api/telemetry/analytics',
   },
   errorReporting: {
-    enabled: false,
-    endpoint: '',
+    enabled: true,
+    endpoint: 'https://tally-api-theta.vercel.app/api/telemetry/errors',
   },
 };
