@@ -35,6 +35,7 @@ const checks = [
   { label: 'Authenticated smoke covers provider validation', run: checkAuthenticatedSmokeProviderValidation },
   { label: 'No unused Angular starter shell files', run: checkNoStarterShellFiles },
   { label: 'No HostListener/HostBinding decorators in shell/shared components', run: checkNoHostListenerDecorator },
+  { label: 'Reduced motion disables continuous UI animation', run: checkReducedMotionGuard },
   { label: 'Initial bundle stays under 800 kB when stats are available', run: checkBundleBudget },
 ];
 
@@ -511,6 +512,14 @@ function checkNoStarterShellFiles() {
   ];
   const offenders = files.filter(file => existsSync(join(root, file)));
   assert(offenders.length === 0, `unused starter shell files found: ${offenders.join(', ')}`);
+}
+
+function checkReducedMotionGuard() {
+  const styles = read('tally/src/styles.scss');
+  assert(styles.includes('@media (prefers-reduced-motion: reduce)'), 'global styles must include reduced-motion media query');
+  assert(styles.includes('animation: none !important'), 'reduced-motion guard must disable continuous shared animations');
+  assert(styles.includes('transition-duration: 0.01ms !important'), 'reduced-motion guard must shorten transitions');
+  assert(styles.includes('.shimmer-skeleton'), 'reduced-motion guard must cover shimmer skeletons');
 }
 
 function checkBundleBudget() {
