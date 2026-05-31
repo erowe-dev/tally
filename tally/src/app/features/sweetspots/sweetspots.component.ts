@@ -529,6 +529,17 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       }
     }
     @media (max-width: 520px) {
+      .spot-head {
+        grid-template-columns: 44px minmax(0, 1fr);
+      }
+      .spot-badge-stack {
+        grid-column: 2;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        align-items: center;
+        max-width: none;
+      }
       .filter-row,
       .sort-row,
       .cpp-filter-row,
@@ -549,16 +560,6 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     @media (max-width: 360px) {
       .spot-card {
         padding: 16px 14px;
-      }
-      .spot-head {
-        grid-template-columns: 44px minmax(0, 1fr);
-      }
-      .spot-badge-stack {
-        grid-column: 2;
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: flex-start;
-        max-width: none;
       }
       .spot-route {
         font-size: 18px;

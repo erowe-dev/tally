@@ -9,6 +9,8 @@ import { ToastService } from './toast.service';
 import { NetworkService } from './network.service';
 import { LocalUserDataService } from './local-user-data.service';
 
+const PROVISION_RETRY_DELAY_MS = 30_000;
+
 /**
  * Thin wrapper that bridges Auth0's RxJS observables into Angular signals.
  * This is the ONLY file in the project that uses RxJS directly —
@@ -46,6 +48,8 @@ export class AuthService {
   readonly isProvisioned = this._isProvisioned.asReadonly();
   private _isProvisioning = signal(false);
   private _provisionAttemptKey = signal<string | null>(null);
+  private _provisionRetryTrigger = signal(0);
+  private provisionRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     effect(() => {
@@ -53,16 +57,20 @@ export class AuthService {
     }, { allowSignalWrites: true });
 
     effect(() => {
+      this._provisionRetryTrigger();
+
       if (!this.isAuthenticated()) {
         this._isProvisioned.set(false);
         this._isProvisioning.set(false);
         this._provisionAttemptKey.set(null);
+        this.clearProvisionRetryTimer();
         return;
       }
 
       if (!this.network.isOnline()) {
         this._isProvisioning.set(false);
         this._provisionAttemptKey.set(null);
+        this.clearProvisionRetryTimer();
         return;
       }
 
@@ -109,13 +117,30 @@ export class AuthService {
       next: () => {
         this._isProvisioned.set(true);
         this._isProvisioning.set(false);
+        this.clearProvisionRetryTimer();
       },
       error: _err => {
         this._isProvisioning.set(false);
+        this.scheduleProvisionRetry();
         this.toast.error('Could not connect to server — data saves locally only');
-        // Keep isProvisioned=false. When the network signal flips offline→online,
-        // the attempt key is cleared and provisioning will retry automatically.
+        // Keep isProvisioned=false. A timed retry lets the session recover from
+        // transient server/auth failures without waiting for a network event.
       },
     });
+  }
+
+  private scheduleProvisionRetry(): void {
+    if (this.provisionRetryTimer) return;
+    this.provisionRetryTimer = setTimeout(() => {
+      this.provisionRetryTimer = null;
+      this._provisionAttemptKey.set(null);
+      this._provisionRetryTrigger.update(value => value + 1);
+    }, PROVISION_RETRY_DELAY_MS);
+  }
+
+  private clearProvisionRetryTimer(): void {
+    if (!this.provisionRetryTimer) return;
+    clearTimeout(this.provisionRetryTimer);
+    this.provisionRetryTimer = null;
   }
 }

@@ -602,6 +602,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .td-no-bal { font-size: 11px; color: var(--text3); font-style: italic; }
     .td-timing {
       display: flex; align-items: center; gap: 5px; margin-top: 6px;
+      flex-wrap: wrap; min-width: 0;
       padding-top: 6px; border-top: 1px solid var(--border);
       font-family: 'Geist Mono', monospace; font-size: 10px;
       color: var(--text3); letter-spacing: 0.04em;

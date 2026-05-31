@@ -264,7 +264,6 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
     }
     .filter-held-btn.active { border-color: var(--tally-amber, #d97706); color: var(--tally-amber, #d97706); background: rgba(217,119,6,0.07); }
 
-    /* Shimmer loading — base animation in styles.scss .shimmer-skeleton */
     .shimmer-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
     .shimmer-card { height: 100px; }
 
@@ -527,6 +526,15 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       .clear-btn { width: 100%; }
       .activity-stats { justify-content: space-between; }
       .as-sep { display: none; }
+    }
+    @media (max-width: 400px) {
+      .bulk-today-btn.confirm {
+        flex-basis: 100%;
+      }
+      .bulk-today-btn,
+      .filter-held-btn {
+        white-space: normal;
+      }
     }
   `]
 })

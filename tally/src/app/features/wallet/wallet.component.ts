@@ -644,9 +644,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     .quick-add {
       grid-column: 1 / -1;
       display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px;
-      animation: fadeIn 0.15s ease;
     }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     .qa-btn {
       background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2);
       border-radius: 6px; color: var(--tally-green);
@@ -911,6 +909,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       .action-row { flex-direction: column; }
       .action-btn { max-width: none; }
     }
+    @media (max-width:380px){.program-actions{grid-template-columns:1fr}}
   `]
 })
 export class WalletComponent {

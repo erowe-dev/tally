@@ -87,14 +87,15 @@ export class WalletService {
 
         this.api.getBalancesWithCache().subscribe({
           next: apiBalances => {
+            const apiClean = this.sanitizeBalances(apiBalances);
             const localBalances = this.loadLocal();
             const pendingBalances = this.loadPending();
             const localHasData = Object.keys(localBalances).some(k => (localBalances[k] ?? 0) > 0);
-            const apiIsEmpty = Object.keys(apiBalances).length === 0;
+            const apiIsEmpty = Object.keys(apiClean).length === 0;
             const hasPending = Object.keys(pendingBalances).length > 0;
 
             if (hasPending) {
-              const merged = { ...apiBalances, ...pendingBalances };
+              const merged = this.sanitizeBalances({ ...apiClean, ...pendingBalances });
               this._balances.set(merged);
               this.saveLocal(merged);
               this.api.cacheBalances(merged);
@@ -108,10 +109,10 @@ export class WalletService {
               this._pushLocalToApi(localBalances, false);
             } else {
               // API has data (or both are empty) — API is source of truth.
-              this._balances.set(apiBalances);
-              this.saveLocal(apiBalances);
+              this._balances.set(apiClean);
+              this.saveLocal(apiClean);
               this._syncState.set('synced');
-              this.recordSnapshot(Object.values(apiBalances).reduce((a, b) => a + b, 0));
+              this.recordSnapshot(Object.values(apiClean).reduce((a, b) => a + b, 0));
             }
           },
           error: _err => {
@@ -133,8 +134,12 @@ export class WalletService {
   }
 
   setBalance(cardId: string, value: number): void {
+    if (!this.isKnownProgramId(cardId)) {
+      this.toast.error('Unknown program balance was not saved');
+      return;
+    }
     const amount = Math.min(MAX_BALANCE, Math.max(0, Math.round(value || 0)));
-    const updated = { ...this._balances(), [cardId]: amount };
+    const updated = this.sanitizeBalances({ ...this._balances(), [cardId]: amount });
 
     // Write locally first — instant UI response, works offline
     this._balances.set(updated);
@@ -165,9 +170,10 @@ export class WalletService {
   }
 
   private _pushLocalToApi(balances: Record<string, number>, clearOnSuccess: boolean): void {
+    const cleanBalances = this.sanitizeBalances(balances);
     const entries = clearOnSuccess
-      ? Object.entries(balances)
-      : Object.entries(balances).filter(([, v]) => v > 0);
+      ? Object.entries(cleanBalances)
+      : Object.entries(cleanBalances).filter(([, v]) => v > 0);
     for (const [cardId, amount] of entries) {
       this.api.setBalance(cardId, amount).subscribe({
         next: () => {
@@ -202,7 +208,7 @@ export class WalletService {
   private loadLocal(): Record<string, number> {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+      return raw ? this.sanitizeBalances(JSON.parse(raw) as unknown) : {};
     } catch {
       return {};
     }
@@ -210,7 +216,7 @@ export class WalletService {
 
   private saveLocal(balances: Record<string, number>): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(balances));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.sanitizeBalances(balances)));
     } catch {
       // Storage unavailable — not a fatal error
     }
@@ -219,7 +225,7 @@ export class WalletService {
   private loadPending(): Record<string, number> {
     try {
       const raw = localStorage.getItem(PENDING_KEY);
-      return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+      return raw ? this.sanitizeBalances(JSON.parse(raw) as unknown) : {};
     } catch {
       return {};
     }
@@ -227,7 +233,7 @@ export class WalletService {
 
   private savePending(cardId: string, amount: number): void {
     try {
-      const pending = { ...this.loadPending(), [cardId]: amount };
+      const pending = this.sanitizeBalances({ ...this.loadPending(), [cardId]: amount });
       localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
       this._pendingCount.set(Object.keys(pending).length);
     } catch {}
@@ -235,11 +241,12 @@ export class WalletService {
 
   private clearPending(cardId: string): void {
     try {
-      const pending = this.loadPending();
+      let pending = this.loadPending();
       delete pending[cardId];
       if (Object.keys(pending).length === 0) {
         localStorage.removeItem(PENDING_KEY);
       } else {
+        pending = this.sanitizeBalances(pending);
         localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
       }
       this._pendingCount.set(Object.keys(pending).length);
@@ -249,7 +256,7 @@ export class WalletService {
   private loadHistory(): HistoryEntry[] {
     try {
       const raw = localStorage.getItem(HISTORY_KEY);
-      return raw ? (JSON.parse(raw) as HistoryEntry[]) : [];
+      return raw ? sanitizeHistory(JSON.parse(raw) as unknown) : [];
     } catch {
       return [];
     }
@@ -257,7 +264,41 @@ export class WalletService {
 
   private saveHistory(history: HistoryEntry[]): void {
     try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(sanitizeHistory(history)));
     } catch {}
   }
+
+  private sanitizeBalances(value: unknown): Record<string, number> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+    const sanitized: Record<string, number> = {};
+    for (const [cardId, amount] of Object.entries(value)) {
+      if (!this.isKnownProgramId(cardId) || typeof amount !== 'number' || !Number.isFinite(amount)) continue;
+      const rounded = Math.round(amount);
+      if (rounded < 0 || rounded > MAX_BALANCE) continue;
+      sanitized[cardId] = rounded;
+    }
+    return sanitized;
+  }
+
+  private isKnownProgramId(cardId: string): boolean {
+    return this.data.cards.some(card => card.id === cardId);
+  }
+}
+
+function sanitizeHistory(value: unknown): HistoryEntry[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map(entry => {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+      const candidate = entry as Partial<HistoryEntry>;
+      if (typeof candidate.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(candidate.date)) return null;
+      if (typeof candidate.total !== 'number' || !Number.isFinite(candidate.total)) return null;
+      const total = Math.round(candidate.total);
+      if (total < 0 || total > MAX_BALANCE * 20) return null;
+      return { date: candidate.date, total };
+    })
+    .filter((entry): entry is HistoryEntry => Boolean(entry))
+    .slice(-MAX_HISTORY);
 }

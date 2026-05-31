@@ -79,7 +79,7 @@ describe('WalletService', () => {
 
   it('uses API balances as source of truth when the remote wallet has data', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ amex_mr: 12000 }));
-    api.getBalancesWithCache.and.returnValue(of({ chase_ur: 5000 }));
+    api.getBalancesWithCache.and.returnValue(of({ chase_ur: 5000.4, unknown_program: 9999, amex_mr: -1 }));
     auth.isResolved.set(true);
     auth.isAuthenticated.set(true);
     auth.isProvisioned.set(true);
@@ -91,6 +91,26 @@ describe('WalletService', () => {
     expect(service.balances()).toEqual({ chase_ur: 5000 });
     expect(localStorage.getItem(STORAGE_KEY)).toBe(JSON.stringify({ chase_ur: 5000 }));
     expect(api.setBalance).not.toHaveBeenCalled();
+  });
+
+  it('drops malformed cached balances before using local wallet state', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      amex_mr: 12000.7,
+      chase_ur: '5000',
+      unknown_program: 8000,
+      too_large: 50_000_001,
+    }));
+    api.getBalancesWithCache.and.returnValue(of({}));
+    api.setBalance.and.returnValue(of({}));
+    auth.isResolved.set(true);
+    auth.isAuthenticated.set(true);
+    auth.isProvisioned.set(true);
+
+    const service = createService();
+    TestBed.flushEffects();
+
+    expect(service.balances()).toEqual({ amex_mr: 12001 });
+    expect(api.setBalance).toHaveBeenCalledOnceWith('amex_mr', 12001);
   });
 
   it('falls back to cached data and can retry after an API load failure', () => {
@@ -117,7 +137,7 @@ describe('WalletService', () => {
   });
 
   it('merges pending local balance writes over API data and clears them after sync', () => {
-    localStorage.setItem(PENDING_KEY, JSON.stringify({ amex_mr: 0 }));
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ amex_mr: 0, unknown_program: 5000, chase_ur: -1 }));
     api.getBalancesWithCache.and.returnValue(of({ amex_mr: 12000, chase_ur: 5000 }));
     api.setBalance.and.returnValue(of({}));
     auth.isResolved.set(true);
@@ -153,5 +173,16 @@ describe('WalletService', () => {
 
     expect(service.pendingCount()).toBe(0);
     expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+  });
+
+  it('rejects unknown program writes without mutating wallet state', () => {
+    const service = createService();
+
+    service.setBalance('unknown_program', 10000);
+
+    expect(service.balances()).toEqual({});
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(api.setBalance).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith('Unknown program balance was not saved');
   });
 });

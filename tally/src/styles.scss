@@ -132,12 +132,17 @@ input, select, textarea { min-height: 44px; }
   tally-optimizer {
     .fields {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 12px;
     }
 
     .field-row,
-    .field-row.compact-row { margin-bottom: 0; }
+    .field-row.compact-row {
+      display: contents;
+      margin-bottom: 0;
+    }
+
+    .field.full { grid-column: 1 / -1; }
   }
 }
 
