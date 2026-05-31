@@ -94,6 +94,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: tally/package-lock.json
+
+      - name: Install
+        run: npm ci
 
       - name: Run release smoke
         run: npm run smoke:release

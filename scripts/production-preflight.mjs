@@ -328,6 +328,10 @@ function checkProductionReadinessWorkflow() {
   assert(workflow.includes("TALLY_REQUIRE_AUTH_SMOKE: '1'"), 'production smoke must require authenticated coverage');
   assert(workflow.includes('secrets.TALLY_AUTH_TOKEN'), 'production smoke must source TALLY_AUTH_TOKEN from secrets');
   assert(workflow.includes('secrets.TALLY_AUTH_EMAIL'), 'production smoke must source TALLY_AUTH_EMAIL from secrets');
+  assert(
+    /production-smoke:\s*[\s\S]*?cache-dependency-path:\s*tally\/package-lock\.json[\s\S]*?run:\s*npm ci[\s\S]*?run:\s*npm run smoke:release/.test(workflow),
+    'production smoke job must install app dependencies before release smoke',
+  );
   assert(/production-smoke:\s*[\s\S]*?npm run smoke:release/.test(workflow), 'production smoke job must run release smoke');
 
   const productionSmoke = read('scripts/production-smoke.mjs');
