@@ -194,6 +194,36 @@ describe('CardsComponent', () => {
     }
   });
 
+  it('exposes mutually exclusive filters as radio groups while preserving true toggles', () => {
+    const component = createComponent();
+    component.showSpendRec.set(true);
+
+    fixture.detectChanges();
+
+    const categoryGroup = fixture.nativeElement.querySelector('.filter-row');
+    const categoryOptions = Array.from<HTMLElement>(categoryGroup.querySelectorAll('.filter-btn:not(.great-toggle):not(.mine-toggle)'));
+    expect(categoryGroup.getAttribute('role')).toBe('radiogroup');
+    expect(categoryOptions.every(option => option.getAttribute('role') === 'radio')).toBeTrue();
+    expect(categoryOptions.map(option => option.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false', 'false']);
+    expect(categoryOptions.some(option => option.hasAttribute('aria-pressed'))).toBeFalse();
+
+    const sortGroup = fixture.nativeElement.querySelector('.sort-row');
+    const sortOptions = Array.from<HTMLElement>(sortGroup.querySelectorAll('.sort-btn'));
+    expect(sortGroup.getAttribute('role')).toBe('radiogroup');
+    expect(sortOptions.every(option => option.getAttribute('role') === 'radio')).toBeTrue();
+    expect(sortOptions.filter(option => option.getAttribute('aria-checked') === 'true').length).toBe(1);
+    expect(sortOptions.some(option => option.hasAttribute('aria-pressed'))).toBeFalse();
+
+    const spendGroup = fixture.nativeElement.querySelector('.spend-cat-row');
+    const spendOptions = Array.from<HTMLElement>(spendGroup.querySelectorAll('.spend-cat-btn'));
+    expect(spendGroup.getAttribute('role')).toBe('radiogroup');
+    expect(spendOptions.every(option => option.getAttribute('role') === 'radio')).toBeTrue();
+    expect(spendOptions.map(option => option.getAttribute('aria-checked'))[0]).toBe('true');
+    expect(spendOptions.some(option => option.hasAttribute('aria-pressed'))).toBeFalse();
+
+    expect(fixture.nativeElement.querySelector('.great-toggle')?.hasAttribute('aria-pressed')).toBeTrue();
+  });
+
   it('writes filter state durably and removes empty session search', () => {
     const component = createComponent();
 

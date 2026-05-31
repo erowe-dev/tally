@@ -200,6 +200,26 @@ describe('WalletComponent', () => {
     expect(fixture.nativeElement.querySelector('button.balance-backed')).toBeNull();
   });
 
+  it('exposes wallet filters as one selected radio option', () => {
+    createComponent();
+
+    fixture.detectChanges();
+
+    const group = fixture.nativeElement.querySelector('.wallet-filter-bar');
+    expect(group?.getAttribute('role')).toBe('radiogroup');
+
+    const options = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('.wallet-filter-btn'));
+    expect(options.length).toBe(3);
+    expect(options.every(option => option.getAttribute('role') === 'radio')).toBeTrue();
+    expect(options.map(option => option.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false']);
+    expect(options.some(option => option.hasAttribute('aria-pressed'))).toBeFalse();
+
+    options[1].click();
+    fixture.detectChanges();
+
+    expect(options.map(option => option.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false']);
+  });
+
   it('keeps saved zero-balance programs out of transfer sources while explaining why', () => {
     const prefs = TestBed.inject(PreferencesService) as unknown as MockPreferencesService;
     prefs.preferences.set({

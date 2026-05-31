@@ -126,13 +126,14 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
 
       <!-- Program groups -->
       <ng-container *ngIf="wallet.syncState() !== 'loading'">
-        <div class="action-row wallet-filter-bar" role="group" aria-label="Wallet program filter">
+        <div class="action-row wallet-filter-bar" role="radiogroup" aria-label="Wallet program filter">
           <button
             type="button"
             *ngFor="let filter of walletFilters"
             class="goal-toggle wallet-filter-btn"
+            role="radio"
             [class.active]="walletProgramFilter() === filter.id"
-            [attr.aria-pressed]="walletProgramFilter() === filter.id"
+            [attr.aria-checked]="walletProgramFilter() === filter.id"
             (click)="setWalletProgramFilter(filter.id)">
             {{ filter.label }} {{ filter.count() }}
           </button>

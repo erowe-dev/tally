@@ -136,10 +136,11 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       </div>
 
       <!-- Category tabs + great toggle + mine filter -->
-      <div class="filter-row">
+      <div class="filter-row" role="radiogroup" aria-label="Program category filter">
         <button type="button" *ngFor="let f of catFilters" class="filter-btn"
+          role="radio"
           [class.active]="activeCat() === f.id"
-          [attr.aria-pressed]="activeCat() === f.id"
+          [attr.aria-checked]="activeCat() === f.id"
           (click)="activeCat.set(f.id)">
           {{ f.label }}
         </button>
@@ -157,11 +158,11 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       </div>
 
       <!-- Sort row -->
-      <div class="sort-row">
+      <div class="sort-row" role="radiogroup" aria-label="Program sort">
         <span class="sort-label">Sort:</span>
         <button type="button" *ngFor="let s of cardSortModes"
-          class="sort-btn" [class.active]="cardSort() === s.id"
-          [attr.aria-pressed]="cardSort() === s.id"
+          class="sort-btn" role="radio" [class.active]="cardSort() === s.id"
+          [attr.aria-checked]="cardSort() === s.id"
           (click)="cardSort.set(s.id)">
           {{ s.label }}
         </button>
@@ -181,10 +182,11 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
           <span class="spend-rec-chevron">{{ showSpendRec() ? '▲' : '▼' }}</span>
         </button>
         <div id="cards-spend-recommendations" class="spend-rec-body" *ngIf="showSpendRec()">
-          <div class="spend-cat-row">
+          <div class="spend-cat-row" role="radiogroup" aria-label="Spend category">
             <button type="button" *ngFor="let c of spendCats" class="spend-cat-btn"
+              role="radio"
               [class.active]="selectedSpendCat() === c.id"
-              [attr.aria-pressed]="selectedSpendCat() === c.id"
+              [attr.aria-checked]="selectedSpendCat() === c.id"
               (click)="selectedSpendCat.set(c.id)">
               {{ c.icon }} {{ c.label }}
             </button>

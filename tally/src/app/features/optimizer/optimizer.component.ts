@@ -676,12 +676,14 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             (click)="canAffordOnly.set(!canAffordOnly())">
             ✓ Can afford
           </button>
-          <div class="rf-sort">
+          <div class="rf-sort" role="radiogroup" aria-label="Result sort">
             <button type="button" class="rf-btn" [class.active]="sortBy() === 'cpp'"
-              [attr.aria-pressed]="sortBy() === 'cpp'"
+              role="radio"
+              [attr.aria-checked]="sortBy() === 'cpp'"
               (click)="sortBy.set('cpp')">Best CPP</button>
             <button type="button" class="rf-btn" [class.active]="sortBy() === 'coverage'"
-              [attr.aria-pressed]="sortBy() === 'coverage'"
+              role="radio"
+              [attr.aria-checked]="sortBy() === 'coverage'"
               (click)="sortBy.set('coverage')">My Coverage</button>
           </div>
         </div>

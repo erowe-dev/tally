@@ -134,6 +134,35 @@ describe('OptimizerComponent', () => {
     expect(component.filteredResults().length).toBe(1);
   });
 
+  it('exposes result sort as radios and keeps affordability as a toggle', () => {
+    wallet.hasAnyPoints.set(true);
+    component.results.set([
+      { program: 'United', partner: 'Chase UR', cpp: 1.8, ptsBase: 50000, cards: ['chase_ur'], note: 'Test route' },
+    ]);
+    fixture.detectChanges();
+
+    const affordButton = fixture.nativeElement.querySelector('.result-filters > .rf-btn') as HTMLButtonElement;
+    const sortGroup = fixture.nativeElement.querySelector('.rf-sort') as HTMLElement;
+    const [cppButton, coverageButton] = Array.from(
+      fixture.nativeElement.querySelectorAll('.rf-sort .rf-btn'),
+    ) as HTMLButtonElement[];
+
+    expect(affordButton.hasAttribute('aria-pressed')).toBeTrue();
+    expect(sortGroup.getAttribute('role')).toBe('radiogroup');
+    expect(sortGroup.getAttribute('aria-label')).toBe('Result sort');
+    expect(cppButton.getAttribute('role')).toBe('radio');
+    expect(coverageButton.getAttribute('role')).toBe('radio');
+    expect(cppButton.getAttribute('aria-checked')).toBe('true');
+    expect(coverageButton.getAttribute('aria-checked')).toBe('false');
+    expect(cppButton.hasAttribute('aria-pressed')).toBeFalse();
+
+    coverageButton.click();
+    fixture.detectChanges();
+
+    expect(cppButton.getAttribute('aria-checked')).toBe('false');
+    expect(coverageButton.getAttribute('aria-checked')).toBe('true');
+  });
+
   it('keeps an existing return date when it is after earliest departure', () => {
     component.latestReturn = '2026-06-20';
 
