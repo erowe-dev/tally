@@ -25,6 +25,7 @@ const checks = [
   { label: 'Angular API calls require provisioned auth', run: checkAngularProvisionedAuthGuard },
   { label: 'Program ID allowlists match app data', run: checkProgramIds },
   { label: 'Production readiness workflow enforces release gates', run: checkProductionReadinessWorkflow },
+  { label: 'Release smoke fails partial auth configuration', run: checkReleaseSmokePartialAuthGuard },
   { label: 'Saved search cap is concurrency-safe', run: checkSavedSearchConcurrencyGuard },
   { label: 'Saved search hotel intent is bounded', run: checkSavedSearchHotelIntentGuard },
   { label: 'Provider search is labeled as planning data', run: checkProviderSearchPlanningLabel },
@@ -296,6 +297,15 @@ function checkProductionReadinessWorkflow() {
   assert(workflow.includes('secrets.TALLY_AUTH_TOKEN'), 'production smoke must source TALLY_AUTH_TOKEN from secrets');
   assert(workflow.includes('secrets.TALLY_AUTH_EMAIL'), 'production smoke must source TALLY_AUTH_EMAIL from secrets');
   assert(/production-smoke:\s*[\s\S]*?npm run smoke:release/.test(workflow), 'production smoke job must run release smoke');
+}
+
+function checkReleaseSmokePartialAuthGuard() {
+  const smoke = read('scripts/release-smoke.mjs');
+  assert(smoke.includes('hasPartialAuthSmokeEnv'), 'release smoke must detect partial auth smoke configuration');
+  assert(
+    smoke.includes('Set both TALLY_AUTH_TOKEN and TALLY_AUTH_EMAIL'),
+    'release smoke must fail loudly when only one signed-in smoke env var is set',
+  );
 }
 
 function checkSavedSearchConcurrencyGuard() {

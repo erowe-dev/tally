@@ -6,12 +6,20 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
-const hasAuthSmokeEnv = Boolean(process.env.TALLY_AUTH_TOKEN && process.env.TALLY_AUTH_EMAIL);
+const hasAuthToken = Boolean(process.env.TALLY_AUTH_TOKEN);
+const hasAuthEmail = Boolean(process.env.TALLY_AUTH_EMAIL);
+const hasAuthSmokeEnv = hasAuthToken && hasAuthEmail;
+const hasPartialAuthSmokeEnv = hasAuthToken !== hasAuthEmail;
 const requireAuthSmoke = process.env.TALLY_REQUIRE_AUTH_SMOKE === '1';
 
 await run('Public production smoke', 'node', [join(scriptDir, 'production-smoke.mjs')]);
 
-if (hasAuthSmokeEnv) {
+if (hasPartialAuthSmokeEnv) {
+  console.error('');
+  console.error('FAIL Authenticated production smoke');
+  console.error('     Set both TALLY_AUTH_TOKEN and TALLY_AUTH_EMAIL, or unset both to skip local signed-in smoke.');
+  process.exit(1);
+} else if (hasAuthSmokeEnv) {
   await run('Authenticated production smoke', 'node', [join(scriptDir, 'personal-auth-smoke.mjs')]);
 } else if (requireAuthSmoke) {
   console.error('');
