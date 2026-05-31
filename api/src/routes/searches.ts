@@ -4,6 +4,7 @@ import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser } from '../lib/route-helpers';
 import { parseDateWindow } from '../lib/date-window';
+import { sendError } from '../lib/http-response';
 
 const router = Router();
 
@@ -34,24 +35,24 @@ router.post(
     const user = await requireUser(getAuth0Id(req));
     const body = asRecord(req.body);
     if (!body) {
-      res.status(400).json({ error: 'Request body must be an object' });
+      sendError(res, 400, 'Request body must be an object');
       return;
     }
 
     const parsed = parseSavedSearch(body, true);
     if ('error' in parsed) {
-      res.status(400).json({ error: parsed.error });
+      sendError(res, 400, parsed.error);
       return;
     }
     const createData = toCreateData(parsed.data);
     if ('error' in createData) {
-      res.status(400).json({ error: createData.error });
+      sendError(res, 400, createData.error);
       return;
     }
 
     const savedSearchCount = await prisma.savedSearch.count({ where: { userId: user.id } });
     if (savedSearchCount >= MAX_SAVED_SEARCHES) {
-      res.status(409).json({ error: `Saved search limit is ${MAX_SAVED_SEARCHES}` });
+      sendError(res, 409, `Saved search limit is ${MAX_SAVED_SEARCHES}`);
       return;
     }
 
@@ -71,19 +72,19 @@ router.put(
     const user = await requireUser(getAuth0Id(req));
     const id = validateId(req.params['id']);
     if (!id) {
-      res.status(400).json({ error: 'Invalid search id' });
+      sendError(res, 400, 'Invalid search id');
       return;
     }
 
     const body = asRecord(req.body);
     if (!body) {
-      res.status(400).json({ error: 'Request body must be an object' });
+      sendError(res, 400, 'Request body must be an object');
       return;
     }
 
     const parsed = parseSavedSearch(body, false);
     if ('error' in parsed) {
-      res.status(400).json({ error: parsed.error });
+      sendError(res, 400, parsed.error);
       return;
     }
 
@@ -93,7 +94,7 @@ router.put(
     });
 
     if (result.count === 0) {
-      res.status(404).json({ error: 'Saved search not found' });
+      sendError(res, 404, 'Saved search not found');
       return;
     }
 
@@ -112,7 +113,7 @@ router.delete(
     const user = await requireUser(getAuth0Id(req));
     const id = validateId(req.params['id']);
     if (!id) {
-      res.status(400).json({ error: 'Invalid search id' });
+      sendError(res, 400, 'Invalid search id');
       return;
     }
 
@@ -121,7 +122,7 @@ router.delete(
     });
 
     if (result.count === 0) {
-      res.status(404).json({ error: 'Saved search not found' });
+      sendError(res, 404, 'Saved search not found');
       return;
     }
 

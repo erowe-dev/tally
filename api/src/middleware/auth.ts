@@ -1,6 +1,7 @@
 import { expressjwt } from 'express-jwt';
 import jwksRsa from 'jwks-rsa';
 import { Request, Response, NextFunction } from 'express';
+import { sendError } from '../lib/http-response';
 
 const domain = process.env['AUTH0_DOMAIN'];
 const audience = process.env['AUTH0_AUDIENCE'];
@@ -39,7 +40,7 @@ export function jwtErrorHandler(
   next: NextFunction,
 ): void {
   if (err.name === 'UnauthorizedError') {
-    res.status(401).json({ error: 'Invalid or missing token' });
+    sendError(res, 401, 'Invalid or missing token');
     return;
   }
   next(err);

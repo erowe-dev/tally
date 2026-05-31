@@ -2,6 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { asyncRoute } from '../lib/route-helpers';
 import { createFixedWindowRateLimiter } from '../lib/fixed-window-rate-limit';
 import { sanitizeClientUrl } from '../lib/safe-client-url';
+import { sendError } from '../lib/http-response';
 
 const router = Router();
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -48,7 +49,7 @@ router.post(
   asyncRoute(async (req, res) => {
     const body = asRecord(req.body);
     if (!body) {
-      res.status(400).json({ error: 'Request body must be an object' });
+      sendError(res, 400, 'Request body must be an object');
       return;
     }
 
@@ -57,7 +58,7 @@ router.post(
     const properties = asRecord(body['properties']) ?? {};
 
     if (!event || !ANALYTICS_EVENTS.has(event)) {
-      res.status(400).json({ error: 'Unsupported analytics event' });
+      sendError(res, 400, 'Unsupported analytics event');
       return;
     }
 
@@ -79,7 +80,7 @@ router.post(
   asyncRoute(async (req, res) => {
     const body = asRecord(req.body);
     if (!body) {
-      res.status(400).json({ error: 'Request body must be an object' });
+      sendError(res, 400, 'Request body must be an object');
       return;
     }
 
@@ -87,11 +88,11 @@ router.post(
     const context = stringValue(body['context'], 80);
 
     if (!message) {
-      res.status(400).json({ error: 'message is required' });
+      sendError(res, 400, 'message is required');
       return;
     }
     if (context && !ERROR_CONTEXTS.has(context)) {
-      res.status(400).json({ error: 'Unsupported error context' });
+      sendError(res, 400, 'Unsupported error context');
       return;
     }
 
@@ -120,7 +121,7 @@ export default router;
 function requireAllowedOrigin(req: Request, res: Response, next: NextFunction): void {
   const origin = req.get('origin');
   if (!origin || !ALLOWED_ORIGINS.has(origin)) {
-    res.status(403).json({ error: 'Telemetry origin not allowed' });
+    sendError(res, 403, 'Telemetry origin not allowed');
     return;
   }
   next();
@@ -135,7 +136,7 @@ function limitTelemetryRate(req: Request, res: Response, next: NextFunction): vo
   res.setHeader('X-RateLimit-Reset', Math.ceil(result.resetAt / 1000).toString());
 
   if (!result.allowed) {
-    res.status(429).json({ error: 'Telemetry rate limit exceeded' });
+    sendError(res, 429, 'Telemetry rate limit exceeded');
     return;
   }
 

@@ -3,6 +3,7 @@ import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser, validateCardId } from '../lib/route-helpers';
 import { KNOWN_PROGRAM_ID_SET } from '../lib/program-ids';
+import { sendError } from '../lib/http-response';
 
 const router = Router();
 
@@ -40,7 +41,7 @@ router.put(
 
     const MAX_BALANCE = 50_000_000;
     if (typeof amount !== 'number' || amount < 0 || !Number.isFinite(amount) || amount > MAX_BALANCE) {
-      res.status(400).json({ error: `amount must be a non-negative finite number ≤ ${MAX_BALANCE}` });
+      sendError(res, 400, `amount must be a non-negative finite number ≤ ${MAX_BALANCE}`);
       return;
     }
 

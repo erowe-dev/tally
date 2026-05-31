@@ -17,6 +17,7 @@ import preferencesRouter from './routes/preferences';
 import searchesRouter from './routes/searches';
 import searchRouter from './routes/search';
 import telemetryRouter from './routes/telemetry';
+import { responseRequestId, sendError } from './lib/http-response';
 
 const app = express();
 app.disable('x-powered-by');
@@ -97,6 +98,7 @@ app.get('/health', async (_req, res) => {
       database: 'ok',
     });
   } catch {
+    const requestId = responseRequestId(res);
     res.status(503).json({
       status: 'error',
       service: 'tally-api',
@@ -104,6 +106,7 @@ app.get('/health', async (_req, res) => {
       startedAt,
       database: 'unreachable',
       reason: 'db_unreachable',
+      requestId,
     });
   }
 });
@@ -119,8 +122,7 @@ app.use('/api/search', searchRouter);
 app.use('/api/telemetry', telemetryRouter);
 
 app.use('/api', (_req, res) => {
-  const requestId = typeof res.locals['requestId'] === 'string' ? res.locals['requestId'] : 'unknown';
-  res.status(404).json({ error: 'API route not found', requestId });
+  sendError(res, 404, 'API route not found');
 });
 
 // Fallback error handler — any error that reaches here is unexpected.
@@ -128,12 +130,9 @@ app.use('/api', (_req, res) => {
 app.use((err: Error & { status?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   if (res.headersSent) return;
   const status = err.status ?? 500;
-  const requestId = typeof res.locals['requestId'] === 'string' ? res.locals['requestId'] : 'unknown';
+  const requestId = responseRequestId(res);
   if (status >= 500) console.error('[api] Unhandled error:', { requestId, err });
-  res.status(status).json({
-    error: status < 500 ? err.message : 'Internal server error',
-    requestId,
-  });
+  sendError(res, status, status < 500 ? err.message : 'Internal server error');
 });
 
 if (process.env['VERCEL'] !== '1') {

@@ -3,6 +3,7 @@ import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser } from '../lib/route-helpers';
 import { normalizeTripNotes, parseTripCreatePayload } from '../lib/trip-input';
+import { sendError } from '../lib/http-response';
 
 const router = Router();
 
@@ -32,7 +33,7 @@ router.post(
     const user = await requireUser(getAuth0Id(req));
     const parsedTrip = parseTripCreatePayload(req.body);
     if (!parsedTrip.ok) {
-      res.status(400).json({ error: parsedTrip.error });
+      sendError(res, 400, parsedTrip.error);
       return;
     }
 
@@ -58,14 +59,14 @@ router.patch(
     const { id } = req.params;
 
     if (!id || id.length > 100) {
-      res.status(400).json({ error: 'Invalid trip id' });
+      sendError(res, 400, 'Invalid trip id');
       return;
     }
 
     const b = req.body as Record<string, unknown>;
     const parsedNotes = normalizeTripNotes(b['notes']);
     if (parsedNotes.error || parsedNotes.value === undefined) {
-      res.status(400).json({ error: parsedNotes.error ?? 'notes must be a string' });
+      sendError(res, 400, parsedNotes.error ?? 'notes must be a string');
       return;
     }
 
@@ -75,7 +76,7 @@ router.patch(
     });
 
     if (result.count === 0) {
-      res.status(404).json({ error: 'Trip not found' });
+      sendError(res, 404, 'Trip not found');
       return;
     }
 
@@ -94,7 +95,7 @@ router.delete(
     const { id } = req.params;
 
     if (!id || id.length > 100) {
-      res.status(400).json({ error: 'Invalid trip id' });
+      sendError(res, 400, 'Invalid trip id');
       return;
     }
 
@@ -104,7 +105,7 @@ router.delete(
     });
 
     if (result.count === 0) {
-      res.status(404).json({ error: 'Trip not found' });
+      sendError(res, 404, 'Trip not found');
       return;
     }
 

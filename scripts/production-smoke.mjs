@@ -161,6 +161,9 @@ const checks = [
           `${path} expected 401/403, got ${res.status}`,
         );
         assert(res.headers.get('x-request-id'), `${path} missing X-Request-Id header`);
+        const body = await readBody(res);
+        const json = JSON.parse(body);
+        assert(json.requestId, `${path} missing requestId in error body: ${body}`);
       }
     },
   },
@@ -177,7 +180,9 @@ const checks = [
       });
       const body = await readBody(res);
       assert(res.status === 410, `expected 410 for closed waitlist, got ${res.status}: ${body}`);
-      assert(body.includes('contactEmail'), `expected contactEmail in closed response, got ${body}`);
+      const json = JSON.parse(body);
+      assert(json.contactEmail, `expected contactEmail in closed response, got ${body}`);
+      assert(json.requestId, `expected requestId in closed response, got ${body}`);
       assert(
         res.headers.get('access-control-allow-origin') === 'https://tallypoints.app',
         'expected CORS allow-origin for tallypoints.app',
@@ -193,6 +198,8 @@ const checks = [
       const body = await readBody(res);
       assert(res.status === 403, `expected 403 for disallowed origin, got ${res.status}: ${body}`);
       assert(res.headers.get('x-request-id'), 'disallowed CORS response missing X-Request-Id header');
+      const json = JSON.parse(body);
+      assert(json.requestId, `disallowed CORS body missing requestId: ${body}`);
     },
   },
   {
@@ -260,6 +267,8 @@ const checks = [
       });
       const invalidBody = await readBody(invalidRes);
       assert(invalidRes.status === 400, `invalid analytics expected 400, got ${invalidRes.status}: ${invalidBody}`);
+      const invalidJson = JSON.parse(invalidBody);
+      assert(invalidJson.requestId, `invalid analytics missing requestId in body: ${invalidBody}`);
 
       const noOriginRes = await fetch(`${apiUrl}/api/telemetry/analytics`, {
         method: 'POST',
@@ -272,6 +281,8 @@ const checks = [
       });
       const noOriginBody = await readBody(noOriginRes);
       assert(noOriginRes.status === 403, `no-origin analytics expected 403, got ${noOriginRes.status}: ${noOriginBody}`);
+      const noOriginJson = JSON.parse(noOriginBody);
+      assert(noOriginJson.requestId, `no-origin analytics missing requestId in body: ${noOriginBody}`);
     },
   },
   {

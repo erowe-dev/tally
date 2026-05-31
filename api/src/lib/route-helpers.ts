@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from './prisma';
 import { KNOWN_PROGRAM_ID_SET } from './program-ids';
+import { responseRequestId, sendError } from './http-response';
 
 /**
  * Shape of our custom errors — a plain Error with an HTTP status attached.
@@ -38,7 +39,7 @@ const CARD_ID_RE = /^[a-z0-9_]{1,50}$/;
 export function validateCardId(req: Request, res: Response, next: NextFunction): void {
   const { cardId } = req.params;
   if (!isKnownCardId(cardId)) {
-    res.status(400).json({ error: 'Invalid cardId', requestId: getResponseRequestId(res) });
+    sendError(res, 400, 'Invalid cardId');
     return;
   }
   next();
@@ -67,13 +68,9 @@ export function asyncRoute(
           ? httpErr.message
           : 'Internal server error';
       if (status >= 500) {
-        console.error('[api] Unhandled error:', { requestId: getResponseRequestId(res), err });
+        console.error('[api] Unhandled error:', { requestId: responseRequestId(res), err });
       }
-      res.status(status).json({ error: message, requestId: getResponseRequestId(res) });
+      sendError(res, status, message);
     }
   };
-}
-
-function getResponseRequestId(res: Response): string {
-  return typeof res.locals['requestId'] === 'string' ? res.locals['requestId'] : 'unknown';
 }

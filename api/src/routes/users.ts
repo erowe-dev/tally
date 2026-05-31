@@ -4,6 +4,7 @@ import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute } from '../lib/route-helpers';
 import { fallbackEmailForAuth0Id, isFallbackEmail, normalizeUserEmail } from '../lib/user-email';
+import { sendError } from '../lib/http-response';
 
 const router = Router();
 
@@ -20,10 +21,7 @@ router.post(
     const normalizedEmail = normalizeUserEmail(email);
 
     if (email != null && !normalizedEmail) {
-      res.status(400).json({
-        error: 'valid email is required when email is provided',
-        requestId: res.locals['requestId'] ?? 'unknown',
-      });
+      sendError(res, 400, 'valid email is required when email is provided');
       return;
     }
 

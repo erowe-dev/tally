@@ -4,6 +4,7 @@ import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser } from '../lib/route-helpers';
 import { KNOWN_PROGRAM_IDS, knownProgramIdsFromJson, parseProgramIdArray } from '../lib/program-ids';
+import { sendError } from '../lib/http-response';
 
 const router = Router();
 
@@ -33,13 +34,13 @@ router.put(
     const user = await requireUser(getAuth0Id(req));
     const body = asRecord(req.body);
     if (!body) {
-      res.status(400).json({ error: 'Request body must be an object' });
+      sendError(res, 400, 'Request body must be an object');
       return;
     }
 
     const parsed = parsePreferences(body);
     if ('error' in parsed) {
-      res.status(400).json({ error: parsed.error });
+      sendError(res, 400, parsed.error);
       return;
     }
 

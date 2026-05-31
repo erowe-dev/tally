@@ -8,6 +8,7 @@ import { asyncRoute, requireUser } from '../lib/route-helpers';
 import { dateWindowFromLooseFields, parseDateWindow } from '../lib/date-window';
 import { createFixedWindowRateLimiter } from '../lib/fixed-window-rate-limit';
 import { parseProgramIdArray } from '../lib/program-ids';
+import { sendError } from '../lib/http-response';
 
 const router = Router();
 
@@ -32,7 +33,7 @@ router.post(
     await requireUser(getAuth0Id(req));
     const normalized = normalizeAwardRequest(req.body);
     if ('error' in normalized) {
-      res.status(400).json({ error: normalized.error });
+      sendError(res, 400, normalized.error);
       return;
     }
 
@@ -50,7 +51,7 @@ router.post(
     await requireUser(getAuth0Id(req));
     const normalized = normalizeHotelRequest(req.body);
     if ('error' in normalized) {
-      res.status(400).json({ error: normalized.error });
+      sendError(res, 400, normalized.error);
       return;
     }
 
@@ -76,7 +77,7 @@ function limitProviderSearch(req: Request, res: Response, next: NextFunction): v
   res.setHeader('X-RateLimit-Reset', Math.ceil(result.resetAt / 1000).toString());
 
   if (!result.allowed) {
-    res.status(429).json({ error: 'Search rate limit exceeded' });
+    sendError(res, 429, 'Search rate limit exceeded');
     return;
   }
 
