@@ -276,19 +276,33 @@ export class ApiService {
       const raw = localStorage.getItem(key);
       if (!raw) return null;
 
-      const parsed = JSON.parse(raw) as CacheEnvelope<unknown>;
+      const parsed = JSON.parse(raw) as unknown;
+      if (!isCacheEnvelope(parsed)) {
+        this.clearCache(key);
+        return null;
+      }
+
       if (
         typeof parsed.savedAt !== 'number' ||
+        !Number.isFinite(parsed.savedAt) ||
         Date.now() - parsed.savedAt > CACHE_MAX_AGE_MS ||
         !validate(parsed.data)
       ) {
+        this.clearCache(key);
         return null;
       }
 
       return parsed.data;
     } catch {
+      this.clearCache(key);
       return null;
     }
+  }
+
+  private clearCache(key: string): void {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
   }
 }
 
@@ -319,6 +333,10 @@ function deriveNights(checkInDate: string | undefined, checkOutDate: string | un
   const end = Date.parse(`${checkOutDate}T00:00:00.000Z`);
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
   return Math.min(30, Math.max(1, Math.round((end - start) / 86_400_000)));
+}
+
+function isCacheEnvelope(value: unknown): value is CacheEnvelope<unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value) && 'savedAt' in value && 'data' in value;
 }
 
 function isBalanceMap(value: unknown): value is Record<string, number> {

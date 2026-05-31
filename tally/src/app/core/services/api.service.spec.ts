@@ -38,6 +38,38 @@ describe('ApiService cache validation', () => {
       next: () => done.fail('expected malformed cache to be rejected'),
       error: error => {
         expect(error).toEqual(jasmine.any(Error));
+        expect(localStorage.getItem('tally_cache_balances')).toBeNull();
+        done();
+      },
+    });
+  });
+
+  it('evicts stale cache fallback data', done => {
+    localStorage.setItem('tally_cache_balances', JSON.stringify({
+      savedAt: Date.now() - (61 * 60 * 1000),
+      data: { amex_mr: 1000 },
+    }));
+    http.get.and.returnValue(throwError(() => new Error('network')));
+
+    TestBed.inject(ApiService).getBalancesWithCache().subscribe({
+      next: () => done.fail('expected stale cache to be rejected'),
+      error: error => {
+        expect(error).toEqual(jasmine.any(Error));
+        expect(localStorage.getItem('tally_cache_balances')).toBeNull();
+        done();
+      },
+    });
+  });
+
+  it('evicts cache envelopes with invalid shapes', done => {
+    localStorage.setItem('tally_cache_expiry', JSON.stringify(['not', 'an', 'envelope']));
+    http.get.and.returnValue(throwError(() => new Error('network')));
+
+    TestBed.inject(ApiService).getExpiryRecordsWithCache().subscribe({
+      next: () => done.fail('expected invalid cache envelope to be rejected'),
+      error: error => {
+        expect(error).toEqual(jasmine.any(Error));
+        expect(localStorage.getItem('tally_cache_expiry')).toBeNull();
         done();
       },
     });
@@ -73,6 +105,7 @@ describe('ApiService cache validation', () => {
       next: () => done.fail('expected malformed cache to be rejected'),
       error: error => {
         expect(error).toEqual(jasmine.any(Error));
+        expect(localStorage.getItem('tally_cache_expiry')).toBeNull();
         done();
       },
     });

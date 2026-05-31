@@ -292,6 +292,25 @@ describe('AppComponent', () => {
     expect(fixture.componentInstance.activeTab()).toBe('sweetspots');
   });
 
+  it('clears an invalid persisted active tab on startup', () => {
+    localStorage.setItem('tally_active_tab_v1', 'not-a-tab');
+
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeTab()).toBe('cards');
+    expect(localStorage.getItem('tally_active_tab_v1')).toBeNull();
+  });
+
+  it('clears malformed install dismiss timestamps so install prompts can recover', () => {
+    localStorage.setItem('tally_install_dismissed_v1', 'not-a-timestamp');
+
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    expect(localStorage.getItem('tally_install_dismissed_v1')).toBeNull();
+  });
+
   it('syncs tab changes into the URL for reloads and sharing', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();

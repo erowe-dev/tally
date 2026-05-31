@@ -521,6 +521,8 @@ export class AppComponent implements OnDestroy {
     const storedTab = this.safeLocalStorageGet(ACTIVE_TAB_KEY) as NavTab | null;
     if (storedTab && (this.TAB_ORDER as string[]).includes(storedTab)) {
       this.handleTabChange(storedTab, { restoreScroll: false, syncUrl: false, track: false });
+    } else if (storedTab) {
+      this.safeLocalStorageRemove(ACTIVE_TAB_KEY);
     }
 
     // Honor ?tab= query param (used by PWA shortcuts in manifest), overriding stored state.
@@ -550,8 +552,7 @@ export class AppComponent implements OnDestroy {
 
     // PWA install prompt — only in browser, not SSR, not already standalone
     if (this.browserWindow && !this.browserWindow.matchMedia('(display-mode: standalone)').matches) {
-      const dismissed = this.safeLocalStorageGet(INSTALL_DISMISS_KEY);
-      const dismissedAt = dismissed ? parseInt(dismissed) : 0;
+      const dismissedAt = this.loadInstallDismissedAt();
       const sevenDays = 7 * 24 * 60 * 60 * 1000;
       const canShow = Date.now() - dismissedAt > sevenDays;
 
@@ -726,5 +727,22 @@ export class AppComponent implements OnDestroy {
     } catch {
       // localStorage unavailable
     }
+  }
+
+  private safeLocalStorageRemove(key: string): void {
+    try {
+      this.browserWindow?.localStorage.removeItem(key);
+    } catch {
+      // localStorage unavailable
+    }
+  }
+
+  private loadInstallDismissedAt(): number {
+    const dismissed = this.safeLocalStorageGet(INSTALL_DISMISS_KEY);
+    if (!dismissed) return 0;
+    const dismissedAt = Number(dismissed);
+    if (Number.isFinite(dismissedAt) && dismissedAt > 0 && dismissedAt <= Date.now()) return dismissedAt;
+    this.safeLocalStorageRemove(INSTALL_DISMISS_KEY);
+    return 0;
   }
 }
