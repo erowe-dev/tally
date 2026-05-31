@@ -101,11 +101,12 @@ export function parsePreferences(body: Record<string, unknown>): ParseResult<{
   }
 
   if ('preferredCabin' in body) {
-    const cabin = nullableString(body['preferredCabin'], 20);
-    if (cabin !== null && !CABIN_TYPES.has(cabin)) {
+    const cabin = nullableString(body['preferredCabin'], 20, 'preferredCabin');
+    if ('error' in cabin) return { error: cabin.error };
+    if (cabin.data !== null && !CABIN_TYPES.has(cabin.data)) {
       return { error: "preferredCabin must be 'economy', 'premium', 'business', or 'first'" };
     }
-    data.preferredCabin = cabin;
+    data.preferredCabin = cabin.data;
   }
 
   if ('maxStops' in body) {
@@ -139,11 +140,12 @@ export function parsePreferences(body: Record<string, unknown>): ParseResult<{
   }
 
   if ('dateFlexibility' in body) {
-    const flexibility = nullableString(body['dateFlexibility'], 30);
-    if (flexibility !== null && !FLEXIBILITY_TYPES.has(flexibility)) {
+    const flexibility = nullableString(body['dateFlexibility'], 30, 'dateFlexibility');
+    if ('error' in flexibility) return { error: flexibility.error };
+    if (flexibility.data !== null && !FLEXIBILITY_TYPES.has(flexibility.data)) {
       return { error: 'dateFlexibility is not supported' };
     }
-    data.dateFlexibility = flexibility;
+    data.dateFlexibility = flexibility.data;
   }
 
   if ('pointValuationCpp' in body) {
@@ -175,10 +177,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function nullableString(value: unknown, maxLength: number): string | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value !== 'string') return null;
-  return value.trim().slice(0, maxLength);
+function nullableString(value: unknown, maxLength: number, fieldName: string): ParseResult<string | null> {
+  if (value === null || value === undefined) return { data: null };
+  if (typeof value !== 'string') return { error: `${fieldName} must be a string or null` };
+  return { data: value.trim().slice(0, maxLength) };
 }
 
 function nullableInteger(value: unknown, min: number, max: number): ParseResult<number | null> {

@@ -37,6 +37,41 @@ async function main(): Promise<void> {
     'passengers must be an integer from 1 to 9',
     'saved search should reject string passengers',
   );
+  assertData(
+    parseSavedSearch({
+      searchType: 'hotel',
+      destinationText: 'Tokyo',
+      dateWindow: { startDate: futureDate(30), endDate: futureDate(34), flexibility: 'plus_minus_7' },
+      hotelIntent: {
+        destination: 'Tokyo',
+        checkInDate: futureDate(30),
+        checkOutDate: futureDate(34),
+        nights: 4,
+        hotelCategory: 'luxury',
+        travelers: 2,
+        rooms: 1,
+        preferredChains: ['Hyatt', 'Hilton', 'Hyatt'],
+        ignored: { nested: 'blob' },
+      },
+    }, true),
+    'saved hotel search should bound and dedupe hotel intent data',
+    data => {
+      const intent = data.hotelIntent as Record<string, unknown>;
+      return intent['destination'] === 'Tokyo' &&
+        JSON.stringify(intent['preferredChains']) === JSON.stringify(['Hyatt', 'Hilton']) &&
+        !('ignored' in intent);
+    },
+  );
+  assertError(
+    parseSavedSearch({
+      searchType: 'hotel',
+      destinationText: 'Tokyo',
+      dateWindow: { startDate: futureDate(30), flexibility: 'plus_minus_7' },
+      hotelIntent: { destination: 'Tokyo', nights: 2.5 },
+    }, true),
+    'hotelIntent must be a plain object or null',
+    'saved hotel search should reject malformed hotel intent data',
+  );
 
   console.log('Saved search input checks passed.');
 }

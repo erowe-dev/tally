@@ -10,7 +10,9 @@ const router = Router();
 
 const SEARCH_TYPES = new Set(['flight', 'hotel']);
 const CABIN_TYPES = new Set(['economy', 'premium', 'business', 'first']);
+const HOTEL_CATEGORIES = new Set(['budget', 'mid', 'luxury', 'top']);
 const IATA_RE = /^[A-Z]{3}$/;
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SAVED_SEARCHES = 5;
 
 router.get(
@@ -211,7 +213,7 @@ export function parseSavedSearch(body: Record<string, unknown>, requireType: boo
   }
 
   if ('hotelIntent' in body) {
-    const hotelIntent = body['hotelIntent'] === null ? { data: null } : toJsonObject(body['hotelIntent']);
+    const hotelIntent = body['hotelIntent'] === null ? { data: null } : parseHotelIntent(body['hotelIntent']);
     if ('error' in hotelIntent) return { error: 'hotelIntent must be a plain object or null' };
     data.hotelIntent = hotelIntent.data;
   }
@@ -304,6 +306,46 @@ function toUpdateData(data: ParsedSavedSearch): Prisma.SavedSearchUpdateManyMuta
   return update;
 }
 
+function parseHotelIntent(value: unknown): ParseResult<Prisma.InputJsonValue> {
+  const record = asRecord(value);
+  if (!record) return { error: 'Expected a plain object' };
+
+  const destination = requiredString(record['destination'], 160);
+  if ('error' in destination) return destination;
+
+  const checkInDate = optionalDateOnly(record['checkInDate'], 'checkInDate');
+  if ('error' in checkInDate) return checkInDate;
+
+  const checkOutDate = optionalDateOnly(record['checkOutDate'], 'checkOutDate');
+  if ('error' in checkOutDate) return checkOutDate;
+
+  const nights = optionalInteger(record['nights'], 'nights', 1, 30);
+  if ('error' in nights) return nights;
+
+  const hotelCategory = optionalString(record['hotelCategory'], 30);
+  if ('error' in hotelCategory) return hotelCategory;
+  if (hotelCategory.data && !HOTEL_CATEGORIES.has(hotelCategory.data)) return { error: 'hotelCategory is invalid' };
+
+  const travelers = optionalInteger(record['travelers'], 'travelers', 1, 9);
+  if ('error' in travelers) return travelers;
+
+  const rooms = optionalInteger(record['rooms'], 'rooms', 1, 4);
+  if ('error' in rooms) return rooms;
+
+  const preferredChains = optionalStringArray(record['preferredChains'], 'preferredChains', 20);
+  if ('error' in preferredChains) return preferredChains;
+
+  const normalized: Record<string, Prisma.InputJsonValue> = { destination: destination.data };
+  if (checkInDate.data) normalized['checkInDate'] = checkInDate.data;
+  if (checkOutDate.data) normalized['checkOutDate'] = checkOutDate.data;
+  if (nights.data != null) normalized['nights'] = nights.data;
+  if (hotelCategory.data) normalized['hotelCategory'] = hotelCategory.data;
+  if (travelers.data != null) normalized['travelers'] = travelers.data;
+  if (rooms.data != null) normalized['rooms'] = rooms.data;
+  if (preferredChains.data) normalized['preferredChains'] = preferredChains.data;
+  return { data: normalized as Prisma.InputJsonObject };
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
@@ -314,6 +356,50 @@ function nullableString(value: unknown, maxLength: number): string | null {
   if (typeof value !== 'string') return null;
   const normalized = value.trim().slice(0, maxLength);
   return normalized.length > 0 ? normalized : null;
+}
+
+function requiredString(value: unknown, maxLength: number): ParseResult<string> {
+  if (typeof value !== 'string') return { error: 'required string is missing' };
+  const normalized = value.trim().slice(0, maxLength);
+  return normalized ? { data: normalized } : { error: 'required string is missing' };
+}
+
+function optionalString(value: unknown, maxLength: number): ParseResult<string | null> {
+  if (value === null || value === undefined) return { data: null };
+  if (typeof value !== 'string') return { error: 'invalid string' };
+  const normalized = value.trim().slice(0, maxLength);
+  return { data: normalized || null };
+}
+
+function optionalInteger(value: unknown, label: string, min: number, max: number): ParseResult<number | null> {
+  if (value === null || value === undefined) return { data: null };
+  if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value) || value < min || value > max) {
+    return { error: `${label} must be an integer from ${min} to ${max}` };
+  }
+  return { data: value };
+}
+
+function optionalStringArray(value: unknown, label: string, maxItems: number): ParseResult<string[] | null> {
+  if (value === null || value === undefined) return { data: null };
+  if (!Array.isArray(value)) return { error: `${label} must be an array of strings` };
+  if (value.length > maxItems) return { error: `${label} must contain ${maxItems} or fewer items` };
+  const result: string[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string') return { error: `${label} values must be strings` };
+    const normalized = item.trim().slice(0, 80);
+    if (normalized) result.push(normalized);
+  }
+  return { data: [...new Set(result)] };
+}
+
+function optionalDateOnly(value: unknown, label: string): ParseResult<string | null> {
+  if (value === null || value === undefined || value === '') return { data: null };
+  if (typeof value !== 'string') return { error: `${label} must be a YYYY-MM-DD string` };
+  const normalized = value.trim();
+  if (!DATE_ONLY_RE.test(normalized) || !isRealDate(normalized)) {
+    return { error: `${label} must be a valid YYYY-MM-DD date` };
+  }
+  return { data: normalized };
 }
 
 function nullableIata(value: unknown): ParseResult<string | null> {
@@ -338,10 +424,10 @@ function parseDateTime(value: unknown): ParseResult<Date | null> {
   return { data: date };
 }
 
-function toJsonObject(value: unknown): ParseResult<Prisma.InputJsonValue> {
-  const record = asRecord(value);
-  if (!record) return { error: 'Expected a plain object' };
-  return { data: record as Prisma.InputJsonObject };
+function isRealDate(value: string): boolean {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
 function validateId(id: string | undefined): string | null {

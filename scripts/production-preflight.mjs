@@ -24,8 +24,10 @@ const checks = [
   { label: 'Program ID allowlists match app data', run: checkProgramIds },
   { label: 'Production readiness workflow enforces release gates', run: checkProductionReadinessWorkflow },
   { label: 'Saved search cap is concurrency-safe', run: checkSavedSearchConcurrencyGuard },
+  { label: 'Saved search hotel intent is bounded', run: checkSavedSearchHotelIntentGuard },
   { label: 'Provider search is labeled as planning data', run: checkProviderSearchPlanningLabel },
   { label: 'Provider search rejects invalid numerics', run: checkProviderSearchNumericValidation },
+  { label: 'Preferences reject malformed enum fields', run: checkPreferenceEnumValidation },
   { label: 'Authenticated smoke covers provider validation', run: checkAuthenticatedSmokeProviderValidation },
   { label: 'No unused Angular starter shell files', run: checkNoStarterShellFiles },
   { label: 'No HostListener/HostBinding decorators in shell/shared components', run: checkNoHostListenerDecorator },
@@ -287,6 +289,16 @@ function checkSavedSearchConcurrencyGuard() {
   );
 }
 
+function checkSavedSearchHotelIntentGuard() {
+  const route = read('api/src/routes/searches.ts');
+  const check = read('api/src/routes/searches.check.ts');
+  assert(route.includes('function parseHotelIntent'), 'saved searches must parse hotelIntent through a bounded helper');
+  assert(route.includes('HOTEL_CATEGORIES'), 'saved searches must validate hotel category values');
+  assert(!route.includes('return { data: record as Prisma.InputJsonObject }'), 'saved searches must not persist arbitrary hotelIntent JSON');
+  assert(check.includes('ignored: { nested: '), 'saved-search input check must prove hotelIntent drops unknown nested blobs');
+  assert(check.includes('nights: 2.5'), 'saved-search input check must reject malformed hotelIntent numerics');
+}
+
 function checkProviderSearchNumericValidation() {
   const route = read('api/src/routes/search.ts');
   assert(
@@ -316,6 +328,21 @@ function checkProviderSearchPlanningLabel() {
   assert(models.includes("dataMode: 'planning_estimate'"), 'app provider models must expose planning data mode');
   assert(models.includes("availabilitySource: 'estimated_not_live'"), 'app provider models must expose non-live availability source');
   assert(!models.includes('seatsAvailable'), 'app provider models must not expose estimated seats as live availability');
+}
+
+function checkPreferenceEnumValidation() {
+  const route = read('api/src/routes/preferences.ts');
+  const check = read('api/src/routes/preferences.check.ts');
+  assert(
+    /function\s+nullableString\([^)]*fieldName:\s*string\):\s*ParseResult<string\s*\|\s*null>/.test(route),
+    'preferences nullableString must return ParseResult<string | null>',
+  );
+  assert(
+    route.includes('return { error: `${fieldName} must be a string or null` }'),
+    'preferences must reject non-string nullable enum fields',
+  );
+  assert(check.includes('preferredCabin: 42'), 'preference input check must cover non-string preferredCabin');
+  assert(check.includes('dateFlexibility: false'), 'preference input check must cover non-string dateFlexibility');
 }
 
 function checkAuthenticatedSmokeProviderValidation() {

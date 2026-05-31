@@ -29,6 +29,21 @@ async function main(): Promise<void> {
     'preferences should allow nullable numeric fields',
     data => data.maxStops === null && data.defaultTravelers === null,
   );
+  assertData(
+    parsePreferences({ preferredCabin: null, dateFlexibility: null }),
+    'preferences should allow nullable enum fields',
+    data => data.preferredCabin === null && data.dateFlexibility === null,
+  );
+  assertError(
+    parsePreferences({ preferredCabin: 42 }),
+    'preferredCabin must be a string or null',
+    'preferences should reject non-string preferredCabin',
+  );
+  assertError(
+    parsePreferences({ dateFlexibility: false }),
+    'dateFlexibility must be a string or null',
+    'preferences should reject non-string dateFlexibility',
+  );
   assertError(
     parsePreferences({ maxStops: 1.5 }),
     'maxStops must be an integer from 0 to 2',
