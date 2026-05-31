@@ -98,6 +98,50 @@ const checks = [
     },
   },
   {
+    name: 'Telemetry endpoints accept valid payloads and reject bad events',
+    run: async () => {
+      const timestamp = new Date().toISOString();
+      const analyticsRes = await fetch(`${apiUrl}/api/telemetry/analytics`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: appUrl,
+        },
+        body: JSON.stringify({
+          event: 'tab_viewed',
+          properties: { tab: 'smoke', source: 'production_smoke' },
+          timestamp,
+        }),
+      });
+      assert(analyticsRes.status === 204, `analytics expected 204, got ${analyticsRes.status}`);
+      assert(analyticsRes.headers.get('x-request-id'), 'analytics missing X-Request-Id header');
+
+      const errorsRes = await fetch(`${apiUrl}/api/telemetry/errors`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: appUrl,
+        },
+        body: JSON.stringify({
+          message: 'production smoke',
+          context: 'manual',
+          url: appUrl,
+          timestamp,
+        }),
+      });
+      assert(errorsRes.status === 204, `errors expected 204, got ${errorsRes.status}`);
+      assert(errorsRes.headers.get('x-request-id'), 'errors missing X-Request-Id header');
+
+      const invalidRes = await fetch(`${apiUrl}/api/telemetry/analytics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: 'unknown_event', timestamp }),
+      });
+      const invalidBody = await readBody(invalidRes);
+      assert(invalidRes.status === 400, `invalid analytics expected 400, got ${invalidRes.status}: ${invalidBody}`);
+    },
+  },
+  {
     name: 'Service worker caches only approved API reads',
     run: async () => {
       const res = await fetch(`${appUrl}/ngsw.json`);
