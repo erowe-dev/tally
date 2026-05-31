@@ -125,6 +125,11 @@ const checks = [
               destinationAirport: 'NRT',
               cabin: 'business',
               passengers: 1,
+              dateWindow: {
+                startDate: localDateString(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+                endDate: localDateString(new Date(Date.now() + 37 * 24 * 60 * 60 * 1000)),
+                flexibility: 'plus_minus_7',
+              },
             }),
           },
         },
@@ -326,6 +331,13 @@ function isLocalUrl(value) {
 
 function extractMainBundle(html) {
   return html.match(/main-[A-Z0-9]+\.js/)?.[0] ?? '';
+}
+
+function localDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 async function readBody(res) {

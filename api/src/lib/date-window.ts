@@ -8,6 +8,8 @@ export type DateWindowParseResult = { data: Prisma.InputJsonObject } | { error: 
 export interface DateWindowOptions {
   requireStartDate?: boolean;
   defaultFlexibility?: string;
+  rejectPastStartDate?: boolean;
+  today?: string;
 }
 
 export function parseDateWindow(value: unknown, options: DateWindowOptions = {}): DateWindowParseResult {
@@ -21,6 +23,15 @@ export function parseDateWindow(value: unknown, options: DateWindowOptions = {})
 
   const endDate = parseDateOnly(input['endDate'], 'dateWindow.endDate', false);
   if ('error' in endDate) return endDate;
+
+  const today = options.today ?? utcDateString();
+  if (
+    options.rejectPastStartDate &&
+    startDate.data &&
+    toDateOrdinal(startDate.data) < toDateOrdinal(today)
+  ) {
+    return { error: 'dateWindow.startDate must not be in the past' };
+  }
 
   if (startDate.data && endDate.data && toDateOrdinal(endDate.data) < toDateOrdinal(startDate.data)) {
     return { error: 'dateWindow.endDate must be on or after dateWindow.startDate' };
@@ -113,4 +124,11 @@ function isRealDate(value: string): boolean {
 function toDateOrdinal(value: string): number {
   const [year, month, day] = value.split('-').map(Number);
   return Date.UTC(year, month - 1, day);
+}
+
+function utcDateString(date = new Date()): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }

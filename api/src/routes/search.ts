@@ -180,7 +180,11 @@ function normalizeAwardRequest(value: unknown): ParseResult<JsonObject> {
     ? body['cabin']
     : 'economy';
   const passengers = normalizeInteger(body['passengers'], 1, 9, 1);
-  const dateWindow = dateWindowFromLooseFields(body, { requireStartDate: true, defaultFlexibility: 'exact' });
+  const dateWindow = dateWindowFromLooseFields(body, {
+    requireStartDate: true,
+    defaultFlexibility: 'exact',
+    rejectPastStartDate: true,
+  });
   if ('error' in dateWindow) return { error: dateWindow.error };
   const programs = normalizeStringList(body['programs'], 20);
 
@@ -210,7 +214,7 @@ function normalizeHotelRequest(value: unknown): ParseResult<JsonObject> {
   const chains = normalizeStringList(body['chains'], 20);
   const rawDateWindow = asRecord(body['dateWindow']);
   const dateWindow = rawDateWindow
-    ? parseDateWindow(rawDateWindow, { defaultFlexibility: 'plus_minus_7' })
+    ? parseDateWindow(rawDateWindow, { defaultFlexibility: 'plus_minus_7', rejectPastStartDate: true })
     : { data: { startDate: '', endDate: '', flexibility: 'plus_minus_7' } as Prisma.InputJsonObject };
   if ('error' in dateWindow) return { error: dateWindow.error };
 
