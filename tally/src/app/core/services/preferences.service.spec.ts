@@ -44,7 +44,7 @@ describe('PreferencesService', () => {
 
   it('loads and sanitizes held program ids from local storage', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      heldProgramIds: ['hyatt', 'hyatt', '', 42, 'amex_mr'],
+      heldProgramIds: ['hyatt', 'hyatt', '', 42, 'unknown_program', 'amex_mr'],
     }));
 
     const service = TestBed.inject(PreferencesService);

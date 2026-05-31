@@ -3,13 +3,14 @@ import type { Prisma, UserPreference } from '@prisma/client';
 import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser } from '../lib/route-helpers';
+import { KNOWN_PROGRAM_IDS, KNOWN_PROGRAM_ID_SET } from '../lib/program-ids';
 
 const router = Router();
 
 const CABIN_TYPES = new Set(['economy', 'premium', 'business', 'first']);
 const FLEXIBILITY_TYPES = new Set(['exact', 'plus_minus_3', 'plus_minus_7', 'month', 'next_60_days']);
 const IATA_RE = /^[A-Z]{3}$/;
-const MAX_PROGRAMS = 30;
+const MAX_HELD_PROGRAMS = KNOWN_PROGRAM_IDS.length;
 
 router.get(
   '/',
@@ -119,7 +120,7 @@ function parsePreferences(body: Record<string, unknown>): ParseResult<{
   }
 
   if ('heldProgramIds' in body) {
-    const heldPrograms = parseStringArray(body['heldProgramIds'], MAX_PROGRAMS, false);
+    const heldPrograms = parseKnownProgramIds(body['heldProgramIds']);
     if ('error' in heldPrograms) return heldPrograms;
     data.heldProgramIds = heldPrograms.data;
   }
@@ -210,6 +211,16 @@ function parseStringArray(value: unknown, maxItems: number, iataOnly: boolean): 
   }
 
   return { data: [...new Set(result)] };
+}
+
+function parseKnownProgramIds(value: unknown): ParseResult<string[]> {
+  const parsed = parseStringArray(value, MAX_HELD_PROGRAMS, false);
+  if ('error' in parsed) return parsed;
+
+  const unknown = parsed.data.find(id => !KNOWN_PROGRAM_ID_SET.has(id));
+  if (unknown) return { error: `Unknown held program id: ${unknown}` };
+
+  return parsed;
 }
 
 function asStringArray(value: Prisma.JsonValue): string[] {

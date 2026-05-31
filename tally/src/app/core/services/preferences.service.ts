@@ -7,7 +7,22 @@ import { CabinClass, DateFlexibility, UserPreference } from '../models';
 
 const STORAGE_KEY = 'tally_preferences_v1';
 const PENDING_KEY = 'tally_preferences_pending_v1';
-const MAX_PROGRAMS = 30;
+const KNOWN_PROGRAM_IDS = new Set([
+  'amex_mr',
+  'chase_ur',
+  'citi_ty',
+  'cap1_miles',
+  'bilt',
+  'delta_skymiles',
+  'united_mp',
+  'aa_aadvantage',
+  'southwest_rr',
+  'alaska_mp',
+  'marriott_bonvoy',
+  'hyatt',
+  'hilton_honors',
+  'ihg_rewards',
+]);
 const DEFAULT_PREFERENCES: UserPreference = {
   homeAirports: ['OMA'],
   preferredCabin: 'business',
@@ -203,7 +218,7 @@ function sanitizePreferences(value: Partial<UserPreference>): UserPreference {
       ? value.maxStops
       : DEFAULT_PREFERENCES.maxStops,
     preferredPrograms: uniqueStringArray(value.preferredPrograms).slice(0, 20),
-    heldProgramIds: uniqueStringArray(value.heldProgramIds).slice(0, MAX_PROGRAMS),
+    heldProgramIds: uniqueStringArray(value.heldProgramIds).filter(id => KNOWN_PROGRAM_IDS.has(id)),
     hotelChains: uniqueStringArray(value.hotelChains).slice(0, 20),
     defaultTravelers: clampInteger(value.defaultTravelers, 1, 9, DEFAULT_PREFERENCES.defaultTravelers),
     dateFlexibility: isDateFlexibility(value.dateFlexibility) ? value.dateFlexibility : DEFAULT_PREFERENCES.dateFlexibility,
