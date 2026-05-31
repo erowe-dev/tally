@@ -39,7 +39,7 @@ describe('AirportSearchService', () => {
   });
 
   it('rewrites malformed recent airports and route templates from storage', () => {
-    localStorage.setItem('tally_recent_airports_v1', JSON.stringify([' oma ', 'XXX', 'LHR', 'OMA', 42]));
+    localStorage.setItem('tally_recent_airports_v1', JSON.stringify([' oma ', 'XXX', 'LHRX', 'LHR', 'OMA', 42]));
     localStorage.setItem('tally_route_templates_v1', JSON.stringify([
       {
         id: ' route_1 ',

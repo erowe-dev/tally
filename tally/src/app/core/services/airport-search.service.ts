@@ -193,7 +193,9 @@ function cleanTemplateText(value: unknown, maxLength: number): string {
 }
 
 function cleanAirportCode(value: unknown): string {
-  return typeof value === 'string' ? value.trim().toUpperCase().slice(0, 3) : '';
+  if (typeof value !== 'string') return '';
+  const code = value.trim().toUpperCase();
+  return code.length === 3 ? code : '';
 }
 
 function cleanIsoDate(value: unknown): string {
