@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client';
 import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser } from '../lib/route-helpers';
+import { dateWindowFromLooseFields, parseDateWindow } from '../lib/date-window';
 
 const router = Router();
 
@@ -152,13 +153,8 @@ function normalizeAwardRequest(value: unknown): ParseResult<JsonObject> {
     ? body['cabin']
     : 'economy';
   const passengers = normalizeInteger(body['passengers'], 1, 9, 1);
-  const startDate = normalizeDateOnly(body['startDate']);
-  const endDate = normalizeDateOnly(body['endDate']) ?? startDate;
-  const dateWindow = asRecord(body['dateWindow']) ?? {
-    startDate: startDate ?? '',
-    endDate: endDate ?? '',
-    flexibility: 'exact',
-  };
+  const dateWindow = dateWindowFromLooseFields(body, { requireStartDate: true, defaultFlexibility: 'exact' });
+  if ('error' in dateWindow) return { error: dateWindow.error };
   const programs = normalizeStringList(body['programs'], 20);
 
   return {
@@ -167,7 +163,7 @@ function normalizeAwardRequest(value: unknown): ParseResult<JsonObject> {
       destinationAirport: destination,
       cabin,
       passengers,
-      dateWindow: dateWindow as Prisma.InputJsonObject,
+      dateWindow: dateWindow.data,
       programs,
     },
   };
@@ -185,7 +181,11 @@ function normalizeHotelRequest(value: unknown): ParseResult<JsonObject> {
   const rooms = normalizeInteger(body['rooms'], 1, 4, 1);
   const nights = normalizeInteger(body['nights'], 1, 30, 1);
   const chains = normalizeStringList(body['chains'], 20);
-  const dateWindow = asRecord(body['dateWindow']) ?? {};
+  const rawDateWindow = asRecord(body['dateWindow']);
+  const dateWindow = rawDateWindow
+    ? parseDateWindow(rawDateWindow, { defaultFlexibility: 'plus_minus_7' })
+    : { data: { startDate: '', endDate: '', flexibility: 'plus_minus_7' } as Prisma.InputJsonObject };
+  if ('error' in dateWindow) return { error: dateWindow.error };
 
   return {
     data: {
@@ -195,7 +195,7 @@ function normalizeHotelRequest(value: unknown): ParseResult<JsonObject> {
       rooms,
       nights,
       chains,
-      dateWindow: dateWindow as Prisma.InputJsonObject,
+      dateWindow: dateWindow.data,
     },
   };
 }
@@ -312,12 +312,6 @@ function normalizeText(value: unknown, maxLength: number): string | null {
   if (typeof value !== 'string') return null;
   const normalized = value.trim().slice(0, maxLength);
   return normalized.length > 0 ? normalized : null;
-}
-
-function normalizeDateOnly(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const normalized = value.trim();
-  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : null;
 }
 
 function normalizeInteger(value: unknown, min: number, max: number, fallback: number): number {

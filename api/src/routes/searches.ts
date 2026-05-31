@@ -3,6 +3,7 @@ import { Prisma, type SavedSearch } from '@prisma/client';
 import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser } from '../lib/route-helpers';
+import { parseDateWindow } from '../lib/date-window';
 
 const router = Router();
 
@@ -170,8 +171,8 @@ function parseSavedSearch(body: Record<string, unknown>, requireType: boolean): 
   }
 
   if ('dateWindow' in body) {
-    const dateWindow = toJsonObject(body['dateWindow']);
-    if ('error' in dateWindow) return { error: 'dateWindow must be a plain object' };
+    const dateWindow = parseDateWindow(body['dateWindow'], { defaultFlexibility: 'plus_minus_3' });
+    if ('error' in dateWindow) return { error: dateWindow.error };
     data.dateWindow = dateWindow.data;
   } else if (requireType) {
     return { error: 'dateWindow is required' };
