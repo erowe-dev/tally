@@ -67,8 +67,48 @@ const checks = [
   {
     name: 'Protected API routes reject unauthenticated requests',
     run: async () => {
-      for (const path of ['/api/balances', '/api/expiry', '/api/trips']) {
-        const res = await fetch(`${apiUrl}${path}`);
+      const protectedRequests = [
+        { path: '/api/users/me', init: { method: 'POST', body: JSON.stringify({ email: 'smoke@example.com' }) } },
+        { path: '/api/balances' },
+        { path: '/api/expiry' },
+        { path: '/api/trips' },
+        { path: '/api/preferences' },
+        { path: '/api/searches' },
+        {
+          path: '/api/search/award-availability',
+          init: {
+            method: 'POST',
+            body: JSON.stringify({
+              originAirport: 'ORD',
+              destinationAirport: 'NRT',
+              cabin: 'business',
+              passengers: 1,
+            }),
+          },
+        },
+        {
+          path: '/api/search/hotel-fit',
+          init: {
+            method: 'POST',
+            body: JSON.stringify({
+              destination: 'Tokyo',
+              hotelCategory: 'mid',
+              travelers: 1,
+              rooms: 1,
+              nights: 3,
+            }),
+          },
+        },
+      ];
+
+      for (const { path, init } of protectedRequests) {
+        const res = await fetch(`${apiUrl}${path}`, {
+          ...init,
+          headers: {
+            ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+            ...(init?.headers ?? {}),
+          },
+        });
         assert(
           res.status === 401 || res.status === 403,
           `${path} expected 401/403, got ${res.status}`,
