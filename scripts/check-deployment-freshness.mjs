@@ -14,6 +14,7 @@ const targets = [
     url: process.env.TALLY_APP_URL ?? 'https://tally-theta-two.vercel.app',
     projectId: process.env.TALLY_APP_PROJECT_ID ?? 'prj_SvxfAHWhMTnJxHwhJcfkzwbN9yzn',
     expectedRootDirectory: 'tally',
+    deployCommand: 'cd .. && npx vercel --prod --yes',
     paths: [
       '.vercelignore',
       'tally/angular.json',
@@ -28,6 +29,7 @@ const targets = [
     label: 'API',
     url: process.env.TALLY_API_URL ?? 'https://tally-api-theta.vercel.app',
     projectId: process.env.TALLY_API_PROJECT_ID ?? 'prj_YDaGg8AXfjdWi6KlN0qj6GP6lyp0',
+    deployCommand: 'cd ../api && npx vercel --prod --yes',
     paths: [
       'api/package.json',
       'api/prisma',
@@ -58,6 +60,8 @@ for (const target of targets) {
       console.log(`     deployment: ${deployment.url} (${deployedAt.toISOString()})`);
       console.log(`     latest commit: ${latestCommit.hash} (${commitAt.toISOString()})`);
       console.log(`     stale by: ${formatDuration(staleByMs)}`);
+      console.log(`     next: ${target.deployCommand}`);
+      console.log('     release status: blocked until this alias points at the latest relevant commit');
     } else {
       console.log(`PASS ${target.label} deployment is fresh`);
       console.log(`     alias: ${target.url}`);
@@ -74,6 +78,7 @@ for (const target of targets) {
 
 if (failures > 0) {
   console.log(`${failures} deployment freshness check${failures === 1 ? '' : 's'} failed.`);
+  console.log('If Vercel reports api-deployments-free-per-day, wait for the quota window to reset before calling production ready.');
   process.exit(1);
 }
 

@@ -115,6 +115,16 @@ function checkRunbookHealthContract() {
     !readme.includes('provider endpoint disabled until configured'),
     'README must not claim telemetry provider endpoint is disabled',
   );
+
+  const freshness = read('scripts/check-deployment-freshness.mjs');
+  assert(
+    freshness.includes('release status: blocked until this alias points at the latest relevant commit'),
+    'deployment freshness failures must explain that stale aliases block release readiness',
+  );
+  assert(
+    freshness.includes('api-deployments-free-per-day'),
+    'deployment freshness failures must call out the Vercel quota blocker',
+  );
 }
 
 function checkServiceWorkerApiCache() {
