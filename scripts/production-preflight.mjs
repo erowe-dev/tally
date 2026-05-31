@@ -17,6 +17,7 @@ const checks = [
   { label: 'Production environment targets Vercel API', run: checkProductionApiUrl },
   { label: 'Service worker does not cache authenticated API reads', run: checkServiceWorkerApiCache },
   { label: 'Vercel app routing serves Angular shell at root', run: checkVercelAppConfig },
+  { label: 'Landing page remains invite-only', run: checkLandingInviteOnly },
   { label: 'Vercel API function routing exists', run: checkVercelApiConfig },
   { label: 'Observability config is explicit', run: checkObservabilityConfig },
   { label: 'Program ID allowlists match app data', run: checkProgramIds },
@@ -161,6 +162,36 @@ function checkVercelApiConfig() {
   assert(existsSync(join(root, configPath)), 'api/vercel.json is missing');
   const config = JSON.parse(read(configPath));
   assert(config.routes?.some(route => route.dest === 'src/index.ts'), 'api/vercel.json must route requests to src/index.ts');
+}
+
+function checkLandingInviteOnly() {
+  const publicLanding = read('tally/public/landing/index.html');
+  const legacyLanding = read('tally/landing/index.html');
+  assert(
+    normalizeLineEndings(publicLanding) === normalizeLineEndings(legacyLanding),
+    'public and legacy landing pages must remain in sync',
+  );
+
+  for (const [label, html] of [
+    ['public landing', publicLanding],
+    ['legacy landing', legacyLanding],
+  ]) {
+    const submitButtons = [...html.matchAll(/<button\b[^>]*class="submit-btn"[^>]*>/g)];
+
+    assert(html.includes('Private alpha is invite-only right now'), `${label} must show invite-only copy`);
+    assert(html.includes('mailto:hello@tallypoints.app'), `${label} must include manual access contact mailto`);
+    assert(html.includes('onsubmit="handleClosedSubmit(event)"'), `${label} waitlist forms must use the closed-submit handler`);
+    assert(html.includes('function handleClosedSubmit(e)'), `${label} must define the closed-submit handler`);
+    assert(!html.includes('/api/waitlist'), `${label} must not post to /api/waitlist while private alpha is closed`);
+    assert(!html.includes('tally-api-theta.vercel.app/api/waitlist'), `${label} must not call the production waitlist API while closed`);
+    assert(!/fetch\s*\(/.test(html), `${label} must not make client-side network submissions while waitlist is closed`);
+    assert(submitButtons.length === 2, `${label} must keep both invite-only submit buttons`);
+    assert(submitButtons.every(match => /\bdisabled\b/.test(match[0])), `${label} waitlist submit buttons must be disabled`);
+  }
+}
+
+function normalizeLineEndings(value) {
+  return value.replace(/\r\n/g, '\n');
 }
 
 function checkObservabilityConfig() {

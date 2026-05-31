@@ -120,11 +120,11 @@ All data lives in `src/app/core/services/data.service.ts`.
 - **Setup:** Import JSON → set SMTP credentials → set `ALERT_EMAIL` env var
 
 ### Waitlist Webhook (`n8n/waitlist-webhook.json`)
-- Landing page posts to `https://tally-api-theta.vercel.app/api/waitlist`
-- API proxies to the n8n `WAITLIST_WEBHOOK_URL`
-- Validates email → Google Sheet → confirmation email → builder ping
+- Reserved for a later waitlist reopening; private alpha signup is currently closed
+- The bundled landing page does not call `/api/waitlist` while invite-only mode is active
+- The API returns a deliberate `410` closed response with `contactEmail`
 - **Setup:** Import JSON → set Google Sheets credentials → set `YOUR_EMAIL` env var
-- **Landing page:** Shows a `mailto:hello@tallypoints.app` fallback only when the API/webhook is unavailable
+- **Landing page:** Shows invite-only copy and `mailto:hello@tallypoints.app` for manual access questions
 
 ---
 
@@ -190,13 +190,13 @@ Wallet and Expiry writes keep pending-sync queues (`tally_wallet_pending_v1`, `t
 - Points expiry tracker with urgency levels
 - PWA (manifest, service worker, iOS/Android installable)
 - Tally brand system
-- Landing page + waitlist form
+- Landing page invite-only contact flow
 - n8n workflows (Flying Blue alert + waitlist handler)
 - Deferred tab loading — app shell ships first, feature tabs load on demand
 
 ### 🔨 Pre-launch
 - [x] Generate actual icon PNGs (`npm run icons`)
-- [x] Wire landing page form to API-backed n8n webhook proxy
+- [x] Preserve closed private-alpha landing page and API waitlist `410` response
 - [ ] Deploy landing page → grab domain
 - [ ] Import n8n workflows and configure credentials
 
