@@ -168,7 +168,7 @@ function toProviderResponse(
   };
 }
 
-function normalizeAwardRequest(value: unknown): ParseResult<JsonObject> {
+export function normalizeAwardRequest(value: unknown): ParseResult<JsonObject> {
   const body = asRecord(value);
   if (!body) return { error: 'Request body must be an object' };
 
@@ -204,7 +204,7 @@ function normalizeAwardRequest(value: unknown): ParseResult<JsonObject> {
   };
 }
 
-function normalizeHotelRequest(value: unknown): ParseResult<JsonObject> {
+export function normalizeHotelRequest(value: unknown): ParseResult<JsonObject> {
   const body = asRecord(value);
   if (!body) return { error: 'Request body must be an object' };
 
