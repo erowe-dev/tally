@@ -220,6 +220,27 @@ describe('WalletComponent', () => {
     expect(options.map(option => option.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false']);
   });
 
+  it('wires quick-add disclosure controls to the expanded panel', () => {
+    const component = createComponent();
+
+    fixture.detectChanges();
+
+    const toggle = fixture.nativeElement.querySelector('.quick-add-toggle') as HTMLButtonElement;
+    const panelId = component.quickAddPanelId('amex_mr');
+
+    expect(toggle.getAttribute('aria-controls')).toBe(panelId);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-label')).toContain('Show quick add controls');
+    expect(fixture.nativeElement.querySelector(`#${panelId}`)).toBeNull();
+
+    toggle.click();
+    fixture.detectChanges();
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.getAttribute('aria-label')).toContain('Hide quick add controls');
+    expect(fixture.nativeElement.querySelector(`#${panelId}`)).not.toBeNull();
+  });
+
   it('keeps saved zero-balance programs out of transfer sources while explaining why', () => {
     const prefs = TestBed.inject(PreferencesService) as unknown as MockPreferencesService;
     prefs.preferences.set({

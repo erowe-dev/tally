@@ -181,25 +181,35 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
                     {{ heldToggleText(card.id) }}
                   </span>
                 </ng-template>
-                <div class="input-wrap" (click)="toggleExpand(card.id)">
-                  <input
-                    class="balance-input"
-                    type="number"
-                    inputmode="numeric"
-                    placeholder="0"
-                    [attr.aria-label]="card.name + ' point balance'"
-                    [value]="wallet.getBalance(card.id) || null"
-                    (click)="$event.stopPropagation()"
-                    (focus)="expandedCard.set(card.id)"
-                    (input)="onInput(card.id, $event)"
-                    min="0" max="50000000" step="1000">
+                <div class="input-wrap">
+                  <div class="balance-control-row">
+                    <input
+                      class="balance-input"
+                      type="number"
+                      inputmode="numeric"
+                      placeholder="0"
+                      [attr.aria-label]="card.name + ' point balance'"
+                      [value]="wallet.getBalance(card.id) || null"
+                      (focus)="expandedCard.set(card.id)"
+                      (input)="onInput(card.id, $event)"
+                      min="0" max="50000000" step="1000">
+                    <button
+                      type="button"
+                      class="quick-add-toggle"
+                      [attr.aria-label]="quickAddToggleLabel(card.id, card.name)"
+                      [attr.aria-controls]="quickAddPanelId(card.id)"
+                      [attr.aria-expanded]="expandedCard() === card.id"
+                      (click)="toggleExpand(card.id)">
+                      +
+                    </button>
+                  </div>
                   <div class="row-value" *ngIf="wallet.getBalance(card.id) > 0">
                     ~\${{ rowValue(card) | number }}
                   </div>
                 </div>
               </div>
               <!-- Quick-add buttons — only show when expanded -->
-              <div class="quick-add" *ngIf="expandedCard() === card.id">
+              <div class="quick-add" [id]="quickAddPanelId(card.id)" *ngIf="expandedCard() === card.id">
                 <button type="button" *ngFor="let inc of quickIncrements"
                   class="qa-btn"
                   [attr.aria-label]="'Add ' + inc.toLocaleString() + ' points to ' + card.name"
@@ -654,8 +664,24 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
 
     .input-wrap {
       display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
-      min-width: 102px;
+      min-width: 150px;
       scroll-margin-bottom: 120px;
+    }
+    .balance-control-row {
+      display: flex; align-items: stretch; justify-content: flex-end; gap: 6px;
+      width: 100%;
+    }
+    .quick-add-toggle {
+      width: 42px; min-height: 44px; flex: 0 0 42px;
+      border-radius: 9px; border: 1.5px solid var(--border2);
+      background: var(--surface); color: var(--tally-green);
+      font-family: 'Geist Mono', monospace; font-size: 18px; line-height: 1;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .quick-add-toggle:hover,
+    .quick-add-toggle[aria-expanded="true"] {
+      border-color: rgba(26,122,74,0.35);
+      background: var(--tally-green-light);
     }
     .program-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
     .held-toggle { background: var(--surface); }
@@ -925,6 +951,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       .input-wrap {
         width: 100%; min-width: 0; align-items: stretch;
       }
+      .balance-control-row { justify-content: stretch; }
       .balance-input { width: 100%; text-align: left; }
       .row-value { text-align: right; }
       .held-toggle {
@@ -1243,6 +1270,16 @@ export class WalletComponent {
 
   toggleExpand(cardId: string): void {
     this.expandedCard.update(cur => (cur === cardId ? null : cardId));
+  }
+
+  quickAddPanelId(cardId: string): string {
+    return `wallet-quick-add-${cardId}`;
+  }
+
+  quickAddToggleLabel(cardId: string, cardName: string): string {
+    return this.expandedCard() === cardId
+      ? `Hide quick add controls for ${cardName}`
+      : `Show quick add controls for ${cardName}`;
   }
 
   quickAdd(cardId: string, amount: number): void {
