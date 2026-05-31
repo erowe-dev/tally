@@ -237,9 +237,10 @@ interface TabChangeOptions {
   styles: [`
     .app-shell {
       width: 100%; margin: 0 auto;
-      min-height: 100dvh; display: flex; flex-direction: column;
+      height: 100dvh; min-height: 100dvh; overflow: hidden;
+      display: flex; flex-direction: column;
       background: var(--off);
-      --bottom-nav-clearance: calc(env(safe-area-inset-bottom, 0px) + 96px);
+      --bottom-nav-clearance: 16px;
     }
 
     /* PWA Install banner */
@@ -387,7 +388,7 @@ interface TabChangeOptions {
 
     /* Main scroll area */
     .app-main {
-      flex: 1; overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
+      flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none;
       padding-bottom: var(--bottom-nav-clearance);
       scroll-padding-bottom: calc(var(--bottom-nav-clearance) + 24px);
     }

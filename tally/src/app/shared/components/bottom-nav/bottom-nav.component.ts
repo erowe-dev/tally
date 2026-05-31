@@ -40,8 +40,7 @@ interface NavItem { id: NavTab; label: string; icon: string; }
   `,
   styles: [`
     .bottom-nav {
-      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-      width: 100%;
+      position: relative; flex: 0 0 auto; width: 100%;
       background: var(--shell-translucent);
       backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       border-top: 1px solid var(--border);
