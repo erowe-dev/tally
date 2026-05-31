@@ -114,6 +114,7 @@ describe('ExpiryComponent', () => {
     const bulkButton = fixture.nativeElement.querySelector('.bulk-today-btn') as HTMLButtonElement;
 
     expect(mineButton.getAttribute('aria-pressed')).toBe('false');
+    expect(mineButton.getAttribute('aria-label')).toBe('Show only my saved programs');
     expect(bulkButton.getAttribute('aria-label')).toContain('Mark all visible expirable programs');
 
     component.setHeldOnly(true);
@@ -121,6 +122,7 @@ describe('ExpiryComponent', () => {
     mineButton = fixture.nativeElement.querySelector('.filter-held-btn') as HTMLButtonElement;
 
     expect(mineButton.getAttribute('aria-pressed')).toBe('true');
+    expect(mineButton.getAttribute('aria-label')).toBe('Showing only my saved programs');
     expect(bulkButton.getAttribute('aria-label')).toContain('Mark my visible expirable programs');
 
     component.markAllToday();

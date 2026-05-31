@@ -53,6 +53,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
         <button type="button" class="filter-held-btn" *ngIf="hasAnyHeldPrograms()"
           [class.active]="showHeldOnly()"
           [attr.aria-pressed]="showHeldOnly()"
+          [attr.aria-label]="heldFilterAriaLabel()"
           (click)="toggleHeldOnly()">
           {{ showHeldOnly() ? '★ Mine' : '☆ Mine' }}
         </button>
@@ -703,6 +704,12 @@ export class ExpiryComponent implements OnDestroy {
 
   toggleHeldOnly(): void {
     this.setHeldOnly(!this.showHeldOnly());
+  }
+
+  heldFilterAriaLabel(): string {
+    return this.showHeldOnly()
+      ? 'Showing only my saved programs'
+      : 'Show only my saved programs';
   }
 
   setHeldOnly(value: boolean): void {
