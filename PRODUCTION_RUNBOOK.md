@@ -40,7 +40,7 @@ $env:TALLY_AUTH_EMAIL="<your Auth0 email>"
 npm run smoke:auth
 ```
 
-The authenticated smoke provisions your user, writes and resets a synthetic balance under `codex_smoke_points`, writes/deletes a synthetic expiry record, and creates/edits/deletes a temporary saved trip.
+The authenticated smoke provisions your user, writes and resets a synthetic balance under `codex_smoke_points`, restores preferences after validating held-program persistence, writes/deletes a synthetic expiry record, creates/edits/deletes a temporary saved search, checks provider-backed award availability, and creates/edits/deletes a temporary saved trip.
 
 Override the default URLs when testing preview/custom domains:
 
@@ -110,7 +110,9 @@ PORT=3000
 
 The API emits `X-Request-Id` on every response, includes service/version/database metadata in `/health`, and logs structured warning/error lines for failed requests. When investigating a production issue, copy the `X-Request-Id` from the browser Network tab and search Vercel function logs for the same value.
 
-Angular has disabled-by-default analytics and error-reporting transports in `environment*.ts`. Keep them disabled until the endpoint/provider is chosen, then verify no PII or raw balance values are sent before enabling for alpha users.
+Production analytics and error reporting are enabled and send privacy-scoped payloads to `/api/telemetry/analytics` and `/api/telemetry/errors`. The API accepts only configured first-party origins, rejects missing origins for telemetry, does not require auth for telemetry writes, and stores only bounded event/error context. Keep telemetry payloads free of PII, raw balances, full URLs with query strings, access tokens, and Auth0 identifiers.
+
+Development telemetry stays disabled in `environment.ts` so local work does not pollute production logs.
 
 ## Auth0 Settings
 
@@ -164,9 +166,11 @@ Block the alpha invite until all of these pass in production:
 - Flight and hotel recommendations can be saved as trips.
 - Trip notes can be edited, one trip can be deleted, and all trips can be cleared.
 - A second browser session sees server-backed synced data.
-- Unauthenticated calls to `/api/balances`, `/api/expiry`, and `/api/trips` are rejected.
+- Unauthenticated calls to `/api/users/me`, `/api/balances`, `/api/expiry`, `/api/trips`, `/api/preferences`, `/api/searches`, `/api/search/award-availability`, and `/api/search/hotel-fit` are rejected.
 - `POST /api/waitlist` returns a deliberate 410 closed response with `contactEmail` and allows configured production origins via CORS.
-- Deployed `ngsw.json` includes API freshness data groups only for balances and expiry.
+- Disallowed browser origins return `403` with `X-Request-Id`, not `500`, and do not reflect the blocked origin in the response body.
+- Telemetry accepts valid first-party analytics/error payloads, rejects unsupported analytics events, and rejects telemetry posts that omit `Origin`.
+- Deployed `ngsw.json` does not cache authenticated API reads; services use their own localStorage read-through caches where applicable.
 - Failed API calls in the browser include an `X-Request-Id` that appears in Vercel logs.
 - `npm run smoke:auth` passes with your Auth0 access token and email.
 
