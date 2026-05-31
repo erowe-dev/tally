@@ -17,6 +17,7 @@
     "build:pwa": "ng build --configuration production",
     "serve:pwa": "npx http-server dist/tally/browser -p 8080 --cors",
     "preflight:prod": "node ../scripts/production-preflight.mjs",
+    "check:deploy:fresh": "node ../scripts/check-deployment-freshness.mjs",
     "smoke:prod": "node ../scripts/production-smoke.mjs",
     "smoke:auth": "node ../scripts/personal-auth-smoke.mjs",
     "smoke:release": "node ../scripts/release-smoke.mjs"

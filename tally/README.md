@@ -160,9 +160,12 @@ After Vercel deploys, run:
 
 ```bash
 npm run smoke:release
+npm run check:deploy:fresh
 ```
 
 `smoke:release` always runs the public production smoke. It also runs the signed-in API smoke when both `TALLY_AUTH_TOKEN` and `TALLY_AUTH_EMAIL` are present; setting only one of those variables fails fast so a half-configured signed-in smoke cannot be skipped by accident. To make signed-in smoke mandatory in a release job, set `TALLY_REQUIRE_AUTH_SMOKE=1`.
+
+`check:deploy:fresh` compares the live app/API aliases against the latest commits that affect each surface. It should pass before calling a release done; if it fails, production is still serving an older deployment even if smoke checks pass against that older build.
 
 For a personal signed-in API smoke by itself, provide an Auth0 access token and email:
 
