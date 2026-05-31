@@ -12,6 +12,7 @@ const checks = [
   { label: 'Vercel app routing serves Angular shell at root', run: checkVercelAppConfig },
   { label: 'Vercel API function routing exists', run: checkVercelApiConfig },
   { label: 'Observability config is explicit', run: checkObservabilityConfig },
+  { label: 'No unused Angular starter shell files', run: checkNoStarterShellFiles },
   { label: 'No HostListener/HostBinding decorators in shell/shared components', run: checkNoHostListenerDecorator },
   { label: 'Initial bundle stays under 800 kB when stats are available', run: checkBundleBudget },
 ];
@@ -154,6 +155,15 @@ function checkNoHostListenerDecorator() {
   ];
   const offenders = files.filter(file => existsSync(join(root, file)) && /@HostListener|@HostBinding/.test(read(file)));
   assert(offenders.length === 0, `host decorators found in ${offenders.join(', ')}`);
+}
+
+function checkNoStarterShellFiles() {
+  const files = [
+    'tally/src/app/app.component.html',
+    'tally/src/app/app.component.scss',
+  ];
+  const offenders = files.filter(file => existsSync(join(root, file)));
+  assert(offenders.length === 0, `unused starter shell files found: ${offenders.join(', ')}`);
 }
 
 function checkBundleBudget() {
