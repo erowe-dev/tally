@@ -103,6 +103,15 @@ function checkVercelAppConfig() {
     existsSync(join(root, 'tally/landing/scripts/prepare-vercel-output.mjs')),
     'landing-root Vercel output prep script is missing',
   );
+  const landingConfigPath = 'tally/landing/vercel.json';
+  assert(existsSync(join(root, landingConfigPath)), 'landing-root vercel.json is missing');
+  const landingConfig = JSON.parse(read(landingConfigPath));
+  assert(landingConfig.outputDirectory === 'browser', 'landing-root vercel.json must serve the prepared browser output');
+  assert(
+    landingConfig.rewrites?.some(rewrite => rewrite.source === '/(.*)' && rewrite.destination === '/index.html'),
+    'landing-root vercel.json must fall back to /index.html for the Angular app shell',
+  );
+  assertAppVercelHeaders(landingConfig, landingConfigPath);
 
   const rootConfigPath = 'vercel.json';
   assert(existsSync(join(root, rootConfigPath)), 'repo-root vercel.json is missing');
