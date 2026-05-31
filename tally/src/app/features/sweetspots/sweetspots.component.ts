@@ -14,6 +14,7 @@ const FAV_KEY = 'tally_sweetspot_favs_v1';
 const FILTER_KEY = 'tally_sweetspots_filter_v1';
 const UI_STATE_KEY = 'tally_sweetspots_ui_v1';
 const SEARCH_STATE_KEY = 'tally_sweetspots_search_session_v1';
+const MAX_SWEETSPOTS_SEARCH_LENGTH = 80;
 
 interface SweetSpotsUiState {
   activeFilter?: Filter;
@@ -753,27 +754,34 @@ export class SweetspotsComponent {
     try {
       const raw = localStorage.getItem(UI_STATE_KEY);
       if (!raw) return {};
-      const parsed = JSON.parse(raw) as SweetSpotsUiState;
-      const activeFilter = parsed.activeFilter;
-      return {
-        activeFilter: typeof activeFilter === 'string' && this.isFilter(activeFilter) ? activeFilter : undefined,
-        activeSort: this.isSortMode(parsed.activeSort) ? parsed.activeSort : undefined,
-        minCppFilter: this.isCppTier(parsed.minCppFilter) ? parsed.minCppFilter : undefined,
-      };
+      const state = this.sanitizeUiState(JSON.parse(raw) as unknown);
+      this.saveUiState(state);
+      return state;
     } catch {
       return {};
     }
   }
 
+  private sanitizeUiState(value: unknown): SweetSpotsUiState {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    const parsed = value as SweetSpotsUiState;
+    const activeFilter = parsed.activeFilter;
+    return {
+      activeFilter: typeof activeFilter === 'string' && this.isFilter(activeFilter) ? activeFilter : undefined,
+      activeSort: this.isSortMode(parsed.activeSort) ? parsed.activeSort : undefined,
+      minCppFilter: this.isCppTier(parsed.minCppFilter) ? parsed.minCppFilter : undefined,
+    };
+  }
+
   private saveUiState(state: SweetSpotsUiState): void {
     try {
-      localStorage.setItem(UI_STATE_KEY, JSON.stringify(state));
+      localStorage.setItem(UI_STATE_KEY, JSON.stringify(this.sanitizeUiState(state)));
     } catch {}
   }
 
   private loadSearchState(): string {
     try {
-      return sessionStorage.getItem(SEARCH_STATE_KEY) ?? '';
+      return this.cleanSearchText(sessionStorage.getItem(SEARCH_STATE_KEY));
     } catch {
       return '';
     }
@@ -781,9 +789,14 @@ export class SweetspotsComponent {
 
   private saveSearchState(value: string): void {
     try {
-      if (value) sessionStorage.setItem(SEARCH_STATE_KEY, value);
+      const clean = this.cleanSearchText(value);
+      if (clean) sessionStorage.setItem(SEARCH_STATE_KEY, clean);
       else sessionStorage.removeItem(SEARCH_STATE_KEY);
     } catch {}
+  }
+
+  private cleanSearchText(value: unknown): string {
+    return typeof value === 'string' ? value.trim().slice(0, MAX_SWEETSPOTS_SEARCH_LENGTH) : '';
   }
 
   private cppTier(cpp: string): string {

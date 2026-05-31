@@ -116,6 +116,28 @@ describe('SweetspotsComponent', () => {
     expect(JSON.parse(localStorage.getItem(FAV_KEY) ?? '[]')).toEqual([validKey]);
   });
 
+  it('rewrites malformed stored UI state and trims transient search text', () => {
+    localStorage.setItem(UI_KEY, JSON.stringify({
+      activeFilter: 'promo',
+      activeSort: 'bogus',
+      minCppFilter: 999,
+      extra: 'ignored',
+    }));
+    sessionStorage.setItem(SEARCH_KEY, `  ${'hyatt'.repeat(30)}  `);
+
+    const component = createComponent();
+
+    expect(component.activeFilter()).toBe('promo');
+    expect(component.activeSort()).toBe('default');
+    expect(component.minCppFilter()).toBe(0);
+    expect(component.searchRaw().length).toBe(80);
+    expect(JSON.parse(localStorage.getItem(UI_KEY) ?? '{}')).toEqual({
+      activeFilter: 'promo',
+      activeSort: 'default',
+      minCppFilter: 0,
+    });
+  });
+
   it('clears non-search filters from an empty state recovery action', () => {
     const component = createComponent();
     component.activeFilter.set('new');
