@@ -26,28 +26,33 @@ npm run verify
 
 `api/npm run verify` includes a production dependency audit. Keep it green before API deploys; the Angular audit currently has known Angular 18 ecosystem findings and remains a tracked public-beta upgrade gate.
 
+GitHub Actions runs the same app/API verification on pull requests and pushes to `main` via `.github/workflows/production-readiness.yml`. Treat a failed workflow as a release blocker.
+
 Required production verification after deploy:
 
 ```bash
 cd tally
-npm run smoke:prod
+npm run smoke:release
 ```
 
-Optional authenticated smoke for personal-use verification:
+For external alpha invites, make authenticated smoke mandatory:
 
 ```bash
 cd tally
 $env:TALLY_AUTH_TOKEN="<Auth0 access token for https://api.tally.app>"
 $env:TALLY_AUTH_EMAIL="<your Auth0 email>"
-npm run smoke:auth
+$env:TALLY_REQUIRE_AUTH_SMOKE="1"
+npm run smoke:release
 ```
 
-The authenticated smoke provisions your user, writes and resets a synthetic balance under `codex_smoke_points`, restores or removes preferences after validating held-program persistence, writes/deletes a synthetic expiry record, creates/edits/deletes a temporary saved search, checks provider-backed award availability, and creates/edits/deletes a temporary saved trip.
+The authenticated smoke provisions your user, rejects an unknown synthetic program ID, writes and restores a Chase UR smoke balance, restores or removes preferences after validating held-program persistence, writes/deletes a synthetic expiry record, creates/edits/deletes a temporary saved search, checks provider-backed award availability, and creates/edits/deletes a temporary saved trip.
+
+The `Production smoke` GitHub Actions job can also be run manually with repository secrets `TALLY_AUTH_TOKEN` and `TALLY_AUTH_EMAIL`; it sets `TALLY_REQUIRE_AUTH_SMOKE=1` so missing credentials fail loudly.
 
 Override the default URLs when testing preview/custom domains:
 
 ```bash
-TALLY_APP_URL=https://<app-host> TALLY_API_URL=https://<api-host> npm run smoke:prod
+TALLY_APP_URL=https://<app-host> TALLY_API_URL=https://<api-host> npm run smoke:release
 ```
 
 ## Hosting Projects
@@ -67,7 +72,7 @@ Dashboard setup:
 5. Add the API environment variables below before the first API deploy.
 6. Push to `main`; confirm the Angular app deploys automatically.
 7. Confirm the API project also creates a new deployment. If it does not, deploy it manually from `api/` with the Vercel CLI until the dashboard Git connection is repaired.
-8. After both projects deploy, run `npm run smoke:prod` from `tally/`.
+8. After both projects deploy, run `npm run smoke:release` from `tally/`.
 
 If deploying the Angular app with the Vercel CLI:
 
@@ -174,7 +179,7 @@ Block the alpha invite until all of these pass in production:
 - Telemetry accepts valid first-party analytics/error payloads, rejects unsupported analytics events, and rejects telemetry posts that omit `Origin`.
 - Deployed `ngsw.json` does not cache authenticated API reads; services use their own localStorage read-through caches where applicable.
 - Failed API calls in the browser include an `X-Request-Id` that appears in Vercel logs.
-- `npm run smoke:auth` passes with your Auth0 access token and email.
+- `npm run smoke:release` passes with `TALLY_REQUIRE_AUTH_SMOKE=1`, `TALLY_AUTH_TOKEN`, and `TALLY_AUTH_EMAIL`.
 
 ## Browser Accessibility Pass
 
