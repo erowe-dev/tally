@@ -2,12 +2,9 @@ import { Router } from 'express';
 import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser } from '../lib/route-helpers';
+import { normalizeTripNotes, parseTripCreatePayload } from '../lib/trip-input';
 
 const router = Router();
-
-const TRIP_TYPES  = new Set(['flight', 'hotel']);
-const CABIN_TYPES = new Set(['economy', 'premium', 'business', 'first']);
-const HOTEL_CATS  = new Set(['budget', 'mid', 'luxury', 'top']);
 
 // GET /api/trips
 // Returns all saved trips for the user, newest first.
@@ -33,48 +30,16 @@ router.post(
   jwtErrorHandler,
   asyncRoute(async (req, res) => {
     const user = await requireUser(getAuth0Id(req));
-    const b = req.body as Record<string, unknown>;
-
-    const tripType = b['tripType'];
-    if (typeof tripType !== 'string' || !TRIP_TYPES.has(tripType)) {
-      res.status(400).json({ error: "tripType must be 'flight' or 'hotel'" });
+    const parsedTrip = parseTripCreatePayload(req.body);
+    if (!parsedTrip.ok) {
+      res.status(400).json({ error: parsedTrip.error });
       return;
     }
-
-    const programName = b['programName'];
-    if (typeof programName !== 'string' || programName.trim().length === 0) {
-      res.status(400).json({ error: 'programName is required' });
-      return;
-    }
-
-    const ptsRequired = b['ptsRequired'];
-    if (typeof ptsRequired !== 'number' || ptsRequired < 0 || !Number.isFinite(ptsRequired)) {
-      res.status(400).json({ error: 'ptsRequired must be a non-negative number' });
-      return;
-    }
-
-    // Optional fields validated loosely
-    const origin      = typeof b['origin']      === 'string' ? b['origin'].toUpperCase()      : undefined;
-    const destination = typeof b['destination'] === 'string' ? b['destination'].toUpperCase() : undefined;
-    const cabin       = typeof b['cabin']       === 'string' && CABIN_TYPES.has(b['cabin']) ? b['cabin'] : undefined;
-    const passengers  = typeof b['passengers']  === 'number' && b['passengers'] > 0 ? Math.round(b['passengers'] as number) : undefined;
-    const nights      = typeof b['nights']      === 'number' && b['nights'] > 0     ? Math.round(b['nights'] as number)     : undefined;
-    const hotelCat    = typeof b['hotelCat']    === 'string' && HOTEL_CATS.has(b['hotelCat']) ? b['hotelCat'] : undefined;
-    const notes       = typeof b['notes']       === 'string' ? b['notes'].slice(0, 500)       : undefined;
 
     const trip = await prisma.trip.create({
       data: {
         userId: user.id,
-        tripType,
-        programName: programName.trim(),
-        ptsRequired: Math.round(ptsRequired),
-        origin,
-        destination,
-        cabin,
-        passengers,
-        nights,
-        hotelCat,
-        notes,
+        ...parsedTrip.data,
       },
     });
 
@@ -98,15 +63,15 @@ router.patch(
     }
 
     const b = req.body as Record<string, unknown>;
-    if (typeof b['notes'] !== 'string') {
-      res.status(400).json({ error: 'notes must be a string' });
+    const parsedNotes = normalizeTripNotes(b['notes']);
+    if (parsedNotes.error || parsedNotes.value === undefined) {
+      res.status(400).json({ error: parsedNotes.error ?? 'notes must be a string' });
       return;
     }
-    const notes = b['notes'].trim().slice(0, 500);
 
     const result = await prisma.trip.updateMany({
       where: { id, userId: user.id },
-      data: { notes },
+      data: { notes: parsedNotes.value },
     });
 
     if (result.count === 0) {
@@ -114,7 +79,7 @@ router.patch(
       return;
     }
 
-    res.json({ id, notes });
+    res.json({ id, notes: parsedNotes.value });
   }),
 );
 
