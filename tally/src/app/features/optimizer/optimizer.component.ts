@@ -502,35 +502,49 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         {{ validationError() ? 'Review inputs' : 'Analyze Transfers →' }}
       </button>
 
-      <div class="saved-search-actions">
+      <div class="ss-actions">
         <button
           class="btn-save-search"
           type="button"
           (click)="saveCurrentSearch()"
+          [disabled]="savedSearchLimitReached()"
           [attr.aria-label]="'Save current ' + tripType() + ' search intent'">
-          ☆ Save search
+          {{ savedSearchLimitReached() ? 'Limit reached' : '☆ Save search' }}
         </button>
-        <span class="saved-search-count" *ngIf="savedSearches().length">
-          {{ savedSearches().length }} saved
+        <span class="ss-count" *ngIf="savedSearchCount()">
+          {{ savedSearchCount() }}/{{ maxSavedSearches }} saved
         </span>
       </div>
 
-      <div class="saved-search-panel" *ngIf="savedSearches().length">
-        <div class="saved-search-header">
+      <div class="ss-panel" *ngIf="savedSearchCount()">
+        <div class="ss-head">
           <span class="section-eyebrow">Saved Searches</span>
-          <span class="saved-search-sub">Search intents, separate from booked trip ideas</span>
+          <span class="section-eyebrow ss-sync" [class.error]="searches.syncState() === 'error'">
+            {{ getSearchSyncLabel() }}
+          </span>
         </div>
-        <div class="saved-search-list">
-          <button
-            class="saved-search-chip"
-            type="button"
-            *ngFor="let search of savedSearches()"
-            (click)="applySavedSearch(search)"
-            [attr.aria-label]="'Re-run saved search ' + search.label">
-            <span>{{ search.tripType === 'flight' ? '✈' : '🏨' }}</span>
-            <span>{{ search.label }}</span>
-          </button>
+        <div class="ss-list">
+          <div class="ss-item" *ngFor="let search of savedSearches()">
+            <button
+              class="ss-chip"
+              type="button"
+              (click)="applySavedSearch(search)"
+              [attr.aria-label]="'Re-run saved search ' + search.label">
+              <span>{{ search.tripType === 'flight' ? '✈' : '🏨' }}</span>
+              <span>{{ search.label }}</span>
+            </button>
+            <button
+              class="ss-del"
+              type="button"
+              (click)="deleteSavedSearch(search.id)"
+              [attr.aria-label]="'Delete saved search ' + search.label">
+              ×
+            </button>
+          </div>
         </div>
+        <p class="field-note" *ngIf="savedSearchLimitReached()">
+          Delete one saved search to save another.
+        </p>
       </div>
 
       <!-- Quick Wins toggle — only shown when user has wallet data -->
@@ -875,7 +889,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       line-height: 1.45;
     }
 
-    .saved-search-actions {
+    .ss-actions {
       display: flex; align-items: center; justify-content: space-between;
       gap: 10px; margin: 8px 0 12px;
     }
@@ -886,36 +900,44 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       font-family: 'Geist', sans-serif; font-size: 13px; font-weight: 600;
       cursor: pointer; transition: all 0.15s;
     }
+    .btn-save-search:disabled {
+      cursor: not-allowed; opacity: 0.62; color: var(--text3); background: var(--surface);
+    }
     .btn-save-search:hover,
     .btn-save-search:focus-visible {
       border-color: var(--tally-green); background: var(--tally-green-light);
       outline: none;
     }
-    .saved-search-count {
+    .ss-count {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       color: var(--text3); white-space: nowrap;
     }
-    .saved-search-panel {
+    .ss-panel {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 14px; padding: 12px; margin-bottom: 12px;
     }
-    .saved-search-header { margin-bottom: 8px; }
-    .saved-search-sub {
-      display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
-      color: var(--text3); letter-spacing: 0.06em; margin-top: 2px;
+    .ss-head { margin-bottom: 8px; }
+    .ss-sync.error { color: var(--tally-red); }
+    .ss-list { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+    .ss-item {
+      display: inline-flex; flex: 0 0 auto;
+      border: 1px solid var(--border); border-radius: 999px; background: var(--white);
+      overflow: hidden;
     }
-    .saved-search-list { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
-    .saved-search-chip {
-      min-height: 44px; display: inline-flex; align-items: center; gap: 6px;
-      background: var(--white); border: 1px solid var(--border);
-      border-radius: 999px; padding: 8px 12px; flex: 0 0 auto;
+    .ss-chip,.ss-del { min-height: 44px; background: transparent; border: 0; cursor: pointer; }
+    .ss-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 12px; flex: 0 1 auto;
+      max-width: min(68vw, 360px);
       color: var(--text); font-family: 'Geist Mono', monospace; font-size: 10px;
-      letter-spacing: 0.03em; cursor: pointer;
+      letter-spacing: 0.03em;
     }
-    .saved-search-chip:hover,
-    .saved-search-chip:focus-visible {
-      border-color: var(--tally-green); color: var(--tally-green);
-      outline: none;
+    .ss-chip span:last-child {
+      min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ss-del {
+      min-width: 44px; border-left: 1px solid var(--border);
+      color: var(--text3); font-size: 18px; line-height: 1;
     }
 
     .btn-quick-wins {
@@ -1272,13 +1294,13 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       .result-filters { align-items: stretch; }
       .related-spots-btn,
       .btn-save-search,
-      .saved-search-chip,
+      .ss-chip,
       .rf-btn {
         min-height: 44px;
       }
-      .saved-search-list {
-        margin-inline: -2px;
-      }
+      .ss-list { flex-direction: column; overflow: visible; }
+      .ss-item { width: 100%; border-radius: 12px; }
+      .ss-chip { max-width: none; flex: 1; justify-content: flex-start; }
       .rc-top { align-items: flex-start; flex-wrap: wrap; }
       .rc-pts { width: 100%; text-align: left; }
       .rc-pts small, .rc-cash { text-align: left; }
@@ -1322,7 +1344,7 @@ export class OptimizerComponent implements OnChanges {
   private expiry = inject(ExpiryService);
   private analytics = inject(AnalyticsService);
   private nav = inject(NavigationService);
-  private searches = inject(SearchesService);
+  searches = inject(SearchesService);
   private airportSearch = inject(AirportSearchService);
 
   tripType = signal<'flight' | 'hotel'>('flight');
@@ -1368,6 +1390,9 @@ export class OptimizerComponent implements OnChanges {
   readonly savedSearches = computed<OptimizerSavedSearch[]>(() =>
     this.searches.searches().slice(0, MAX_SAVED_SEARCHES).map(search => this.toOptimizerSavedSearch(search)),
   );
+  readonly savedSearchCount = computed(() => this.searches.searches().length);
+  readonly savedSearchLimitReached = computed(() => this.savedSearchCount() >= MAX_SAVED_SEARCHES);
+  readonly maxSavedSearches = MAX_SAVED_SEARCHES;
   readonly airportOptions = this.airportSearch.airports();
   // Home airport preference
   private _homeAirport = signal<string>('');
@@ -1676,10 +1701,12 @@ export class OptimizerComponent implements OnChanges {
   }
 
   saveCurrentSearch(): void {
+    if (this.savedSearchLimitReached()) return;
     this.searches.createSearch(this.buildSavedSearchPayload());
   }
 
   applySavedSearch(search: OptimizerSavedSearch): void {
+    this.searches.markRun(search.id);
     this.tripType.set(search.tripType);
     this.fromCity = search.fromCity ?? '';
     this.toCity = search.toCity ?? '';
@@ -1700,6 +1727,19 @@ export class OptimizerComponent implements OnChanges {
     this.hotelRooms = search.hotelRooms ?? 1;
     this.showQuickWins.set(false);
     this.analyze();
+  }
+
+  deleteSavedSearch(id: string): void {
+    this.searches.deleteSearch(id);
+  }
+
+  getSearchSyncLabel(): string {
+    switch (this.searches.syncState()) {
+      case 'loading': return 'Syncing';
+      case 'error': return 'Local changes pending';
+      case 'synced': return 'Synced';
+      default: return 'Saved locally';
+    }
   }
 
   saveTrip(rec: Recommendation): void {

@@ -9,6 +9,7 @@ import { OptimizerService } from '../../core/services/optimizer.service';
 import { SearchesService } from '../../core/services/searches.service';
 import { TripsService } from '../../core/services/trips.service';
 import { WalletService } from '../../core/services/wallet.service';
+import { SavedSearch } from '../../core/models';
 import { OptimizerComponent } from './optimizer.component';
 
 class MockOptimizerService {
@@ -49,8 +50,11 @@ class MockNavigationService {
 }
 
 class MockSearchesService {
-  searches = signal([]);
+  searches = signal<SavedSearch[]>([]);
+  syncState = signal('idle');
   createSearch = jasmine.createSpy('createSearch');
+  deleteSearch = jasmine.createSpy('deleteSearch');
+  markRun = jasmine.createSpy('markRun');
 }
 
 class MockAirportSearchService {
@@ -63,6 +67,7 @@ class MockAirportSearchService {
 describe('OptimizerComponent', () => {
   let fixture: ComponentFixture<OptimizerComponent>;
   let component: OptimizerComponent;
+  let searches: MockSearchesService;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -82,6 +87,7 @@ describe('OptimizerComponent', () => {
 
     fixture = TestBed.createComponent(OptimizerComponent);
     component = fixture.componentInstance;
+    searches = TestBed.inject(SearchesService) as unknown as MockSearchesService;
     fixture.detectChanges();
   });
 
@@ -122,4 +128,65 @@ describe('OptimizerComponent', () => {
     expect(component.latestReturn).toBe('2026-06-11');
     expect(latestInput.value).toBe('2026-06-11');
   }));
+
+  it('does not create more saved searches after the visible limit', () => {
+    searches.searches.set(Array.from({ length: 5 }, (_, i) => ({
+      id: `search_${i}`,
+      searchType: 'flight',
+      destinationText: 'Tokyo',
+      dateWindow: { startDate: '2026-06-10', endDate: '2026-06-20', flexibility: 'plus_minus_3' },
+      passengers: 1,
+      createdAt: '2026-05-31T00:00:00.000Z',
+      updatedAt: '2026-05-31T00:00:00.000Z',
+    })));
+    fixture.detectChanges();
+
+    component.saveCurrentSearch();
+
+    expect(searches.createSearch).not.toHaveBeenCalled();
+    const saveButton = fixture.nativeElement.querySelector('.btn-save-search') as HTMLButtonElement;
+    expect(saveButton.disabled).toBeTrue();
+  });
+
+  it('deletes saved searches from the management row', () => {
+    searches.searches.set([{
+      id: 'search_1',
+      searchType: 'flight',
+      originAirport: 'ORD',
+      destinationAirport: 'NRT',
+      destinationText: 'Tokyo',
+      dateWindow: { startDate: '2026-06-10', endDate: '2026-06-20', flexibility: 'plus_minus_3' },
+      cabin: 'business',
+      passengers: 1,
+      createdAt: '2026-05-31T00:00:00.000Z',
+      updatedAt: '2026-05-31T00:00:00.000Z',
+    }]);
+    fixture.detectChanges();
+
+    const deleteButton = fixture.nativeElement.querySelector('.ss-del') as HTMLButtonElement;
+    deleteButton.click();
+
+    expect(searches.deleteSearch).toHaveBeenCalledWith('search_1');
+  });
+
+  it('marks saved searches as run when reapplied', () => {
+    searches.searches.set([{
+      id: 'search_1',
+      searchType: 'flight',
+      originAirport: 'ORD',
+      destinationAirport: 'NRT',
+      destinationText: 'Tokyo',
+      dateWindow: { startDate: '2026-06-10', endDate: '2026-06-20', flexibility: 'plus_minus_3' },
+      cabin: 'business',
+      passengers: 1,
+      createdAt: '2026-05-31T00:00:00.000Z',
+      updatedAt: '2026-05-31T00:00:00.000Z',
+    }]);
+    fixture.detectChanges();
+
+    const chip = fixture.nativeElement.querySelector('.ss-chip') as HTMLButtonElement;
+    chip.click();
+
+    expect(searches.markRun).toHaveBeenCalledWith('search_1');
+  });
 });
