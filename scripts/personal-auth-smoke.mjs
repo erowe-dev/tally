@@ -190,6 +190,30 @@ const checks = [
           programs: ['unknown_program'],
         }),
       }, 400);
+      await expectHttpError('/api/search/award-availability', {
+        method: 'POST',
+        body: JSON.stringify({
+          originAirport: 'ORD',
+          destinationAirport: 'NRT',
+          cabin: 'business',
+          passengers: 1.5,
+          dateWindow: {
+            startDate: localDateString(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+            endDate: localDateString(new Date(Date.now() + 37 * 24 * 60 * 60 * 1000)),
+            flexibility: 'plus_minus_7',
+          },
+          programs: ['amex_mr'],
+        }),
+      }, 400);
+      await expectHttpError('/api/search/hotel-fit', {
+        method: 'POST',
+        body: JSON.stringify({
+          destination: 'Tokyo',
+          travelers: 2,
+          rooms: 1,
+          nights: '5',
+        }),
+      }, 400);
     },
   },
   {

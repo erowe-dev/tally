@@ -24,6 +24,7 @@ const checks = [
   { label: 'Production readiness workflow enforces release gates', run: checkProductionReadinessWorkflow },
   { label: 'Saved search cap is concurrency-safe', run: checkSavedSearchConcurrencyGuard },
   { label: 'Provider search rejects invalid numerics', run: checkProviderSearchNumericValidation },
+  { label: 'Authenticated smoke covers provider validation', run: checkAuthenticatedSmokeProviderValidation },
   { label: 'No unused Angular starter shell files', run: checkNoStarterShellFiles },
   { label: 'No HostListener/HostBinding decorators in shell/shared components', run: checkNoHostListenerDecorator },
   { label: 'Initial bundle stays under 800 kB when stats are available', run: checkBundleBudget },
@@ -281,6 +282,22 @@ function checkProviderSearchNumericValidation() {
   assert(
     !/function\s+normalizeInteger[\s\S]*?return\s+fallback/.test(route),
     'provider search normalizeInteger must not silently return fallback for invalid provided values',
+  );
+}
+
+function checkAuthenticatedSmokeProviderValidation() {
+  const smoke = read('scripts/personal-auth-smoke.mjs');
+  assert(smoke.includes('/api/search/award-availability'), 'authenticated smoke must cover award provider search');
+  assert(smoke.includes('/api/search/hotel-fit'), 'authenticated smoke must cover hotel provider search');
+  assert(smoke.includes('passengers: 1.5'), 'authenticated smoke must reject decimal award passengers');
+  assert(smoke.includes("nights: '5'"), 'authenticated smoke must reject string hotel nights');
+  assert(
+    /expectHttpError\('\/api\/search\/award-availability'[\s\S]*?passengers:\s*1\.5[\s\S]*?,\s*400\)/.test(smoke),
+    'authenticated smoke must assert invalid award passengers return 400',
+  );
+  assert(
+    /expectHttpError\('\/api\/search\/hotel-fit'[\s\S]*?nights:\s*'5'[\s\S]*?,\s*400\)/.test(smoke),
+    'authenticated smoke must assert invalid hotel nights return 400',
   );
 }
 
