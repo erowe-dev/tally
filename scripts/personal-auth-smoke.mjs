@@ -127,7 +127,7 @@ const checks = [
   {
     name: 'Provider-backed award availability returns cached planning signal',
     run: async () => {
-      const response = await request('/api/search/award-availability', {
+      const { data: response, headers } = await requestWithMeta('/api/search/award-availability', {
         method: 'POST',
         body: JSON.stringify({
           originAirport: 'ORD',
@@ -144,6 +144,8 @@ const checks = [
       });
       assert(response.provider === 'tally_stub', `expected stub provider, got ${JSON.stringify(response)}`);
       assert(Array.isArray(response.results) && response.results.length > 0, `expected provider results, got ${JSON.stringify(response)}`);
+      assert(headers.get('x-ratelimit-limit') === '30', 'expected provider search rate limit header');
+      assert(headers.get('x-ratelimit-remaining'), 'expected provider search remaining rate limit header');
     },
   },
   {
@@ -228,6 +230,11 @@ if (failures > 0) {
 console.log('All authenticated smoke checks passed.');
 
 async function request(path, init = {}) {
+  const { data } = await requestWithMeta(path, init);
+  return data;
+}
+
+async function requestWithMeta(path, init = {}) {
   const res = await fetch(`${apiUrl}${path}`, {
     ...init,
     headers: {
@@ -242,8 +249,10 @@ async function request(path, init = {}) {
     throw new Error(`${init.method ?? 'GET'} ${path} -> ${res.status}; requestId=${requestId ?? 'missing'}; body=${body}`);
   }
 
-  if (!body) return null;
-  return JSON.parse(body);
+  return {
+    data: body ? JSON.parse(body) : null,
+    headers: res.headers,
+  };
 }
 
 function localDateString(date = new Date()) {

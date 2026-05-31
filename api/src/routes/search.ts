@@ -1,10 +1,12 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import type { Prisma } from '@prisma/client';
 import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser } from '../lib/route-helpers';
 import { dateWindowFromLooseFields, parseDateWindow } from '../lib/date-window';
+import { createFixedWindowRateLimiter } from '../lib/fixed-window-rate-limit';
 
 const router = Router();
 
@@ -13,11 +15,18 @@ const PROVIDER = 'tally_stub';
 const SOURCE = 'deterministic_provider_cache_stub';
 const CABIN_TYPES = new Set(['economy', 'premium', 'business', 'first']);
 const IATA_RE = /^[A-Z]{3}$/;
+const SEARCH_RATE_LIMIT_WINDOW_MS = 60_000;
+const SEARCH_RATE_LIMIT_MAX_REQUESTS = 30;
+const searchRateLimiter = createFixedWindowRateLimiter({
+  maxRequests: SEARCH_RATE_LIMIT_MAX_REQUESTS,
+  windowMs: SEARCH_RATE_LIMIT_WINDOW_MS,
+});
 
 router.post(
   '/award-availability',
   checkJwt,
   jwtErrorHandler,
+  limitProviderSearch,
   asyncRoute(async (req, res) => {
     await requireUser(getAuth0Id(req));
     const normalized = normalizeAwardRequest(req.body);
@@ -35,6 +44,7 @@ router.post(
   '/hotel-fit',
   checkJwt,
   jwtErrorHandler,
+  limitProviderSearch,
   asyncRoute(async (req, res) => {
     await requireUser(getAuth0Id(req));
     const normalized = normalizeHotelRequest(req.body);
@@ -54,6 +64,23 @@ type CacheStatus = 'fresh' | 'miss' | 'stale';
 type JsonObject = Record<string, Prisma.InputJsonValue>;
 type ParseResult<T> = { data: T } | { error: string };
 type SignalBuilder = (request: JsonObject) => JsonObject;
+
+function limitProviderSearch(req: Request, res: Response, next: NextFunction): void {
+  const auth0Id = getAuth0Id(req);
+  const key = `${auth0Id}:${req.path}`;
+  const result = searchRateLimiter.hit(key);
+
+  res.setHeader('X-RateLimit-Limit', result.limit.toString());
+  res.setHeader('X-RateLimit-Remaining', result.remaining.toString());
+  res.setHeader('X-RateLimit-Reset', Math.ceil(result.resetAt / 1000).toString());
+
+  if (!result.allowed) {
+    res.status(429).json({ error: 'Search rate limit exceeded' });
+    return;
+  }
+
+  next();
+}
 
 async function getOrCreateProviderCache(
   searchType: 'award_availability' | 'hotel_fit',
