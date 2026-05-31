@@ -123,6 +123,21 @@ describe('WalletComponent', () => {
     expect(component.goalName.length).toBe(120);
     expect(component.goalPts).toBe(0);
     expect(component.showGoal()).toBeTrue();
+    const stored = JSON.parse(localStorage.getItem(GOAL_KEY) ?? '{}');
+    expect(stored.name.length).toBe(120);
+    expect(stored.points).toBe(0);
+    expect(stored.expanded).toBeFalse();
+  });
+
+  it('clears unreadable persisted goal state', () => {
+    localStorage.setItem(GOAL_KEY, '{not json');
+
+    const component = createComponent();
+
+    expect(component.goalName).toBe('');
+    expect(component.goalPts).toBe(0);
+    expect(component.showGoal()).toBeFalse();
+    expect(localStorage.getItem(GOAL_KEY)).toBeNull();
   });
 
   it('persists edits to the point goal', () => {

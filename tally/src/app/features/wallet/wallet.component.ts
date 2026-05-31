@@ -1048,12 +1048,15 @@ export class WalletComponent {
       const raw = localStorage.getItem(GOAL_KEY);
       if (!raw) return { name: '', points: 0, expanded: false };
       const parsed = JSON.parse(raw) as Partial<WalletGoalState>;
-      return {
+      const goal = {
         name: typeof parsed.name === 'string' ? parsed.name.slice(0, 120) : '',
         points: typeof parsed.points === 'number' && Number.isFinite(parsed.points) ? Math.max(0, Math.round(parsed.points)) : 0,
         expanded: parsed.expanded === true,
       };
+      localStorage.setItem(GOAL_KEY, JSON.stringify(goal));
+      return goal;
     } catch {
+      try { localStorage.removeItem(GOAL_KEY); } catch {}
       return { name: '', points: 0, expanded: false };
     }
   }
