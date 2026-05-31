@@ -27,8 +27,10 @@ const ANALYTICS_EVENTS = new Set([
 
 const ERROR_CONTEXTS = new Set([
   'angular_unhandled',
+  'browser_error',
   'manual',
   'smoke',
+  'unhandled_rejection',
 ]);
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 60;

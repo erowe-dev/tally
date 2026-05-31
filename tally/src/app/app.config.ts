@@ -1,10 +1,10 @@
-import { ApplicationConfig, ErrorHandler, provideZoneChangeDetection, isDevMode } from '@angular/core';
+import { ApplicationConfig, ENVIRONMENT_INITIALIZER, ErrorHandler, inject, provideZoneChangeDetection, isDevMode } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideAuth0 } from '@auth0/auth0-angular';
 import { routes } from './app.routes';
-import { TallyErrorHandler } from './core/services/error-reporter.service';
+import { ErrorReporterService, TallyErrorHandler } from './core/services/error-reporter.service';
 import { environment } from '../environments/environment';
 
 const authRedirectUri =
@@ -18,6 +18,11 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(),
     { provide: ErrorHandler, useClass: TallyErrorHandler },
+    {
+      provide: ENVIRONMENT_INITIALIZER,
+      multi: true,
+      useValue: () => inject(ErrorReporterService).startBrowserListeners(),
+    },
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',

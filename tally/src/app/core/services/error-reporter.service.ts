@@ -15,6 +15,23 @@ export class ErrorReporterService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly document = inject(DOCUMENT);
   private readonly browserWindow = isPlatformBrowser(this.platformId) ? this.document.defaultView : null;
+  private browserListenersStarted = false;
+
+  startBrowserListeners(): void {
+    if (!this.browserWindow || this.browserListenersStarted) return;
+    this.browserListenersStarted = true;
+
+    this.browserWindow.addEventListener('error', (event) => {
+      const error = event.error instanceof Error
+        ? event.error
+        : new Error(event.message || 'Unhandled browser error');
+      this.report(error, 'browser_error');
+    });
+
+    this.browserWindow.addEventListener('unhandledrejection', (event) => {
+      this.report(event.reason ?? 'Unhandled promise rejection', 'unhandled_rejection');
+    });
+  }
 
   report(error: unknown, context: string): void {
     const payload = this.toPayload(error, context);

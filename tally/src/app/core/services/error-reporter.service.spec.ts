@@ -56,4 +56,54 @@ describe('ErrorReporterService', () => {
 
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it('reports browser error events once listeners are started', () => {
+    const listeners = new Map<string, EventListenerOrEventListenerObject>();
+    spyOn(window, 'addEventListener').and.callFake((
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+    ) => {
+      listeners.set(type, listener);
+    });
+    const service = TestBed.inject(ErrorReporterService);
+
+    service.startBrowserListeners();
+    service.startBrowserListeners();
+    const listener = listeners.get('error') as EventListener;
+    listener(new ErrorEvent('error', { message: 'window boom', error: new Error('window boom') }));
+
+    expect(window.addEventListener).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledOnceWith(
+      'https://example.test/errors',
+      jasmine.objectContaining({ method: 'POST', keepalive: true }),
+    );
+
+    const [, init] = fetchSpy.calls.mostRecent().args;
+    const payload = JSON.parse(String((init as RequestInit).body));
+    expect(payload.message).toBe('window boom');
+    expect(payload.context).toBe('browser_error');
+  });
+
+  it('reports unhandled rejection events', () => {
+    const listeners = new Map<string, EventListenerOrEventListenerObject>();
+    spyOn(window, 'addEventListener').and.callFake((
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+    ) => {
+      listeners.set(type, listener);
+    });
+    const service = TestBed.inject(ErrorReporterService);
+
+    service.startBrowserListeners();
+    const listener = listeners.get('unhandledrejection') as EventListener;
+    listener(new PromiseRejectionEvent('unhandledrejection', {
+      promise: Promise.resolve(),
+      reason: new Error('rejected'),
+    }));
+
+    const [, init] = fetchSpy.calls.mostRecent().args;
+    const payload = JSON.parse(String((init as RequestInit).body));
+    expect(payload.message).toBe('rejected');
+    expect(payload.context).toBe('unhandled_rejection');
+  });
 });
