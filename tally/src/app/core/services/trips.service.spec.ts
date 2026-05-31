@@ -152,6 +152,87 @@ describe('TripsService', () => {
     expect(api.createTrip).not.toHaveBeenCalled();
   });
 
+  it('drops malformed trips and normalizes supported cached records', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([
+      {
+        id: 'valid_trip',
+        tripType: 'flight',
+        origin: 'ord',
+        destination: 'Tokyo',
+        cabin: 'business',
+        passengers: 1.4,
+        programName: '  Air Canada Aeroplan  ',
+        ptsRequired: 75000.4,
+        notes: 'x'.repeat(600),
+        createdAt: '2026-05-18T00:00:00.000Z',
+      },
+      {
+        id: 'too_many_points',
+        tripType: 'hotel',
+        destination: 'Tokyo',
+        programName: 'World of Hyatt',
+        ptsRequired: 5_000_001,
+        createdAt: '2026-05-18T00:00:00.000Z',
+      },
+      {
+        id: 'missing-program',
+        tripType: 'flight',
+        ptsRequired: 50000,
+        createdAt: '2026-05-18T00:00:00.000Z',
+      },
+    ]));
+
+    const service = createService();
+
+    expect(service.trips().length).toBe(1);
+    expect(service.trips()[0]).toEqual(jasmine.objectContaining({
+      id: 'valid_trip',
+      origin: 'ORD',
+      programName: 'Air Canada Aeroplan',
+      ptsRequired: 75000,
+      passengers: 1,
+    }));
+    expect(service.trips()[0].destination).toBeUndefined();
+    expect(service.trips()[0].notes?.length).toBe(500);
+  });
+
+  it('normalizes pending trips by their saved id before retrying', () => {
+    auth.isProvisioned.set(true);
+    network.isOnline.set(false);
+    localStorage.setItem(PENDING_KEY, JSON.stringify({
+      stale_key: {
+        id: 'actual_id',
+        tripType: 'hotel',
+        destination: '  Tokyo  ',
+        nights: 3.2,
+        hotelCat: 'mid',
+        programName: 'World of Hyatt',
+        ptsRequired: 45000,
+        createdAt: '2026-05-18T00:00:00.000Z',
+      },
+      invalid_pending: {
+        id: 'invalid_pending',
+        tripType: 'flight',
+      },
+    }));
+    const service = createService();
+
+    service.saveTrip({
+      tripType: 'hotel',
+      destination: 'Seoul',
+      hotelCat: 'mid',
+      nights: 3,
+      programName: 'World of Hyatt',
+      ptsRequired: 45000,
+    });
+
+    const pending = JSON.parse(localStorage.getItem(PENDING_KEY) ?? '{}');
+    expect(pending.actual_id.destination).toBe('Tokyo');
+    expect(pending.actual_id.nights).toBe(3);
+    expect(pending.stale_key).toBeUndefined();
+    expect(pending.invalid_pending).toBeUndefined();
+  });
+
   it('updates the local-only count when a temporary trip is promoted', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([
       {

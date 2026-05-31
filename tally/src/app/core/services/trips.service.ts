@@ -8,6 +8,10 @@ import { SavedTrip } from '../models';
 const STORAGE_KEY = 'tally_trips_v1';
 const PENDING_KEY = 'tally_trips_pending_v1';
 const DELETED_KEY = 'tally_trips_deleted_v1';
+const IATA_RE = /^[A-Z]{3}$/;
+const CABIN_VALUES = new Set(['economy', 'premium', 'business', 'first']);
+const HOTEL_CATEGORY_VALUES = new Set(['budget', 'mid', 'luxury', 'top']);
+const MAX_POINTS_REQUIRED = 5_000_000;
 export type SyncState = 'idle' | 'loading' | 'synced' | 'error';
 
 @Injectable({ providedIn: 'root' })
@@ -60,11 +64,15 @@ export class TripsService {
   saveTrip(trip: Omit<SavedTrip, 'id' | 'createdAt'>): void {
     // Optimistic local insert with a temp id
     const tempId = `local_${Date.now()}`;
-    const optimistic: SavedTrip = {
+    const optimistic = sanitizeSavedTrip({
       ...trip,
       id: tempId,
       createdAt: new Date().toISOString(),
-    };
+    });
+    if (!optimistic) {
+      this.toast.error('Trip could not be saved');
+      return;
+    }
     const updated = [optimistic, ...this._trips()];
     this._trips.set(updated);
     this.saveLocal(updated);
@@ -188,6 +196,7 @@ export class TripsService {
   }
 
   private hydrateFromApi(apiTrips: SavedTrip[]): void {
+    const cleanApiTrips = apiTrips.map(sanitizeSavedTrip).filter((trip): trip is SavedTrip => Boolean(trip));
     const localTrips = this.loadLocal();
     const pending = this.loadPending();
     const deleted = new Set(this.loadDeleted());
@@ -206,7 +215,7 @@ export class TripsService {
       const merged = [
         ...pendingTrips,
         ...localOnlyTrips,
-        ...apiTrips.filter(trip => !deleted.has(trip.id) && !pending[trip.id]),
+        ...cleanApiTrips.filter(trip => !deleted.has(trip.id) && !pending[trip.id]),
       ];
       this._trips.set(merged);
       this.saveLocal(merged);
@@ -222,7 +231,7 @@ export class TripsService {
       return;
     }
 
-    const filtered = apiTrips.filter(trip => !deleted.has(trip.id));
+    const filtered = cleanApiTrips.filter(trip => !deleted.has(trip.id));
     this._trips.set(filtered);
     this.saveLocal(filtered);
     this._syncState.set('synced');
@@ -231,7 +240,11 @@ export class TripsService {
   private loadLocal(): SavedTrip[] {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as SavedTrip[]) : [];
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as unknown;
+      return Array.isArray(parsed)
+        ? parsed.map(sanitizeSavedTrip).filter((trip): trip is SavedTrip => Boolean(trip))
+        : [];
     } catch {
       return [];
     }
@@ -239,7 +252,8 @@ export class TripsService {
 
   private saveLocal(trips: SavedTrip[]): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
+      const sanitized = trips.map(sanitizeSavedTrip).filter((trip): trip is SavedTrip => Boolean(trip));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
     } catch {}
   }
 
@@ -250,7 +264,10 @@ export class TripsService {
       const parsed = JSON.parse(raw) as unknown;
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
       return Object.fromEntries(
-        Object.entries(parsed).filter((entry): entry is [string, SavedTrip] => isSavedTrip(entry[1])),
+        Object.entries(parsed)
+          .map(([_id, value]) => sanitizeSavedTrip(value))
+          .filter((trip): trip is SavedTrip => Boolean(trip))
+          .map(trip => [trip.id, trip]),
       );
     } catch {
       return {};
@@ -259,7 +276,9 @@ export class TripsService {
 
   private savePending(trip: SavedTrip): void {
     try {
-      localStorage.setItem(PENDING_KEY, JSON.stringify({ ...this.loadPending(), [trip.id]: trip }));
+      const sanitized = sanitizeSavedTrip(trip);
+      if (!sanitized) return;
+      localStorage.setItem(PENDING_KEY, JSON.stringify({ ...this.loadPending(), [sanitized.id]: sanitized }));
     } catch {}
   }
 
@@ -280,7 +299,9 @@ export class TripsService {
       const raw = localStorage.getItem(DELETED_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw) as unknown;
-      return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((id): id is string => typeof id === 'string' && id.trim().length > 0 && id.length <= 100)
+        : [];
     } catch {
       return [];
     }
@@ -389,15 +410,63 @@ function toTripPayload(trip: SavedTrip): Omit<SavedTrip, 'id' | 'createdAt'> {
   };
 }
 
-function isSavedTrip(value: unknown): value is SavedTrip {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const candidate = value as SavedTrip;
-  return (
-    typeof candidate.id === 'string' &&
-    (candidate.tripType === 'flight' || candidate.tripType === 'hotel') &&
-    typeof candidate.programName === 'string' &&
-    typeof candidate.ptsRequired === 'number' &&
-    Number.isFinite(candidate.ptsRequired) &&
-    typeof candidate.createdAt === 'string'
-  );
+function sanitizeSavedTrip(value: unknown): SavedTrip | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const candidate = value as Partial<SavedTrip>;
+  const id = boundedString(candidate.id, 100);
+  const tripType = candidate.tripType === 'flight' || candidate.tripType === 'hotel' ? candidate.tripType : null;
+  const programName = boundedString(candidate.programName, 160);
+  const ptsRequired = clampInteger(candidate.ptsRequired, 0, MAX_POINTS_REQUIRED);
+  const createdAt = validIsoString(candidate.createdAt);
+
+  if (!id || !tripType || !programName || ptsRequired === null || !createdAt) return null;
+
+  const origin = optionalIata(candidate.origin);
+  const destination = tripType === 'flight'
+    ? optionalIata(candidate.destination)
+    : boundedString(candidate.destination, 160) ?? undefined;
+  const cabin = typeof candidate.cabin === 'string' && CABIN_VALUES.has(candidate.cabin) ? candidate.cabin : undefined;
+  const passengers = clampInteger(candidate.passengers, 1, 9);
+  const nights = clampInteger(candidate.nights, 1, 60);
+  const hotelCat = typeof candidate.hotelCat === 'string' && HOTEL_CATEGORY_VALUES.has(candidate.hotelCat) ? candidate.hotelCat : undefined;
+  const notes = boundedString(candidate.notes, 500);
+
+  return {
+    id,
+    tripType,
+    ...(origin ? { origin } : {}),
+    ...(destination ? { destination } : {}),
+    ...(cabin ? { cabin } : {}),
+    ...(passengers !== null ? { passengers } : {}),
+    ...(nights !== null ? { nights } : {}),
+    ...(hotelCat ? { hotelCat } : {}),
+    programName,
+    ptsRequired,
+    ...(notes ? { notes } : {}),
+    createdAt,
+  };
+}
+
+function boundedString(value: unknown, maxLength: number): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().slice(0, maxLength);
+  return normalized.length > 0 ? normalized : null;
+}
+
+function optionalIata(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim().toUpperCase();
+  return IATA_RE.test(normalized) ? normalized : undefined;
+}
+
+function validIsoString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+}
+
+function clampInteger(value: unknown, min: number, max: number): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const rounded = Math.round(value);
+  return rounded >= min && rounded <= max ? rounded : null;
 }
