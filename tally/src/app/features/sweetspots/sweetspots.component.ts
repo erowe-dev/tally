@@ -88,10 +88,11 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       </div>
 
       <!-- Filter tabs -->
-      <div class="filter-row">
+      <div class="filter-row" role="radiogroup" aria-label="Sweet spot category filter">
         <button type="button" *ngFor="let f of filters" class="filter-btn"
+          role="radio"
           [class.active]="activeFilter() === f.id"
-          [attr.aria-pressed]="activeFilter() === f.id"
+          [attr.aria-checked]="activeFilter() === f.id"
           (click)="activeFilter.set(f.id)">
           {{ f.label }}
           <span class="fav-count" *ngIf="f.id === 'saved' && favCount() > 0">{{ favCount() }}</span>
@@ -100,11 +101,12 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       </div>
 
       <!-- Sort row -->
-      <div class="sort-row">
+      <div class="sort-row" role="radiogroup" aria-label="Sweet spot sort order">
         <span class="sort-label">Sort:</span>
         <button type="button" *ngFor="let s of sortModes" class="sort-btn"
+          role="radio"
           [class.active]="activeSort() === s.id"
-          [attr.aria-pressed]="activeSort() === s.id"
+          [attr.aria-checked]="activeSort() === s.id"
           (click)="activeSort.set(s.id)">
           {{ s.label }}
         </button>
@@ -113,10 +115,11 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       <!-- CPP min filter -->
       <div class="cpp-filter-row">
         <span class="cpp-filter-label">Min CPP:</span>
-        <div class="cpp-tiers">
+        <div class="cpp-tiers" role="radiogroup" aria-label="Minimum cents per point filter">
           <button type="button" *ngFor="let t of cppTiers" class="cpp-tier-btn"
+            role="radio"
             [class.active]="minCppFilter() === t.val"
-            [attr.aria-pressed]="minCppFilter() === t.val"
+            [attr.aria-checked]="minCppFilter() === t.val"
             (click)="minCppFilter.set(t.val)">
             {{ t.label }}
           </button>

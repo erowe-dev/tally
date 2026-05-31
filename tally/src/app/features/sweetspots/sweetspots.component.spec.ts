@@ -112,4 +112,34 @@ describe('SweetspotsComponent', () => {
     expect(component.activeSort()).toBe('default');
     expect(component.minCppFilter()).toBe(0);
   });
+
+  it('exposes mutually exclusive filter controls as radio groups', () => {
+    const component = createComponent();
+
+    const categoryGroup = fixture.nativeElement.querySelector('.filter-row[role="radiogroup"]') as HTMLElement;
+    const sortGroup = fixture.nativeElement.querySelector('.sort-row[role="radiogroup"]') as HTMLElement;
+    const cppGroup = fixture.nativeElement.querySelector('.cpp-tiers[role="radiogroup"]') as HTMLElement;
+
+    expect(categoryGroup.getAttribute('aria-label')).toBe('Sweet spot category filter');
+    expect(sortGroup.getAttribute('aria-label')).toBe('Sweet spot sort order');
+    expect(cppGroup.getAttribute('aria-label')).toBe('Minimum cents per point filter');
+
+    const categoryRadios = Array.from(categoryGroup.querySelectorAll('[role="radio"]')) as HTMLElement[];
+    const sortRadios = Array.from(sortGroup.querySelectorAll('[role="radio"]')) as HTMLElement[];
+    const cppRadios = Array.from(cppGroup.querySelectorAll('[role="radio"]')) as HTMLElement[];
+
+    expect(categoryRadios.find(button => button.textContent?.includes('All'))?.getAttribute('aria-checked')).toBe('true');
+    expect(sortRadios.find(button => button.textContent?.includes('Default'))?.getAttribute('aria-checked')).toBe('true');
+    expect(cppRadios.find(button => button.textContent?.includes('Any'))?.getAttribute('aria-checked')).toBe('true');
+    expect(categoryGroup.querySelector('[aria-pressed]')).toBeNull();
+
+    component.activeFilter.set('hotel');
+    component.activeSort.set('cpp');
+    component.minCppFilter.set(2);
+    fixture.detectChanges();
+
+    expect(categoryRadios.find(button => button.textContent?.includes('Hotels'))?.getAttribute('aria-checked')).toBe('true');
+    expect(sortRadios.find(button => button.textContent?.includes('CPP'))?.getAttribute('aria-checked')).toBe('true');
+    expect(cppRadios.find(button => button.textContent?.includes('>2¢'))?.getAttribute('aria-checked')).toBe('true');
+  });
 });
