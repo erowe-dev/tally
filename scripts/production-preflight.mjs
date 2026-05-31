@@ -340,6 +340,10 @@ function checkReleaseSmokePartialAuthGuard() {
     'release smoke must keep an explicit escape hatch for preview/custom-domain smoke',
   );
   assert(
+    smoke.includes('requires both TALLY_APP_URL and TALLY_API_URL'),
+    'release smoke must require explicit app and API URLs before freshness skips',
+  );
+  assert(
     smoke.includes('cannot be used with the canonical production aliases'),
     'release smoke must not allow freshness skips for canonical production aliases',
   );
