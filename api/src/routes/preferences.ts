@@ -52,6 +52,19 @@ router.put(
   }),
 );
 
+router.delete(
+  '/',
+  checkJwt,
+  jwtErrorHandler,
+  asyncRoute(async (req, res) => {
+    const user = await requireUser(getAuth0Id(req));
+    await prisma.userPreference.deleteMany({
+      where: { userId: user.id },
+    });
+    res.status(204).send();
+  }),
+);
+
 export default router;
 
 type ParseResult<T> = { data: T } | { error: string };

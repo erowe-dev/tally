@@ -73,10 +73,14 @@ const checks = [
         const reread = await request('/api/preferences');
         assert(reread?.preferredCabin === 'business', `expected saved preferences, got ${JSON.stringify(reread)}`);
       } finally {
-        await request('/api/preferences', {
-          method: 'PUT',
-          body: JSON.stringify(existing ?? {}),
-        });
+        if (existing) {
+          await request('/api/preferences', {
+            method: 'PUT',
+            body: JSON.stringify(existing),
+          });
+        } else {
+          await request('/api/preferences', { method: 'DELETE' });
+        }
       }
     },
   },

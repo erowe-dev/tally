@@ -40,7 +40,7 @@ $env:TALLY_AUTH_EMAIL="<your Auth0 email>"
 npm run smoke:auth
 ```
 
-The authenticated smoke provisions your user, writes and resets a synthetic balance under `codex_smoke_points`, restores preferences after validating held-program persistence, writes/deletes a synthetic expiry record, creates/edits/deletes a temporary saved search, checks provider-backed award availability, and creates/edits/deletes a temporary saved trip.
+The authenticated smoke provisions your user, writes and resets a synthetic balance under `codex_smoke_points`, restores or removes preferences after validating held-program persistence, writes/deletes a synthetic expiry record, creates/edits/deletes a temporary saved search, checks provider-backed award availability, and creates/edits/deletes a temporary saved trip.
 
 Override the default URLs when testing preview/custom domains:
 
@@ -166,7 +166,7 @@ Block the alpha invite until all of these pass in production:
 - Flight and hotel recommendations can be saved as trips.
 - Trip notes can be edited, one trip can be deleted, and all trips can be cleared.
 - A second browser session sees server-backed synced data.
-- Unauthenticated calls to `/api/users/me`, `/api/balances`, `/api/expiry`, `/api/trips`, `/api/preferences`, `/api/searches`, `/api/search/award-availability`, and `/api/search/hotel-fit` are rejected.
+- Unauthenticated calls to `/api/users/me`, `/api/balances`, `/api/expiry`, `/api/trips`, `/api/preferences`, `/api/searches`, `/api/search/award-availability`, and `/api/search/hotel-fit` are rejected, including destructive preference cleanup calls.
 - `POST /api/waitlist` returns a deliberate 410 closed response with `contactEmail` and allows configured production origins via CORS.
 - Disallowed browser origins return `403` with `X-Request-Id`, not `500`, and do not reflect the blocked origin in the response body.
 - Telemetry accepts valid first-party analytics/error payloads, rejects unsupported analytics events, and rejects telemetry posts that omit `Origin`.

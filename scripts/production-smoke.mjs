@@ -73,6 +73,7 @@ const checks = [
         { path: '/api/expiry' },
         { path: '/api/trips' },
         { path: '/api/preferences' },
+        { path: '/api/preferences', init: { method: 'DELETE' } },
         { path: '/api/searches' },
         {
           path: '/api/search/award-availability',
