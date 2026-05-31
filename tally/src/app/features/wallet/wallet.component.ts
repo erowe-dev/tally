@@ -161,17 +161,25 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
               </div>
               <div class="program-actions">
                 <button
+                  *ngIf="!hasBalance(card.id); else balanceBackedHeld"
                   type="button"
                   class="goal-toggle held-toggle"
                   [class.active]="isHeldProgram(card.id)"
-                  [class.balance-backed]="hasBalance(card.id)"
                   [attr.aria-pressed]="isHeldProgram(card.id)"
-                  [attr.aria-disabled]="hasBalance(card.id)"
                   [attr.aria-label]="heldToggleLabel(card.id, card.name)"
                   [title]="heldToggleLabel(card.id, card.name)"
                   (click)="toggleHeldProgram(card.id); $event.stopPropagation()">
                   {{ heldToggleText(card.id) }}
                 </button>
+                <ng-template #balanceBackedHeld>
+                  <span
+                    class="goal-toggle held-toggle held-status-chip balance-backed"
+                    role="status"
+                    [attr.aria-label]="heldToggleLabel(card.id, card.name)"
+                    [title]="heldToggleLabel(card.id, card.name)">
+                    {{ heldToggleText(card.id) }}
+                  </span>
+                </ng-template>
                 <div class="input-wrap" (click)="toggleExpand(card.id)">
                   <input
                     class="balance-input"
@@ -211,20 +219,22 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       <div class="spend-sim" *ngIf="wallet.syncState() !== 'loading'">
         <div class="spend-sim-header">
           <span class="spend-sim-label">Earning simulator</span>
-          <button type="button" class="goal-toggle" (click)="showSim.set(!showSim())">
+          <button type="button" class="goal-toggle" aria-controls="wallet-earning-simulator"
+            [attr.aria-expanded]="showSim()" (click)="showSim.set(!showSim())">
             {{ showSim() ? 'Hide' : 'Show' }}
           </button>
         </div>
         <ng-container *ngIf="showSim()">
+          <div id="wallet-earning-simulator">
           <div class="spend-sim-body">
             <div class="sim-field">
-              <label class="field-label-sm">Monthly spend ($)</label>
-              <input class="sim-input" type="number" inputmode="numeric"
+              <label class="field-label-sm" for="wallet-sim-monthly-spend">Monthly spend ($)</label>
+              <input id="wallet-sim-monthly-spend" class="sim-input" type="number" inputmode="numeric"
                 [(ngModel)]="simMonthlySpend" placeholder="2000" min="0" step="500">
             </div>
             <div class="sim-field">
-              <label class="field-label-sm">Earn rate (pts/$)</label>
-              <input class="sim-input" type="number" inputmode="decimal"
+              <label class="field-label-sm" for="wallet-sim-earn-rate">Earn rate (pts/$)</label>
+              <input id="wallet-sim-earn-rate" class="sim-input" type="number" inputmode="decimal"
                 [(ngModel)]="simEarnRate" placeholder="2" min="0.5" step="0.5">
             </div>
           </div>
@@ -241,6 +251,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
               At this rate: <strong>{{ simMonthsToMilestone(m.gap) }} month{{ simMonthsToMilestone(m.gap) !== 1 ? 's' : '' }}</strong>
               to close the gap to <em>{{ m.name }}</em>
             </div>
+          </div>
           </div>
         </ng-container>
       </div>
@@ -280,12 +291,13 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       <div class="goal-section">
         <div class="goal-header">
           <span class="goal-label">Point Goal</span>
-          <button type="button" class="goal-toggle" (click)="toggleGoal()">
+          <button type="button" class="goal-toggle" aria-controls="wallet-goal-panel"
+            [attr.aria-expanded]="showGoal()" (click)="toggleGoal()">
             {{ showGoal() ? 'Hide' : 'Set Goal' }}
           </button>
         </div>
         <ng-container *ngIf="showGoal()">
-          <div class="goal-inputs">
+          <div id="wallet-goal-panel" class="goal-inputs">
             <input class="goal-name-input" aria-label="Point goal name" [ngModel]="goalName" (ngModelChange)="updateGoalName($event)" placeholder="e.g. Tokyo Business Class">
             <input class="goal-pts-input" type="number" inputmode="numeric" [ngModel]="goalPts" (ngModelChange)="updateGoalPoints($event)"
               aria-label="Point goal amount" placeholder="60000" min="0" step="5000">
@@ -368,26 +380,31 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
         </div>
 
         <!-- Transfer Value Calculator -->
-        <div class="transfer-calc" *ngIf="heldCards().length > 0">
+        <div class="transfer-calc" *ngIf="isTransferCalculatorRelevant()">
           <div class="tc-header">
             <span class="tc-label">Transfer Calculator</span>
-            <button type="button" class="goal-toggle" (click)="showTransferCalc.set(!showTransferCalc())">
+            <button type="button" class="goal-toggle" aria-controls="wallet-transfer-calculator"
+              [attr.aria-expanded]="showTransferCalc()" (click)="showTransferCalc.set(!showTransferCalc())">
               {{ showTransferCalc() ? 'Hide' : 'Show' }}
             </button>
           </div>
           <ng-container *ngIf="showTransferCalc()">
+            <div id="wallet-transfer-calculator">
+            <div class="summary-note tc-empty-note" *ngIf="fundedCards().length === 0">
+              Saved programs with no balance are tracked in Mine. Add points to a program before using it as a transfer source.
+            </div>
             <div class="tc-row">
               <div class="tc-field">
-                <label class="field-label-sm">From</label>
-                <select class="sim-input tc-select" [(ngModel)]="tcSourceCardId"
+                <label class="field-label-sm" for="wallet-tc-source">From</label>
+                <select id="wallet-tc-source" class="sim-input tc-select" [(ngModel)]="tcSourceCardId"
                   (ngModelChange)="tcDestPartner = ''">
                   <option value="">— select —</option>
-                  <option *ngFor="let c of heldCards()" [value]="c.id">{{ c.name }}</option>
+                  <option *ngFor="let c of fundedCards()" [value]="c.id">{{ c.name }}</option>
                 </select>
               </div>
               <div class="tc-field" *ngIf="tcSourceCardId">
-                <label class="field-label-sm">To partner</label>
-                <select class="sim-input tc-select" [(ngModel)]="tcDestPartner">
+                <label class="field-label-sm" for="wallet-tc-destination">To partner</label>
+                <select id="wallet-tc-destination" class="sim-input tc-select" [(ngModel)]="tcDestPartner">
                   <option value="">— select —</option>
                   <option *ngFor="let p of tcSourcePartners()" [value]="p.name">
                     {{ p.icon }} {{ p.name }}
@@ -395,8 +412,8 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
                 </select>
               </div>
               <div class="tc-field" *ngIf="tcDestPartner">
-                <label class="field-label-sm">Points to transfer</label>
-                <input class="sim-input" type="number" inputmode="numeric"
+                <label class="field-label-sm" for="wallet-tc-amount">Points to transfer</label>
+                <input id="wallet-tc-amount" class="sim-input" type="number" inputmode="numeric"
                   [(ngModel)]="tcAmount" placeholder="{{ wallet.getBalance(tcSourceCardId) | number }}"
                   min="0" step="1000">
               </div>
@@ -421,6 +438,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
                 </div>
               </div>
               <div class="tc-res-cpp">at {{ r.partner.cpp }}¢/pt</div>
+            </div>
             </div>
           </ng-container>
         </div>
@@ -640,10 +658,15 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     }
     .program-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
     .held-toggle { background: var(--surface); }
+    .held-status-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: default;
+    }
     .held-toggle.balance-backed {
       cursor: default;
       border-style: dashed;
-      pointer-events: none;
     }
     .row-value {
       font-family: 'Geist Mono', monospace; font-size: 9px;
@@ -854,6 +877,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       background: var(--surface); border-radius: 12px;
       padding: 14px 16px; animation: fadeIn 0.2s ease;
     }
+    .tc-empty-note { margin-bottom: 10px; }
     .tc-res-bonus {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.06em; color: var(--tally-amber);
@@ -1464,10 +1488,19 @@ export class WalletComponent {
   tcDestPartner = '';
   tcAmount = 0;
 
-  /** Cards the user actually holds (non-zero balance) */
+  /** Programs the user marked as theirs, including zero-balance programs. */
   readonly heldCards = computed(() =>
+    this.data.cards.filter(c => this.isHeldProgram(c.id))
+  );
+
+  /** Programs with a positive balance that can act as transfer sources. */
+  readonly fundedCards = computed(() =>
     this.data.cards.filter(c => this.wallet.getBalance(c.id) > 0)
   );
+
+  isTransferCalculatorRelevant(): boolean {
+    return this.heldCards().length > 0 || this.fundedCards().length > 0;
+  }
 
   /** Transfer partners for the currently selected source card */
   readonly tcSourcePartners = computed(() => {

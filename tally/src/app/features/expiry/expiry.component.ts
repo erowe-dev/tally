@@ -211,7 +211,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       <div class="filtered-empty" *ngIf="visibleStatuses().length === 0">
         <div class="filtered-empty-icon">☆</div>
         <div class="filtered-empty-title">No saved programs match</div>
-        <p>Save programs in Wallet or turn off Mine to review every program.</p>
+        <p>Save programs from Cards, add balances in Wallet, or turn off Mine to review every program.</p>
         <button class="filtered-empty-action" type="button" (click)="setHeldOnly(false)">
           Show all programs
         </button>

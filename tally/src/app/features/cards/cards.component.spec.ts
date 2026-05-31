@@ -7,8 +7,9 @@ import { CardsComponent } from './cards.component';
 
 class MockWalletService {
   hasAnyPoints = signal(false);
-  getBalance(_cardId: string): number {
-    return 0;
+  balances = new Map<string, number>();
+  getBalance(cardId: string): number {
+    return this.balances.get(cardId) ?? 0;
   }
 }
 
@@ -22,6 +23,7 @@ describe('CardsComponent', () => {
   const SEARCH_KEY = 'tally_cards_search_session_v1';
   let fixture: ComponentFixture<CardsComponent>;
   let prefs: MockPreferencesService;
+  let wallet: MockWalletService;
 
   const cards = [
     {
@@ -54,11 +56,12 @@ describe('CardsComponent', () => {
     localStorage.clear();
     sessionStorage.clear();
     prefs = new MockPreferencesService();
+    wallet = new MockWalletService();
 
     await TestBed.configureTestingModule({
       imports: [CardsComponent],
       providers: [
-        { provide: WalletService, useValue: new MockWalletService() },
+        { provide: WalletService, useValue: wallet },
         { provide: PreferencesService, useValue: prefs },
         { provide: DataService, useValue: { cards, transferBonuses: [] } },
       ],
@@ -120,7 +123,7 @@ describe('CardsComponent', () => {
 
     const savedPills = Array.from(fixture.nativeElement.querySelectorAll('.cc-saved-pill') as NodeListOf<HTMLElement>)
       .map(node => node.textContent?.trim());
-    expect(savedPills).toContain('Saved in wallet');
+    expect(savedPills).toContain('Saved program');
   });
 
   it('saves zero-balance programs from Cards without changing balances', () => {
@@ -129,6 +132,37 @@ describe('CardsComponent', () => {
     component.toggleHeldProgram('hyatt');
 
     expect(prefs.updatePreferences).toHaveBeenCalledWith({ heldProgramIds: ['hyatt'] });
+  });
+
+  it('renders balance-backed saved state as a status instead of a focusable save button', () => {
+    wallet.balances.set('hyatt', 10000);
+
+    createComponent();
+
+    const status = fixture.nativeElement.querySelector('.cc-save-status');
+    expect(status?.textContent).toContain('Balance saved');
+    expect(fixture.nativeElement.querySelector('button.balance-backed')).toBeNull();
+  });
+
+  it('wires calculator and transfer finder labels to their controls', () => {
+    const component = createComponent();
+    component.showRater.set(true);
+    component.showCalc.set(true);
+    component.showTransferFinder.set(true);
+
+    fixture.detectChanges();
+
+    const labelledControlIds = [
+      'cards-rater-points',
+      'cards-rater-cash',
+      'cards-calc-points',
+      'cards-transfer-target',
+      'cards-transfer-needed',
+    ];
+    for (const id of labelledControlIds) {
+      expect(fixture.nativeElement.querySelector(`label[for="${id}"]`)).not.toBeNull();
+      expect(fixture.nativeElement.querySelector(`#${id}`)).not.toBeNull();
+    }
   });
 
   it('writes filter state durably and removes empty session search', () => {

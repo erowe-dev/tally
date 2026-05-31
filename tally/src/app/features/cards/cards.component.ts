@@ -241,7 +241,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
                 {{ wallet.getBalance(card.id) | number }} pts
               </div>
               <div class="cc-saved-pill" *ngIf="wallet.getBalance(card.id) <= 0 && heldProgramIdSet().has(card.id)">
-                Saved in wallet
+                Saved program
               </div>
               <!-- Active transfer bonus pill -->
               <div class="cc-bonus-pill" *ngIf="hasActiveBonus(card.id)">
@@ -262,16 +262,23 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
           </button>
           <div class="cc-save-row">
             <button
+              *ngIf="wallet.getBalance(card.id) <= 0; else balanceBackedSave"
               type="button"
               class="cc-save-btn"
               [class.active]="isHeldProgram(card.id)"
-              [class.balance-backed]="wallet.getBalance(card.id) > 0"
               [attr.aria-pressed]="isHeldProgram(card.id)"
-              [attr.aria-disabled]="wallet.getBalance(card.id) > 0"
               [attr.aria-label]="cardHeldToggleLabel(card.id, card.name)"
               (click)="toggleHeldProgram(card.id)">
               {{ cardHeldToggleText(card.id) }}
             </button>
+            <ng-template #balanceBackedSave>
+              <span
+                class="cc-save-btn cc-save-status active balance-backed"
+                role="status"
+                [attr.aria-label]="cardHeldToggleLabel(card.id, card.name)">
+                {{ cardHeldToggleText(card.id) }}
+              </span>
+            </ng-template>
           </div>
           <div class="partners" *ngIf="isExpanded(card.id)">
             <!-- Program-level strategic tip -->
@@ -348,13 +355,13 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         <div class="calc-body" *ngIf="showRater()">
           <div class="rater-inputs">
             <div class="calc-input-wrap">
-              <label class="calc-label">Points used</label>
-              <input class="calc-input" type="number" inputmode="numeric"
+              <label class="calc-label" for="cards-rater-points">Points used</label>
+              <input id="cards-rater-points" class="calc-input" type="number" inputmode="numeric"
                 [ngModel]="raterPts()" (ngModelChange)="raterPts.set($event || 0)" placeholder="60000" min="0" step="1000">
             </div>
             <div class="calc-input-wrap">
-              <label class="calc-label">Cash value received ($)</label>
-              <input class="calc-input" type="number" inputmode="decimal"
+              <label class="calc-label" for="cards-rater-cash">Cash value received ($)</label>
+              <input id="cards-rater-cash" class="calc-input" type="number" inputmode="decimal"
                 [ngModel]="raterCash()" (ngModelChange)="raterCash.set($event || 0)" placeholder="900" min="0" step="10">
             </div>
           </div>
@@ -375,8 +382,8 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         </button>
         <div class="calc-body" *ngIf="showCalc()">
           <div class="calc-input-wrap">
-            <label class="calc-label">How many points?</label>
-            <input class="calc-input" type="number" inputmode="numeric"
+            <label class="calc-label" for="cards-calc-points">How many points?</label>
+            <input id="cards-calc-points" class="calc-input" type="number" inputmode="numeric"
               [ngModel]="calcPts()" (ngModelChange)="calcPts.set($event || 0)" placeholder="50000" min="0" step="1000">
           </div>
           <div class="calc-grid" *ngIf="calcPts() > 0">
@@ -405,15 +412,15 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         <div class="calc-body" *ngIf="showTransferFinder()">
           <div class="tf-inputs">
             <div class="calc-input-wrap">
-              <label class="calc-label">Target program</label>
-              <select class="calc-input" [ngModel]="tfTargetPartner()" (ngModelChange)="tfTargetPartner.set($event)">
+              <label class="calc-label" for="cards-transfer-target">Target program</label>
+              <select id="cards-transfer-target" class="calc-input" [ngModel]="tfTargetPartner()" (ngModelChange)="tfTargetPartner.set($event)">
                 <option value="">-- pick a partner --</option>
                 <option *ngFor="let p of allPartnerNames" [value]="p">{{ p }}</option>
               </select>
             </div>
             <div class="calc-input-wrap">
-              <label class="calc-label">Miles / pts needed</label>
-              <input class="calc-input" type="number" inputmode="numeric"
+              <label class="calc-label" for="cards-transfer-needed">Miles / pts needed</label>
+              <input id="cards-transfer-needed" class="calc-input" type="number" inputmode="numeric"
                 [ngModel]="tfTargetMiles()" (ngModelChange)="tfTargetMiles.set($event || 0)" placeholder="60000" min="0" step="5000">
             </div>
           </div>
@@ -538,7 +545,12 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       color: var(--tally-green);
     }
     .cc-save-btn.balance-backed {
-      cursor: default; border-style: dashed; pointer-events: none;
+      cursor: default; border-style: dashed;
+    }
+    .cc-save-status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     .cc-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0; }
     .cc-chevron {

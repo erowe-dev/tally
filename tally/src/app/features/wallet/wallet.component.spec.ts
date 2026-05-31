@@ -9,6 +9,33 @@ import { ToastService } from '../../core/services/toast.service';
 import { WalletService } from '../../core/services/wallet.service';
 import { WalletComponent } from './wallet.component';
 
+const cardFixture = [
+  {
+    id: 'amex_mr',
+    name: 'Amex Membership Rewards',
+    short: 'Amex MR',
+    icon: 'A',
+    color: '#1a7a4a',
+    textColor: '#ffffff',
+    cards: ['Gold Card'],
+    baseCpp: 1.6,
+    category: 'transferable',
+    partners: [{ name: 'Air France/KLM Flying Blue', icon: 'AF', ratio: '1:1', type: 'airline', quality: 'great', cpp: 1.7 }],
+  },
+  {
+    id: 'hyatt',
+    name: 'World of Hyatt',
+    short: 'Hyatt',
+    icon: 'H',
+    color: '#1d4ed8',
+    textColor: '#ffffff',
+    cards: ['World of Hyatt Card'],
+    baseCpp: 2,
+    category: 'hotel',
+    partners: [{ name: 'World of Hyatt', icon: 'H', ratio: '1:1', type: 'hotel', quality: 'great', cpp: 2 }],
+  },
+] as const;
+
 class MockWalletService {
   syncState = signal<'idle' | 'loading' | 'synced' | 'error'>('synced');
   pendingCount = signal(0);
@@ -28,7 +55,7 @@ class MockPreferencesService {
     preferredCabin: 'business',
     maxStops: 1,
     preferredPrograms: [],
-    heldProgramIds: [],
+    heldProgramIds: [] as string[],
     hotelChains: [],
     defaultTravelers: 2,
     dateFlexibility: 'plus_minus_7',
@@ -48,7 +75,7 @@ describe('WalletComponent', () => {
       imports: [WalletComponent],
       providers: [
         { provide: WalletService, useClass: MockWalletService },
-        { provide: DataService, useValue: { cards: [], transferBonuses: [] } },
+        { provide: DataService, useValue: { cards: cardFixture, transferBonuses: [] } },
         { provide: OptimizerService, useValue: { getAllRecs: () => [] } },
         {
           provide: ExpiryService,
@@ -157,5 +184,58 @@ describe('WalletComponent', () => {
 
     expect(wallet.setBalance).toHaveBeenCalledWith('amex_mr', 25000);
     expect(prefs.updatePreferences).toHaveBeenCalledWith({ heldProgramIds: ['amex_mr'] });
+  });
+
+  it('renders wallet rows and makes balance-backed held state a status, not a disabled-looking button', () => {
+    const wallet = TestBed.inject(WalletService) as unknown as MockWalletService;
+    wallet.getBalance.and.callFake(cardId => cardId === 'hyatt' ? 10000 : 0);
+    createComponent();
+
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.wallet-row');
+    expect(rows.length).toBe(2);
+    const status = fixture.nativeElement.querySelector('.held-status-chip');
+    expect(status?.textContent).toContain('Balance saved');
+    expect(fixture.nativeElement.querySelector('button.balance-backed')).toBeNull();
+  });
+
+  it('keeps saved zero-balance programs out of transfer sources while explaining why', () => {
+    const prefs = TestBed.inject(PreferencesService) as unknown as MockPreferencesService;
+    prefs.preferences.set({
+      ...prefs.preferences(),
+      heldProgramIds: ['amex_mr'],
+    });
+    const component = createComponent();
+    component.showTransferCalc.set(true);
+
+    fixture.detectChanges();
+
+    expect(component.heldCards().map(card => card.id)).toEqual(['amex_mr']);
+    expect(component.fundedCards()).toEqual([]);
+    expect(fixture.nativeElement.querySelector('.tc-empty-note')?.textContent).toContain('Add points');
+    const sourceOptions = Array.from<Element>(fixture.nativeElement.querySelectorAll('#wallet-tc-source option'))
+      .map((option: Element) => option.textContent?.trim());
+    expect(sourceOptions).toEqual(['— select —']);
+  });
+
+  it('wires simulator and transfer calculator labels to their controls', () => {
+    const wallet = TestBed.inject(WalletService) as unknown as MockWalletService;
+    wallet.getBalance.and.callFake(cardId => cardId === 'amex_mr' ? 25000 : 0);
+    const component = createComponent();
+    component.showSim.set(true);
+    component.showTransferCalc.set(true);
+
+    fixture.detectChanges();
+
+    const labelledControlIds = [
+      'wallet-sim-monthly-spend',
+      'wallet-sim-earn-rate',
+      'wallet-tc-source',
+    ];
+    for (const id of labelledControlIds) {
+      expect(fixture.nativeElement.querySelector(`label[for="${id}"]`)).not.toBeNull();
+      expect(fixture.nativeElement.querySelector(`#${id}`)).not.toBeNull();
+    }
   });
 });
