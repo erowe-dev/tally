@@ -128,6 +128,32 @@ describe('ExpiryService', () => {
     expect(status?.actionNeeded).toContain('Set your last activity date');
   });
 
+  it('drops malformed cached expiry records before promoting local state', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      citi_ty: { cardId: 'citi_ty', lastActivityDate: '2026-05-18' },
+      mismatched: { cardId: 'hyatt', lastActivityDate: '2026-05-18' },
+      unknown_program: { cardId: 'unknown_program', lastActivityDate: '2026-05-18' },
+      invalid_date: { cardId: 'aa_aadvantage', lastActivityDate: '2026-13-99' },
+      future_date: { cardId: 'hyatt', lastActivityDate: '2999-01-01' },
+    }));
+    api.getExpiryRecordsWithCache.and.returnValue(of({}));
+    api.setExpiryRecord.and.returnValue(of({}));
+    auth.isResolved.set(true);
+    auth.isAuthenticated.set(true);
+    auth.isProvisioned.set(true);
+
+    const service = createService();
+    TestBed.flushEffects();
+
+    expect(service.records()).toEqual({
+      citi_ty: { cardId: 'citi_ty', lastActivityDate: '2026-05-18' },
+    });
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({
+      citi_ty: { cardId: 'citi_ty', lastActivityDate: '2026-05-18' },
+    });
+    expect(api.setExpiryRecord).toHaveBeenCalledOnceWith('citi_ty', '2026-05-18');
+  });
+
   it('preserves the calendar day when computing expiry dates from YYYY-MM-DD values', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       citi_ty: { cardId: 'citi_ty', lastActivityDate: '2026-05-18' },
@@ -146,8 +172,10 @@ describe('ExpiryService', () => {
     localStorage.setItem(PENDING_KEY, JSON.stringify({
       upserts: {
         citi_ty: { cardId: 'citi_ty', lastActivityDate: '2026-05-18' },
+        wrong_key: { cardId: 'hyatt', lastActivityDate: '2026-05-18' },
+        future_date: { cardId: 'aa_aadvantage', lastActivityDate: '2999-01-01' },
       },
-      deletes: ['united_mp'],
+      deletes: ['united_mp', 'unknown_program', 'citi_ty'],
     }));
     api.getExpiryRecordsWithCache.and.returnValue(of({
       united_mp: { cardId: 'united_mp', lastActivityDate: '2026-04-01' },

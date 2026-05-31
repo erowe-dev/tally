@@ -43,6 +43,24 @@ interface CacheEnvelope<T> {
 const CACHE_MAX_AGE_MS = 60 * 60 * 1000;
 const BALANCES_CACHE_KEY = 'tally_cache_balances';
 const EXPIRY_CACHE_KEY = 'tally_cache_expiry';
+const MAX_BALANCE = 50_000_000;
+const KNOWN_PROGRAM_IDS = new Set([
+  'amex_mr',
+  'chase_ur',
+  'citi_ty',
+  'cap1_miles',
+  'bilt',
+  'delta_skymiles',
+  'united_mp',
+  'aa_aadvantage',
+  'southwest_rr',
+  'alaska_mp',
+  'marriott_bonvoy',
+  'hyatt',
+  'hilton_honors',
+  'ihg_rewards',
+]);
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * Centralises all authenticated HTTP calls to the Tally Express API.
@@ -258,16 +276,34 @@ export class ApiService {
 
 function isBalanceMap(value: unknown): value is Record<string, number> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  return Object.values(value).every(amount => typeof amount === 'number' && Number.isFinite(amount));
+  return Object.entries(value).every(([cardId, amount]) =>
+    KNOWN_PROGRAM_IDS.has(cardId) &&
+    typeof amount === 'number' &&
+    Number.isFinite(amount) &&
+    amount >= 0 &&
+    amount <= MAX_BALANCE,
+  );
 }
 
 function isExpiryRecordMap(value: unknown): value is Record<string, ApiExpiryRecord> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  return Object.values(value).every(record =>
+  return Object.entries(value).every(([cardId, record]) =>
     !!record &&
     typeof record === 'object' &&
     !Array.isArray(record) &&
-    typeof (record as ApiExpiryRecord).cardId === 'string' &&
-    typeof (record as ApiExpiryRecord).lastActivityDate === 'string',
+    (record as ApiExpiryRecord).cardId === cardId &&
+    KNOWN_PROGRAM_IDS.has(cardId) &&
+    typeof (record as ApiExpiryRecord).lastActivityDate === 'string' &&
+    isValidPastOrTodayDateString((record as ApiExpiryRecord).lastActivityDate),
   );
+}
+
+function isValidPastOrTodayDateString(value: string): boolean {
+  if (!DATE_RE.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return date.getTime() <= startOfToday.getTime();
 }

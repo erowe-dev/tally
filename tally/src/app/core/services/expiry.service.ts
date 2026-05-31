@@ -56,6 +56,14 @@ function isValidDateString(value: string): boolean {
   return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
 }
 
+function isFutureDateString(value: string): boolean {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return date.getTime() > startOfToday.getTime();
+}
+
 const EXPIRY_RULES: ExpiryRule[] = [
   // ── Transferable currencies ────────────────────────────────────────────────
   {
@@ -200,6 +208,7 @@ const EXPIRY_RULES: ExpiryRule[] = [
 
 // Programs where expiry is "never" or tied to card-open status (no date needed)
 const SAFE_CARDS = new Set(['amex_mr', 'chase_ur', 'cap1_miles', 'delta_skymiles', 'united_mp', 'southwest_rr']);
+const KNOWN_CARD_IDS = new Set(EXPIRY_RULES.map(rule => rule.cardId));
 
 @Injectable({ providedIn: 'root' })
 export class ExpiryService {
@@ -269,14 +278,15 @@ export class ExpiryService {
 
         this.api.getExpiryRecordsWithCache().subscribe({
           next: apiRecords => {
+            const apiClean = sanitizeExpiryRecords(apiRecords);
             const localRecords = this.loadLocal();
             const pending = this.loadPending();
             const localHasData = Object.keys(localRecords).length > 0;
-            const apiIsEmpty = Object.keys(apiRecords).length === 0;
+            const apiIsEmpty = Object.keys(apiClean).length === 0;
             const hasPending = Object.keys(pending.upserts).length > 0 || pending.deletes.length > 0;
 
             if (hasPending) {
-              const merged = { ...apiRecords, ...pending.upserts };
+              const merged = sanitizeExpiryRecords({ ...apiClean, ...pending.upserts });
               for (const cardId of pending.deletes) delete merged[cardId];
               this._records.set(merged);
               this.saveLocal(merged);
@@ -291,8 +301,8 @@ export class ExpiryService {
               this._pushLocalToApi(localRecords);
             } else {
               // API has data (or both empty) — API is source of truth.
-              this._records.set(apiRecords);
-              this.saveLocal(apiRecords);
+              this._records.set(apiClean);
+              this.saveLocal(apiClean);
               this._syncState.set('synced');
             }
           },
@@ -314,7 +324,7 @@ export class ExpiryService {
   }
 
   setLastActivity(cardId: string, date: string): void {
-    if (!isValidDateString(date)) {
+    if (!KNOWN_CARD_IDS.has(cardId) || !isValidDateString(date) || isFutureDateString(date)) {
       console.error('[ExpiryService] Rejected invalid date:', date);
       return;
     }
@@ -357,7 +367,7 @@ export class ExpiryService {
   }
 
   private _pushLocalToApi(records: Record<string, ExpiryRecord>): void {
-    for (const { cardId, lastActivityDate } of Object.values(records)) {
+    for (const { cardId, lastActivityDate } of Object.values(sanitizeExpiryRecords(records))) {
       this.api.setExpiryRecord(cardId, lastActivityDate).subscribe({
         error: _err => this.markForRetry('Expiry date not saved — will retry when online'),
       });
@@ -365,14 +375,15 @@ export class ExpiryService {
   }
 
   private _pushPendingToApi(pending: PendingExpiryChanges): void {
-    for (const { cardId, lastActivityDate } of Object.values(pending.upserts)) {
+    const cleanPending = sanitizePending(pending);
+    for (const { cardId, lastActivityDate } of Object.values(cleanPending.upserts)) {
       this.api.setExpiryRecord(cardId, lastActivityDate).subscribe({
         next: () => this.clearPendingUpsert(cardId),
         error: _err => this.markForRetry('Expiry date not saved — will retry when online'),
       });
     }
 
-    for (const cardId of pending.deletes) {
+    for (const cardId of cleanPending.deletes) {
       this.api.deleteExpiryRecord(cardId).subscribe({
         next: () => this.clearPendingDelete(cardId),
         error: _err => this.markForRetry('Expiry date not deleted — will retry when online'),
@@ -445,7 +456,10 @@ export class ExpiryService {
   private loadLocal(): Record<string, ExpiryRecord> {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as Record<string, ExpiryRecord>) : {};
+      if (!raw) return {};
+      const records = sanitizeExpiryRecords(JSON.parse(raw) as unknown);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      return records;
     } catch {
       return {};
     }
@@ -453,7 +467,7 @@ export class ExpiryService {
 
   private saveLocal(data: Record<string, ExpiryRecord>): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeExpiryRecords(data)));
     } catch {
       // Storage unavailable — not a fatal error
     }
@@ -464,10 +478,16 @@ export class ExpiryService {
       const raw = localStorage.getItem(PENDING_KEY);
       if (!raw) return { upserts: {}, deletes: [] };
       const parsed = JSON.parse(raw) as Partial<PendingExpiryChanges>;
-      return {
+      const pending = sanitizePending({
         upserts: parsed.upserts ?? {},
         deletes: Array.isArray(parsed.deletes) ? parsed.deletes : [],
-      };
+      });
+      if (this.countPending(pending) === 0) {
+        localStorage.removeItem(PENDING_KEY);
+      } else {
+        localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+      }
+      return pending;
     } catch {
       return { upserts: {}, deletes: [] };
     }
@@ -475,12 +495,13 @@ export class ExpiryService {
 
   private savePending(pending: PendingExpiryChanges): void {
     try {
-      if (Object.keys(pending.upserts).length === 0 && pending.deletes.length === 0) {
+      const cleanPending = sanitizePending(pending);
+      if (Object.keys(cleanPending.upserts).length === 0 && cleanPending.deletes.length === 0) {
         localStorage.removeItem(PENDING_KEY);
       } else {
-        localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+        localStorage.setItem(PENDING_KEY, JSON.stringify(cleanPending));
       }
-      this._pendingCount.set(this.countPending(pending));
+      this._pendingCount.set(this.countPending(cleanPending));
     } catch {}
   }
 
@@ -522,4 +543,36 @@ export class ExpiryService {
   private startOfLocalDay(date: Date): Date {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate());
   }
+}
+
+function sanitizeExpiryRecords(value: unknown): Record<string, ExpiryRecord> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+  const sanitized: Record<string, ExpiryRecord> = {};
+  for (const [key, record] of Object.entries(value)) {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) continue;
+    const candidate = record as Partial<ExpiryRecord>;
+    if (
+      typeof candidate.cardId !== 'string' ||
+      candidate.cardId !== key ||
+      !KNOWN_CARD_IDS.has(candidate.cardId) ||
+      typeof candidate.lastActivityDate !== 'string' ||
+      !isValidDateString(candidate.lastActivityDate) ||
+      isFutureDateString(candidate.lastActivityDate)
+    ) {
+      continue;
+    }
+    sanitized[candidate.cardId] = {
+      cardId: candidate.cardId,
+      lastActivityDate: candidate.lastActivityDate,
+    };
+  }
+  return sanitized;
+}
+
+function sanitizePending(value: PendingExpiryChanges): PendingExpiryChanges {
+  const upserts = sanitizeExpiryRecords(value.upserts);
+  const deletes = [...new Set(value.deletes)]
+    .filter(cardId => KNOWN_CARD_IDS.has(cardId) && !upserts[cardId]);
+  return { upserts, deletes };
 }
