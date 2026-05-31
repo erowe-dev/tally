@@ -150,6 +150,7 @@ function getServiceVersion(): string {
     process.env['VERCEL_GIT_COMMIT_SHA'],
     process.env['COMMIT_SHA'],
     process.env['VERCEL_GIT_COMMIT_REF'],
+    process.env['VERCEL_URL'],
   ];
   const version = candidates
     .map(candidate => candidate?.trim())

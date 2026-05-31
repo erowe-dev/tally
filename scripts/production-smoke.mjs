@@ -15,6 +15,9 @@ const checks = [
       assert(json.status === 'ok', `expected status ok, got ${body}`);
       assert(json.service === 'tally-api', `expected service tally-api, got ${body}`);
       assert(typeof json.version === 'string' && json.version.length > 0, `expected non-empty version, got ${body}`);
+      if (!isLocalUrl(apiUrl)) {
+        assert(json.version !== 'local', `production health version must not fall back to local: ${body}`);
+      }
       assert(json.database === 'ok', `expected database ok, got ${body}`);
       assert(!res.headers.has('x-powered-by'), 'API must not expose X-Powered-By');
       assert(res.headers.get('x-content-type-options') === 'nosniff', 'missing X-Content-Type-Options nosniff');
@@ -269,6 +272,10 @@ console.log('All production smoke checks passed.');
 
 function normalizeUrl(value) {
   return value.replace(/\/+$/, '');
+}
+
+function isLocalUrl(value) {
+  return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/.test(value);
 }
 
 async function readBody(res) {
