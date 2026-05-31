@@ -139,6 +139,24 @@ describe('ExpiryComponent', () => {
     expect(expiry.clearActivity).toHaveBeenCalledOnceWith('united_mp');
   });
 
+  it('associates each activity date label with its date input', () => {
+    const component = createComponent();
+    const inputId = component.activityInputId('united_mp');
+
+    const label = fixture.nativeElement.querySelector(`label[for="${inputId}"]`) as HTMLLabelElement;
+    const input = fixture.nativeElement.querySelector(`#${inputId}`) as HTMLInputElement;
+
+    expect(label?.textContent?.trim()).toBe('Last activity date');
+    expect(input?.type).toBe('date');
+    expect(input.getAttribute('aria-label')).toContain('United MileagePlus');
+  });
+
+  it('sanitizes activity input ids for unusual program identifiers', () => {
+    const component = createComponent();
+
+    expect(component.activityInputId('Program / With Spaces!')).toBe('expiry-last-activity-program-with-spaces');
+  });
+
   it('requires a second tap before marking all expirable programs today', fakeAsync(() => {
     const component = createComponent();
 

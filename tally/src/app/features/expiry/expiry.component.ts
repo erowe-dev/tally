@@ -178,11 +178,12 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
           <!-- Date setter for activity-based programs -->
           <div class="date-setter" *ngIf="status.urgency !== 'never'">
             <div class="date-setter-top">
-              <label class="field-label">Last activity date</label>
+              <label class="field-label" [attr.for]="activityInputId(status.cardId)">Last activity date</label>
               <button type="button" class="today-btn" (click)="markToday(status.cardId)">✓ Mark Today</button>
             </div>
             <div class="date-row">
               <input
+                [id]="activityInputId(status.cardId)"
                 type="date"
                 class="date-input"
                 [attr.aria-label]="'Last activity date for ' + status.programName"
@@ -773,6 +774,10 @@ export class ExpiryComponent implements OnDestroy {
     return PORTAL_LINKS[cardId] ?? [];
   }
 
+  activityInputId(cardId: string): string {
+    return `expiry-last-activity-${this.safeDomId(cardId)}`;
+  }
+
   private formatLocalDate(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -909,5 +914,9 @@ export class ExpiryComponent implements OnDestroy {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  private safeDomId(value: string): string {
+    return value.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'program';
   }
 }
