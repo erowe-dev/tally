@@ -896,7 +896,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       }
       .balance-input { width: 100%; text-align: left; }
       .row-value { text-align: right; }
-      .held-toggle { min-width: 0; }
+      .held-toggle { min-width: 0; white-space: normal; }
       .quick-add { gap: 5px; }
       .qa-btn { flex: 1 1 calc(50% - 6px); }
       .at-risk-banner { align-items: flex-start; flex-wrap: wrap; }
@@ -909,7 +909,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       .action-row { flex-direction: column; }
       .action-btn { max-width: none; }
     }
-    @media (max-width:380px){.program-actions{grid-template-columns:1fr}}
+    @media (max-width:430px){.program-actions{grid-template-columns:1fr}}
   `]
 })
 export class WalletComponent {

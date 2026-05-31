@@ -509,7 +509,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       .date-input { min-width: 12rem; }
       .expiry-list {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        grid-template-columns: minmax(0, 1fr);
         align-items: start;
       }
       .activity-stats {

@@ -110,7 +110,7 @@ input, select, textarea { min-height: 44px; }
 
     .results {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      grid-template-columns: minmax(0, 1fr);
       gap: 12px;
     }
 

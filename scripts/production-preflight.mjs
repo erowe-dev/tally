@@ -21,6 +21,7 @@ const checks = [
   { label: 'Vercel API function routing exists', run: checkVercelApiConfig },
   { label: 'Observability config is explicit', run: checkObservabilityConfig },
   { label: 'Program ID allowlists match app data', run: checkProgramIds },
+  { label: 'Production readiness workflow enforces release gates', run: checkProductionReadinessWorkflow },
   { label: 'No unused Angular starter shell files', run: checkNoStarterShellFiles },
   { label: 'No HostListener/HostBinding decorators in shell/shared components', run: checkNoHostListenerDecorator },
   { label: 'Initial bundle stays under 800 kB when stats are available', run: checkBundleBudget },
@@ -229,6 +230,25 @@ function checkProgramIds() {
   assertListsMatch('API known program ids', apiIds, dataServiceIds);
   assertListsMatch('Preferences known program ids', preferenceIds, dataServiceIds);
   assertListsMatch('ApiService cache validator program ids', apiServiceIds, dataServiceIds);
+}
+
+function checkProductionReadinessWorkflow() {
+  const workflowPath = '.github/workflows/production-readiness.yml';
+  assert(existsSync(join(root, workflowPath)), 'production readiness workflow is missing');
+  const workflow = read(workflowPath);
+
+  assert(workflow.includes('pull_request:'), 'workflow must run on pull requests');
+  assert(/push:\s*[\s\S]*?branches:\s*[\s\S]*?-\s*main/.test(workflow), 'workflow must run on pushes to main');
+  assert(workflow.includes('workflow_dispatch:'), 'workflow must allow manual production smoke runs');
+  assert(/app:\s*[\s\S]*?working-directory:\s*tally[\s\S]*?npm run preflight:prod/.test(workflow), 'app job must run production preflight');
+  assert(/api:\s*[\s\S]*?working-directory:\s*api[\s\S]*?npm run verify/.test(workflow), 'API job must run npm run verify');
+  assert(/api:\s*[\s\S]*?working-directory:\s*api[\s\S]*?npm run preflight:prod/.test(workflow), 'API job must run production preflight');
+  assert(workflow.includes('production-smoke:'), 'workflow must define a production smoke job');
+  assert(workflow.includes("if: github.event_name == 'workflow_dispatch'"), 'production smoke must stay manual-only');
+  assert(workflow.includes("TALLY_REQUIRE_AUTH_SMOKE: '1'"), 'production smoke must require authenticated coverage');
+  assert(workflow.includes('secrets.TALLY_AUTH_TOKEN'), 'production smoke must source TALLY_AUTH_TOKEN from secrets');
+  assert(workflow.includes('secrets.TALLY_AUTH_EMAIL'), 'production smoke must source TALLY_AUTH_EMAIL from secrets');
+  assert(/production-smoke:\s*[\s\S]*?npm run smoke:release/.test(workflow), 'production smoke job must run release smoke');
 }
 
 function extractProgramIds(source) {
