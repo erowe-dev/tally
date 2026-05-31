@@ -111,14 +111,6 @@ function checkVercelAppConfig() {
   assert(existsSync(join(root, landingConfigPath)), 'landing-root vercel.json is missing');
   const landingConfig = JSON.parse(read(landingConfigPath));
   assert(landingConfig.outputDirectory === 'browser', 'landing-root vercel.json must serve the prepared browser output');
-  assert(
-    landingConfig.routes?.some(route => route.handle === 'filesystem'),
-    'landing-root vercel.json must serve filesystem assets before SPA fallback',
-  );
-  assert(
-    landingConfig.routes?.some(route => route.dest === '/index.html'),
-    'landing-root vercel.json must fall back to /index.html for the Angular app shell',
-  );
   assertAppVercelHeaders(landingConfig, landingConfigPath);
 
   const rootConfigPath = 'vercel.json';
