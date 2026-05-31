@@ -118,6 +118,11 @@ function checkRunbookHealthContract() {
 
   const freshness = read('scripts/check-deployment-freshness.mjs');
   assert(
+    freshness.includes('expectedRootDirectory: null') &&
+      freshness.includes("if (!Object.hasOwn(target, 'expectedRootDirectory')) return"),
+    'deployment freshness must verify the API Vercel project root directory stays unset for api/ CLI deploys',
+  );
+  assert(
     freshness.includes('release status: blocked until this alias points at the latest relevant commit'),
     'deployment freshness failures must explain that stale aliases block release readiness',
   );

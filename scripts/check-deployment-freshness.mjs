@@ -29,6 +29,7 @@ const targets = [
     label: 'API',
     url: process.env.TALLY_API_URL ?? 'https://tally-api-theta.vercel.app',
     projectId: process.env.TALLY_API_PROJECT_ID ?? 'prj_YDaGg8AXfjdWi6KlN0qj6GP6lyp0',
+    expectedRootDirectory: null,
     deployCommand: 'cd ../api && npx vercel --prod --yes',
     paths: [
       'api/package.json',
@@ -85,7 +86,7 @@ if (failures > 0) {
 console.log('All deployment freshness checks passed.');
 
 function assertProjectSettings(target) {
-  if (!target.expectedRootDirectory) return;
+  if (!Object.hasOwn(target, 'expectedRootDirectory')) return;
 
   const result = run('npx', [
     'vercel',

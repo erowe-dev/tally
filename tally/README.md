@@ -169,7 +169,7 @@ npm run smoke:release
 
 For preview or custom-domain smoke where Vercel cannot inspect the deployment, set `TALLY_SKIP_DEPLOY_FRESHNESS=1` only with explicit `TALLY_APP_URL` and `TALLY_API_URL` overrides. The canonical production aliases never allow that skip.
 
-The Vercel app project root directory should be `tally`. Manual app deploys should be run from the repository root so the root `.vercelignore` prevents local build artifacts and API dependencies from being uploaded.
+The Vercel app project root directory should be `tally`. Manual app deploys should be run from the repository root so the root `.vercelignore` prevents local build artifacts and API dependencies from being uploaded. The API project is linked from `api/` for CLI deploys; keep its Vercel Root Directory unset so `cd api && vercel --prod` does not resolve as `api/api`.
 
 For a personal signed-in API smoke by itself, provide an Auth0 access token and email:
 
