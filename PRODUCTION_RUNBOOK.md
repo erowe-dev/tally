@@ -17,6 +17,7 @@ Required local verification before deploy:
 ```bash
 cd tally
 npm run preflight:prod
+npm run audit:prod
 npm run verify
 
 cd ../api
@@ -24,7 +25,7 @@ npm run preflight:prod
 npm run verify
 ```
 
-`api/npm run verify` includes a production dependency audit. Keep it green before API deploys; the Angular audit currently has known Angular 18 ecosystem findings and remains a tracked public-beta upgrade gate.
+`tally/npm run audit:prod` fails on critical Angular app dependency findings while accepting the current Angular 18 baseline for private alpha. `api/npm run verify` includes a strict production dependency audit. Keep both green before deploys; the Angular high/moderate findings remain a tracked public-beta upgrade gate.
 
 GitHub Actions runs the same app/API verification on pull requests and pushes to `main` via `.github/workflows/production-readiness.yml`. Treat a failed workflow as a release blocker.
 
