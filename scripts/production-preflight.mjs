@@ -125,25 +125,29 @@ function checkVercelAppConfig() {
 }
 
 function assertAppVercelHeaders(config, configPath) {
-  const securityRoute = config.routes?.find(route => route.src === '/(.*)' && route.headers);
-  assert(securityRoute?.continue === true, `${configPath} security header route must continue to filesystem/fallback routing`);
+  const securityHeader = config.headers?.find(header => header.source === '/(.*)');
+  assert(securityHeader, `${configPath} must define app-wide security headers`);
 
   for (const [key, value] of Object.entries(appSecurityHeaders)) {
     assert(
-      securityRoute.headers?.[key] === value,
+      securityHeader.headers?.some(header => header.key === key && header.value === value),
       `${configPath} must set ${key}: ${value} on all app shell responses`,
     );
   }
 
   assert(
-    config.routes?.some(
-      route => route.src === '/ngsw.json' && route.headers?.['Cache-Control'] === 'no-cache' && route.continue === true,
+    config.headers?.some(
+      header =>
+        header.source === '/ngsw.json' &&
+        header.headers?.some(item => item.key === 'Cache-Control' && item.value === 'no-cache'),
     ),
     `${configPath} must prevent stale service worker manifests with Cache-Control: no-cache`,
   );
   assert(
-    config.routes?.some(
-      route => route.src === '/index.html' && route.headers?.['Cache-Control'] === 'no-cache' && route.continue === true,
+    config.headers?.some(
+      header =>
+        header.source === '/index.html' &&
+        header.headers?.some(item => item.key === 'Cache-Control' && item.value === 'no-cache'),
     ),
     `${configPath} must prevent stale app shell HTML with Cache-Control: no-cache`,
   );

@@ -2,31 +2,26 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build && node scripts/prepare-vercel-output.mjs",
   "outputDirectory": "browser",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "geolocation=(), camera=(), microphone=()" }
+      ]
+    },
+    {
+      "source": "/ngsw.json",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    },
+    {
+      "source": "/index.html",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    }
+  ],
   "routes": [
-    {
-      "src": "/(.*)",
-      "headers": {
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "Referrer-Policy": "strict-origin-when-cross-origin",
-        "Permissions-Policy": "geolocation=(), camera=(), microphone=()"
-      },
-      "continue": true
-    },
-    {
-      "src": "/ngsw.json",
-      "headers": {
-        "Cache-Control": "no-cache"
-      },
-      "continue": true
-    },
-    {
-      "src": "/index.html",
-      "headers": {
-        "Cache-Control": "no-cache"
-      },
-      "continue": true
-    },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
