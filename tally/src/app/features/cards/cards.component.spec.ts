@@ -165,6 +165,35 @@ describe('CardsComponent', () => {
     }
   });
 
+  it('wires expandable Cards sections to controlled panels', () => {
+    wallet.hasAnyPoints.set(true);
+    wallet.balances.set('amex_mr', 10000);
+    const component = createComponent();
+    component.showSpendRec.set(true);
+    component.showReachable.set(true);
+    component.showRater.set(true);
+    component.showCalc.set(true);
+    component.showTransferFinder.set(true);
+    component.toggleCard('amex_mr');
+    component.togglePartnerDetail('amex_mr', 'Air Canada Aeroplan');
+
+    fixture.detectChanges();
+
+    const controlledIds = [
+      'cards-spend-recommendations',
+      'cards-reachable-partners',
+      'cards-redemption-rater',
+      'cards-points-value-calculator',
+      'cards-transfer-route-finder',
+      component.cardPanelId('amex_mr'),
+      component.partnerPanelId('amex_mr', 'Air Canada Aeroplan'),
+    ];
+    for (const id of controlledIds) {
+      expect(fixture.nativeElement.querySelector(`[aria-controls="${id}"]`)).not.toBeNull();
+      expect(fixture.nativeElement.querySelector(`#${id}`)).not.toBeNull();
+    }
+  });
+
   it('writes filter state durably and removes empty session search', () => {
     const component = createComponent();
 

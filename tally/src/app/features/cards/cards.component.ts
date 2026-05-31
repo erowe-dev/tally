@@ -173,11 +173,14 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Best card for spend category -->
       <div class="spend-rec-section">
-        <button type="button" class="spend-rec-toggle" [attr.aria-expanded]="showSpendRec()" (click)="showSpendRec.set(!showSpendRec())">
+        <button type="button" class="spend-rec-toggle"
+          aria-controls="cards-spend-recommendations"
+          [attr.aria-expanded]="showSpendRec()"
+          (click)="showSpendRec.set(!showSpendRec())">
           <span>💳 Best card for your spend</span>
           <span class="spend-rec-chevron">{{ showSpendRec() ? '▲' : '▼' }}</span>
         </button>
-        <div class="spend-rec-body" *ngIf="showSpendRec()">
+        <div id="cards-spend-recommendations" class="spend-rec-body" *ngIf="showSpendRec()">
           <div class="spend-cat-row">
             <button type="button" *ngFor="let c of spendCats" class="spend-cat-btn"
               [class.active]="selectedSpendCat() === c.id"
@@ -205,12 +208,15 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Reachable Partners panel — only when user has wallet points -->
       <div class="reach-section" *ngIf="wallet.hasAnyPoints()">
-        <button type="button" class="reach-toggle" [attr.aria-expanded]="showReachable()" (click)="showReachable.set(!showReachable())">
+        <button type="button" class="reach-toggle"
+          aria-controls="cards-reachable-partners"
+          [attr.aria-expanded]="showReachable()"
+          (click)="showReachable.set(!showReachable())">
           <span>🗺 My reachable partners</span>
           <span class="reach-badge">{{ reachablePartners().length }}</span>
           <span class="reach-chevron">{{ showReachable() ? '▲' : '▼' }}</span>
         </button>
-        <div class="reach-body" *ngIf="showReachable()">
+        <div id="cards-reachable-partners" class="reach-body" *ngIf="showReachable()">
           <p class="reach-note">All airline & hotel partners you can transfer to with your current balances.</p>
           <div class="reach-list">
             <div class="reach-row" *ngFor="let p of reachablePartners(); let i = index"
@@ -231,7 +237,10 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       <div class="cards-list">
         <div class="cc-card" *ngFor="let card of filteredCards()"
           [class.expanded]="isExpanded(card.id)">
-          <button type="button" class="cc-header" [attr.aria-expanded]="isExpanded(card.id)" (click)="toggleCard(card.id)">
+          <button type="button" class="cc-header"
+            [attr.aria-controls]="cardPanelId(card.id)"
+            [attr.aria-expanded]="isExpanded(card.id)"
+            (click)="toggleCard(card.id)">
             <div class="cc-badge" [style.background]="card.color">{{ card.icon }}</div>
             <div class="cc-meta">
               <div class="cc-name">{{ card.name }}</div>
@@ -280,7 +289,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
               </span>
             </ng-template>
           </div>
-          <div class="partners" *ngIf="isExpanded(card.id)">
+          <div class="partners" [id]="cardPanelId(card.id)" *ngIf="isExpanded(card.id)">
             <!-- Program-level strategic tip -->
             <div class="pro-tip" *ngIf="getProTip(card.id) as tip">
               <span class="pro-tip-icon">💡</span>
@@ -297,6 +306,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
               *ngFor="let p of visiblePartners(card)"
               [class.dimmed]="greatOnly() && p.quality !== 'great'">
               <button type="button" class="partner-row"
+                [attr.aria-controls]="partnerPanelId(card.id, p.name)"
                 [attr.aria-expanded]="isPartnerExpanded(card.id, p.name)"
                 (click)="togglePartnerDetail(card.id, p.name)">
                 <span class="p-icon">{{ p.icon }}</span>
@@ -307,7 +317,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
                 <span class="p-expand-icon">{{ isPartnerExpanded(card.id, p.name) ? '▲' : '▼' }}</span>
               </button>
               <!-- Transfer detail row -->
-              <div class="transfer-detail" *ngIf="isPartnerExpanded(card.id, p.name)">
+              <div class="transfer-detail" [id]="partnerPanelId(card.id, p.name)" *ngIf="isPartnerExpanded(card.id, p.name)">
                 <ng-container *ngIf="wallet.getBalance(card.id) > 0; else noBalance">
                   <div class="td-chain">
                     <span class="td-side">
@@ -348,11 +358,14 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Rate My Redemption -->
       <div class="calc-section">
-        <button type="button" class="calc-toggle" [attr.aria-expanded]="showRater()" (click)="showRater.set(!showRater())">
+        <button type="button" class="calc-toggle"
+          aria-controls="cards-redemption-rater"
+          [attr.aria-expanded]="showRater()"
+          (click)="showRater.set(!showRater())">
           <span>🎯 Rate My Redemption</span>
           <span class="calc-chevron">{{ showRater() ? '▲' : '▼' }}</span>
         </button>
-        <div class="calc-body" *ngIf="showRater()">
+        <div id="cards-redemption-rater" class="calc-body" *ngIf="showRater()">
           <div class="rater-inputs">
             <div class="calc-input-wrap">
               <label class="calc-label" for="cards-rater-points">Points used</label>
@@ -376,11 +389,14 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- CPP Calculator -->
       <div class="calc-section" style="margin-top:10px">
-        <button type="button" class="calc-toggle" [attr.aria-expanded]="showCalc()" (click)="showCalc.set(!showCalc())">
+        <button type="button" class="calc-toggle"
+          aria-controls="cards-points-value-calculator"
+          [attr.aria-expanded]="showCalc()"
+          (click)="showCalc.set(!showCalc())">
           <span>💡 Points Value Calculator</span>
           <span class="calc-chevron">{{ showCalc() ? '▲' : '▼' }}</span>
         </button>
-        <div class="calc-body" *ngIf="showCalc()">
+        <div id="cards-points-value-calculator" class="calc-body" *ngIf="showCalc()">
           <div class="calc-input-wrap">
             <label class="calc-label" for="cards-calc-points">How many points?</label>
             <input id="cards-calc-points" class="calc-input" type="number" inputmode="numeric"
@@ -405,11 +421,14 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
 
       <!-- Transfer Route Finder -->
       <div class="calc-section" style="margin-top:10px">
-        <button type="button" class="calc-toggle" [attr.aria-expanded]="showTransferFinder()" (click)="showTransferFinder.set(!showTransferFinder())">
+        <button type="button" class="calc-toggle"
+          aria-controls="cards-transfer-route-finder"
+          [attr.aria-expanded]="showTransferFinder()"
+          (click)="showTransferFinder.set(!showTransferFinder())">
           <span>🔀 Transfer Route Finder</span>
           <span class="calc-chevron">{{ showTransferFinder() ? '▲' : '▼' }}</span>
         </button>
-        <div class="calc-body" *ngIf="showTransferFinder()">
+        <div id="cards-transfer-route-finder" class="calc-body" *ngIf="showTransferFinder()">
           <div class="tf-inputs">
             <div class="calc-input-wrap">
               <label class="calc-label" for="cards-transfer-target">Target program</label>
@@ -1226,6 +1245,14 @@ export class CardsComponent {
     this.prefs.updatePreferences({ heldProgramIds: Array.from(next) });
   }
 
+  cardPanelId(cardId: string): string {
+    return `cards-program-${this.safeDomId(cardId)}-partners`;
+  }
+
+  partnerPanelId(cardId: string, partnerName: string): string {
+    return `cards-program-${this.safeDomId(cardId)}-partner-${this.safeDomId(partnerName)}`;
+  }
+
   /** Partners to display for a card — filtered when search targets partner names */
   visiblePartners(card: CreditCard) {
     const q = this.searchRaw().toLowerCase().trim();
@@ -1446,5 +1473,9 @@ export class CardsComponent {
     if (cpp >= 2.5) return 'Great';
     if (cpp >= 1.5) return 'Good';
     return 'Basic';
+  }
+
+  private safeDomId(value: string): string {
+    return value.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'item';
   }
 }
