@@ -127,21 +127,27 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
 
       <div class="spots-list">
         <div class="spot-card" *ngFor="let s of filtered()" [class]="'cat-' + s.category">
-          <button type="button" class="fav-btn" (click)="toggleFav(s)"
-            [class.active]="isFav(spotKey(s))"
-            [title]="isFav(spotKey(s)) ? 'Remove from saved' : 'Save this spot'"
-            [attr.aria-label]="isFav(spotKey(s)) ? 'Remove saved sweet spot' : 'Save sweet spot'">
-            {{ isFav(spotKey(s)) ? '★' : '☆' }}
-          </button>
-          <div class="category-badge">{{ categoryLabel(s.category) }}</div>
-          <div class="new-badge" *ngIf="s.isNew">✦ New</div>
-          <div class="spot-route">
-            <ng-container *ngFor="let part of routeParts(s.route); let last = last">
-              <span>{{ part }}</span>
-              <span class="arrow" *ngIf="!last"> → </span>
-            </ng-container>
+          <div class="spot-head">
+            <button type="button" class="fav-btn" (click)="toggleFav(s)"
+              [class.active]="isFav(spotKey(s))"
+              [title]="isFav(spotKey(s)) ? 'Remove from saved' : 'Save this spot'"
+              [attr.aria-label]="isFav(spotKey(s)) ? 'Remove saved sweet spot' : 'Save sweet spot'">
+              {{ isFav(spotKey(s)) ? '★' : '☆' }}
+            </button>
+            <div class="spot-title-block">
+              <div class="spot-route">
+                <ng-container *ngFor="let part of routeParts(s.route); let last = last">
+                  <span>{{ part }}</span>
+                  <span class="arrow" *ngIf="!last"> → </span>
+                </ng-container>
+              </div>
+              <div class="spot-detail">{{ s.detail.toUpperCase() }}</div>
+            </div>
+            <div class="spot-badge-stack">
+              <div class="category-badge">{{ categoryLabel(s.category) }}</div>
+              <div class="new-badge" *ngIf="s.isNew">✦ New</div>
+            </div>
           </div>
-          <div class="spot-detail">{{ s.detail.toUpperCase() }}</div>
           <div class="spot-stats">
             <div class="stat">
               <span class="stat-val">{{ s.ptsNeeded }}</span>
@@ -325,25 +331,35 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     .spot-card.cat-hotel::before { background: linear-gradient(90deg, transparent, var(--tally-amber, #b45309), transparent); }
     .spot-card.cat-promo::before { background: linear-gradient(90deg, transparent, var(--tally-green-mid), transparent); }
 
+    .spot-head {
+      display: grid; grid-template-columns: 44px minmax(0, 1fr) auto;
+      gap: 8px; align-items: start; margin-bottom: 14px;
+    }
+    .spot-title-block { min-width: 0; }
+    .spot-badge-stack {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+      max-width: 112px;
+    }
+
     .category-badge {
-      position: absolute; top: 14px; right: 14px;
       font-family: 'Geist Mono', monospace; font-size: 8px;
       letter-spacing: 0.12em; text-transform: uppercase;
       padding: 3px 7px; border-radius: 4px;
       background: var(--surface); border: 1px solid var(--border);
-      color: var(--text3);
+      color: var(--text3); overflow-wrap: anywhere;
     }
 
     .spot-route {
       font-family: 'Instrument Serif', serif;
-      font-size: 20px; font-weight: 400; color: var(--text); margin-bottom: 4px;
-      padding-right: 70px; overflow-wrap: anywhere;
+      font-size: 20px; font-weight: 400; color: var(--text);
+      overflow-wrap: anywhere;
     }
     .spot-route .arrow { color: var(--tally-green); font-style: italic; }
 
     .spot-detail {
       font-family: 'Geist Mono', monospace;
-      font-size: 9px; letter-spacing: 0.1em; color: var(--text3); margin-bottom: 14px;
+      font-size: 9px; letter-spacing: 0.1em; color: var(--text3); margin-top: 4px;
+      overflow-wrap: anywhere;
     }
     .spot-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
     .stat {
@@ -458,16 +474,15 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
 
     /* "New" badge on recently added spots */
     .new-badge {
-      position: absolute; top: 36px; right: 14px;
       font-family: 'Geist Mono', monospace; font-size: 8px;
       letter-spacing: 0.12em; text-transform: uppercase;
       background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2);
       color: var(--tally-green); border-radius: 4px; padding: 2px 6px;
+      overflow-wrap: anywhere;
     }
 
     /* Favorites button on each card */
     .fav-btn {
-      position: absolute; top: 12px; left: 14px;
       background: none; border: none; cursor: pointer;
       font-size: 16px; color: var(--border2); line-height: 1;
       padding: 4px; transition: color 0.15s, transform 0.15s;
@@ -476,10 +491,6 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     }
     .fav-btn:hover { color: var(--tally-amber, #d97706); transform: scale(1.15); }
     .fav-btn.active { color: var(--tally-amber, #d97706); }
-
-    /* Reposition route/badge to account for fav button */
-    .spot-route { padding-right: 70px; padding-left: 54px; }
-    .category-badge { right: 14px; }
 
     /* Saved filter count badge */
     .fav-count {
@@ -509,7 +520,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       .spot-note { flex: 1; }
       .spot-action-row {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
       }
       .spot-optimizer-btn,
       .spot-book-link,
@@ -539,16 +550,25 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       .spot-card {
         padding: 16px 14px;
       }
+      .spot-head {
+        grid-template-columns: 44px minmax(0, 1fr);
+      }
+      .spot-badge-stack {
+        grid-column: 2;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        max-width: none;
+      }
       .spot-route {
-        padding-right: 62px;
-        padding-left: 54px;
+        font-size: 18px;
       }
       .spot-stats {
         grid-template-columns: 1fr 1fr;
       }
       .category-badge,
       .new-badge {
-        right: 10px;
+        font-size: 7px;
       }
       .stat {
         padding: 9px 6px;
