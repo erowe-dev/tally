@@ -130,12 +130,12 @@ function checkVercelAppConfig() {
   );
   assert(config.outputDirectory === 'browser', 'tally/vercel.json must serve the prepared browser output');
   assert(
-    config.routes?.some(route => route.handle === 'filesystem'),
-    'tally/vercel.json must serve filesystem assets before SPA fallback',
+    !('routes' in config),
+    'tally/vercel.json must not use routes with headers; Vercel ignores higher-level headers when routes are present',
   );
   assert(
-    config.routes?.some(route => route.dest === '/index.html'),
-    'tally/vercel.json must fall back to /index.html for the Angular app shell',
+    config.rewrites?.some(rewrite => rewrite.source === '/(.*)' && rewrite.destination === '/index.html'),
+    'tally/vercel.json must rewrite unknown routes to /index.html for the Angular app shell',
   );
   assertAppVercelHeaders(config, configPath);
   assert(existsSync(join(root, 'tally/public/landing/index.html')), 'landing page must remain available from public/landing');
@@ -153,12 +153,12 @@ function checkVercelAppConfig() {
   );
   assert(rootConfig.outputDirectory === 'browser', 'repo-root vercel.json must serve the prepared browser output');
   assert(
-    rootConfig.routes?.some(route => route.handle === 'filesystem'),
-    'repo-root vercel.json must serve filesystem assets before SPA fallback',
+    !('routes' in rootConfig),
+    'repo-root vercel.json must not use routes with headers; Vercel ignores higher-level headers when routes are present',
   );
   assert(
-    rootConfig.routes?.some(route => route.dest === '/index.html'),
-    'repo-root vercel.json must fall back to /index.html for the Angular app shell',
+    rootConfig.rewrites?.some(rewrite => rewrite.source === '/(.*)' && rewrite.destination === '/index.html'),
+    'repo-root vercel.json must rewrite unknown routes to /index.html for the Angular app shell',
   );
   assertAppVercelHeaders(rootConfig, rootConfigPath);
 }
@@ -311,6 +311,13 @@ function checkProductionReadinessWorkflow() {
   assert(workflow.includes('secrets.TALLY_AUTH_TOKEN'), 'production smoke must source TALLY_AUTH_TOKEN from secrets');
   assert(workflow.includes('secrets.TALLY_AUTH_EMAIL'), 'production smoke must source TALLY_AUTH_EMAIL from secrets');
   assert(/production-smoke:\s*[\s\S]*?npm run smoke:release/.test(workflow), 'production smoke job must run release smoke');
+
+  const productionSmoke = read('scripts/production-smoke.mjs');
+  assert(
+    productionSmoke.includes("assertAppSecurityHeaders(res, 'Angular app shell')") &&
+      productionSmoke.includes("assertAppSecurityHeaders(res, 'Landing page')"),
+    'production smoke must verify app and landing security headers',
+  );
 }
 
 function checkReleaseSmokePartialAuthGuard() {

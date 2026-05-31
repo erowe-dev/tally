@@ -60,6 +60,7 @@ const checks = [
       const res = await fetch(appUrl);
       const body = await readBody(res);
       assert(res.ok, `expected 2xx, got ${res.status}`);
+      assertAppSecurityHeaders(res, 'Angular app shell');
       assert(
         body.includes('<app-root') && body.includes('Tally — Points Advisor'),
         'expected Angular app shell HTML, got a different page',
@@ -98,6 +99,7 @@ const checks = [
       const res = await fetch(`${appUrl}/landing/`);
       const body = await readBody(res);
       assert(res.ok, `expected 2xx, got ${res.status}`);
+      assertAppSecurityHeaders(res, 'Landing page');
       assert(
         body.includes('Know what to do with your points') && body.includes('Private alpha is invite-only right now'),
         'expected bundled invite-only landing page at /landing/',
@@ -385,6 +387,19 @@ function isLocalUrl(value) {
 }
 
 function assertApiSecurityHeaders(res, label) {
+  assert(res.headers.get('x-content-type-options') === 'nosniff', `${label} missing X-Content-Type-Options nosniff`);
+  assert(res.headers.get('x-frame-options') === 'DENY', `${label} missing X-Frame-Options DENY`);
+  assert(
+    res.headers.get('referrer-policy') === 'strict-origin-when-cross-origin',
+    `${label} missing Referrer-Policy strict-origin-when-cross-origin`,
+  );
+  assert(
+    (res.headers.get('permissions-policy') ?? '').includes('geolocation=()'),
+    `${label} missing restrictive Permissions-Policy`,
+  );
+}
+
+function assertAppSecurityHeaders(res, label) {
   assert(res.headers.get('x-content-type-options') === 'nosniff', `${label} missing X-Content-Type-Options nosniff`);
   assert(res.headers.get('x-frame-options') === 'DENY', `${label} missing X-Frame-Options DENY`);
   assert(
