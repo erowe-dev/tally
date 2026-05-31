@@ -364,11 +364,17 @@ async function expectHttpError(path, init, expectedStatus) {
       ...(init.headers ?? {}),
     },
   });
+  const requestId = res.headers.get('x-request-id');
+  const contentType = res.headers.get('content-type') ?? '';
   const body = await res.text();
   assert(
     res.status === expectedStatus,
     `expected ${init.method ?? 'GET'} ${path} -> ${expectedStatus}, got ${res.status}; body=${body}`,
   );
+  assert(requestId, `expected ${init.method ?? 'GET'} ${path} error response to include X-Request-Id`);
+  assert(contentType.includes('application/json'), `expected ${init.method ?? 'GET'} ${path} error response to be JSON, got ${contentType}`);
+  const parsed = JSON.parse(body);
+  assert(typeof parsed.error === 'string' && parsed.error.length > 0, `expected JSON error body, got ${body}`);
 }
 
 function localDateString(date = new Date()) {

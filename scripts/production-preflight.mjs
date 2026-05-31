@@ -457,6 +457,12 @@ function checkAuthenticatedSmokeProviderValidation() {
     /expectHttpError\('\/api\/search\/hotel-fit'[\s\S]*?nights:\s*'5'[\s\S]*?,\s*400\)/.test(smoke),
     'authenticated smoke must assert invalid hotel nights return 400',
   );
+  assert(
+    smoke.includes("res.headers.get('x-request-id')") &&
+      smoke.includes("contentType.includes('application/json')") &&
+      smoke.includes('typeof parsed.error === \'string\''),
+    'authenticated smoke must verify expected API errors include request ids and JSON error bodies',
+  );
 }
 
 function extractProgramIds(source) {
