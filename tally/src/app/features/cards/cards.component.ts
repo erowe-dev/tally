@@ -817,6 +817,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       display: flex; align-items: center; gap: 10px;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 10px; padding: 10px 12px;
+      min-width: 0;
     }
     .tf-row.tf-covered { border-color: rgba(26,122,74,0.3); background: var(--tally-green-light); }
     .tf-source-badge {
@@ -825,11 +826,12 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       font-size: 11px; flex-shrink: 0;
     }
     .tf-source-info { flex: 1; min-width: 0; }
-    .tf-source-name { font-size: 12px; font-weight: 600; color: var(--text); }
+    .tf-source-name { font-size: 12px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
     .tf-source-ratio { font-family: 'Geist Mono', monospace; font-size: 9px; color: var(--text3); margin-top: 1px; overflow-wrap: anywhere; }
     .tf-coverage {
       font-family: 'Geist Mono', monospace; font-size: 10px;
-      color: var(--text3); text-align: right; flex-shrink: 0;
+      color: var(--text3); text-align: right; flex: 0 1 132px;
+      min-width: 88px; overflow-wrap: anywhere;
     }
     .tf-cov-ok { color: var(--tally-green); font-weight: 600; }
     .tf-check { margin-left: 4px; }
@@ -897,10 +899,11 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .calc-input:focus { border-color: var(--tally-green); }
     .calc-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
     .calc-row {
-      display: grid; grid-template-columns: 44px minmax(0, 1fr) max-content 64px;
+      display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(82px, auto) minmax(52px, auto);
       align-items: center; gap: 8px;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 9px; padding: 9px 12px; transition: border-color 0.15s;
+      min-width: 0;
     }
     .calc-row.calc-best { border-color: var(--tally-green); background: var(--tally-green-light); }
     .calc-cpp {
@@ -910,15 +913,18 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .calc-cpp-label {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--text3); flex: 1; letter-spacing: 0.06em;
+      min-width: 0; overflow-wrap: anywhere;
     }
     .calc-val {
       font-family: 'Geist Mono', monospace; font-size: 16px;
       color: var(--tally-green); font-weight: 600; margin-left: auto;
+      min-width: 0; overflow-wrap: anywhere; text-align: right;
     }
     .calc-rating {
       font-family: 'Geist Mono', monospace; font-size: 8px;
       letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--text3); min-width: 52px; text-align: right;
+      color: var(--text3); min-width: 0; text-align: right;
+      overflow-wrap: anywhere;
     }
     .calc-rating.great { color: var(--tally-green); }
     .calc-rating.good  { color: var(--tally-amber, #d97706); }
@@ -978,7 +984,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       }
       .cc-save-btn { width: 100%; }
       .tf-row { align-items: flex-start; flex-wrap: wrap; }
-      .tf-coverage { width: 100%; text-align: left; padding-left: 40px; white-space: normal; }
+      .tf-coverage { flex: 1 1 100%; width: 100%; min-width: 0; text-align: left; padding-left: 40px; white-space: normal; }
       .partner-row {
         grid-template-columns: 22px minmax(0, 1fr) 10px; align-items: flex-start;
       }
