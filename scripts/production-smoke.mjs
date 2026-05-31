@@ -134,11 +134,26 @@ const checks = [
 
       const invalidRes = await fetch(`${apiUrl}/api/telemetry/analytics`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: appUrl,
+        },
         body: JSON.stringify({ event: 'unknown_event', timestamp }),
       });
       const invalidBody = await readBody(invalidRes);
       assert(invalidRes.status === 400, `invalid analytics expected 400, got ${invalidRes.status}: ${invalidBody}`);
+
+      const noOriginRes = await fetch(`${apiUrl}/api/telemetry/analytics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'tab_viewed',
+          properties: { tab: 'smoke' },
+          timestamp,
+        }),
+      });
+      const noOriginBody = await readBody(noOriginRes);
+      assert(noOriginRes.status === 403, `no-origin analytics expected 403, got ${noOriginRes.status}: ${noOriginBody}`);
     },
   },
   {

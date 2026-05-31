@@ -1,7 +1,19 @@
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { asyncRoute } from '../lib/route-helpers';
 
 const router = Router();
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:4200',
+  'https://tally-theta-two.vercel.app',
+  'https://tally.vercel.app',
+  'https://tallypoints.app',
+  'https://www.tallypoints.app',
+];
+const CONFIGURED_ORIGINS = (process.env['APP_ORIGINS'] ?? '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+const ALLOWED_ORIGINS = new Set([...DEFAULT_ALLOWED_ORIGINS, ...CONFIGURED_ORIGINS]);
 
 const ANALYTICS_EVENTS = new Set([
   'tab_viewed',
@@ -17,6 +29,8 @@ const ERROR_CONTEXTS = new Set([
   'manual',
   'smoke',
 ]);
+
+router.use(requireAllowedOrigin);
 
 router.post(
   '/analytics',
@@ -91,6 +105,15 @@ router.post(
 );
 
 export default router;
+
+function requireAllowedOrigin(req: Request, res: Response, next: NextFunction): void {
+  const origin = req.get('origin');
+  if (!origin || !ALLOWED_ORIGINS.has(origin)) {
+    res.status(403).json({ error: 'Telemetry origin not allowed' });
+    return;
+  }
+  next();
+}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
