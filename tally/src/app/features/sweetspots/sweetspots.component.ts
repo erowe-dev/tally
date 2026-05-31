@@ -180,15 +180,18 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
           <p class="spot-note">{{ s.note }}</p>
           <div class="spot-action-row">
             <button type="button" class="spot-optimizer-btn" *ngIf="s.category === 'flight'"
+              [attr.aria-label]="'Find ' + s.route + ' in Optimizer'"
               (click)="openInOptimizer(s)">
               Find in Optimizer →
             </button>
             <a *ngIf="getBookingUrl(s) as url"
               class="spot-book-link" [href]="'https://' + url"
+              [attr.aria-label]="'Open booking guidance for ' + s.route"
               target="_blank" rel="noopener noreferrer">
               🔗 Book →
             </a>
             <button type="button" class="spot-share-btn"
+              [attr.aria-label]="shareSpotLabel(s)"
               (click)="shareSpot(s)"
               [class.copied]="copiedSpotKey() === spotKey(s)">
               {{ copiedSpotKey() === spotKey(s) ? '✓ Copied' : '📋 Share' }}
@@ -410,30 +413,35 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
     }
 
     .spot-action-row {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 112px), 1fr));
+      align-items: stretch; gap: 8px; margin-bottom: 10px;
     }
     .spot-optimizer-btn {
       display: inline-flex; align-items: center; justify-content: center; text-align: center;
       background: none; border: 1px solid var(--tally-green);
       border-radius: 8px; color: var(--tally-green);
       font-family: 'Geist Mono', monospace; font-size: 10px;
-      letter-spacing: 0.06em; padding: 5px 12px; cursor: pointer;
-      transition: all 0.15s; min-height: 44px; flex: 1 1 132px;
+      letter-spacing: 0.06em; padding: 7px 12px; cursor: pointer;
+      transition: all 0.15s; min-height: 44px; width: 100%;
+      min-width: 0; overflow-wrap: anywhere;
     }
     .spot-optimizer-btn:hover { background: var(--tally-green); color: var(--on-accent); }
     .spot-book-link {
       display: inline-flex; align-items: center; justify-content: center; text-align: center;
       background: none; border: 1px solid rgba(26,122,74,0.3); border-radius: 8px;
       color: var(--tally-green); font-family: 'Geist Mono', monospace; font-size: 10px;
-      letter-spacing: 0.06em; padding: 5px 10px;
-      text-decoration: none; transition: all 0.15s; min-height: 44px; flex: 1 1 96px;
+      letter-spacing: 0.06em; padding: 7px 10px;
+      text-decoration: none; transition: all 0.15s; min-height: 44px; width: 100%;
+      min-width: 0; overflow-wrap: anywhere;
     }
     .spot-book-link:hover { background: var(--tally-green-light); }
     .spot-share-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; padding: 5px 10px; cursor: pointer;
-      transition: all 0.15s; min-height: 44px; flex: 1 1 96px;
+      transition: all 0.15s; min-height: 44px; width: 100%;
+      min-width: 0; overflow-wrap: anywhere;
     }
     .spot-share-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .spot-share-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
@@ -522,13 +530,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       }
       .spot-note { flex: 1; }
       .spot-action-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
-      }
-      .spot-optimizer-btn,
-      .spot-book-link,
-      .spot-share-btn {
-        width: 100%;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
       }
     }
     @media (max-width: 520px) {
@@ -678,6 +680,12 @@ export class SweetspotsComponent {
 
   spotKey(s: SweetSpot): string {
     return [s.category, s.route, s.detail, s.ptsNeeded, s.programs.join('+')].join('|');
+  }
+
+  shareSpotLabel(s: SweetSpot): string {
+    return this.copiedSpotKey() === this.spotKey(s)
+      ? `${s.route} copied to clipboard`
+      : `Copy share summary for ${s.route}`;
   }
 
   isFav(key: string): boolean {

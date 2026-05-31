@@ -142,4 +142,22 @@ describe('SweetspotsComponent', () => {
     expect(sortRadios.find(button => button.textContent?.includes('CPP'))?.getAttribute('aria-checked')).toBe('true');
     expect(cppRadios.find(button => button.textContent?.includes('>2¢'))?.getAttribute('aria-checked')).toBe('true');
   });
+
+  it('labels mixed sweet spot action controls clearly', () => {
+    const component = createComponent();
+
+    const optimizerButton = fixture.nativeElement.querySelector('.spot-optimizer-btn') as HTMLButtonElement;
+    const bookLink = fixture.nativeElement.querySelector('.spot-book-link') as HTMLAnchorElement;
+    const shareButton = fixture.nativeElement.querySelector('.spot-share-btn') as HTMLButtonElement;
+
+    expect(optimizerButton.getAttribute('aria-label')).toContain('Find US -> Europe in Optimizer');
+    expect(bookLink.getAttribute('aria-label')).toContain('Open booking guidance for US -> Europe');
+    expect(shareButton.getAttribute('aria-label')).toContain('Copy share summary for US -> Europe');
+
+    component.copiedSpotKey.set(component.spotKey(component.filtered()[0]));
+    fixture.detectChanges();
+
+    const copiedShareButton = fixture.nativeElement.querySelector('.spot-share-btn') as HTMLButtonElement;
+    expect(copiedShareButton.getAttribute('aria-label')).toContain('US -> Europe copied to clipboard');
+  });
 });
