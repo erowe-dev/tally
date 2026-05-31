@@ -322,6 +322,19 @@ function checkProductionReadinessWorkflow() {
 
 function checkReleaseSmokePartialAuthGuard() {
   const smoke = read('scripts/release-smoke.mjs');
+  assert(
+    smoke.includes("await run('Deployment freshness check'") &&
+      smoke.includes("join(scriptDir, 'check-deployment-freshness.mjs')"),
+    'release smoke must verify deployment freshness before production smoke',
+  );
+  assert(
+    smoke.includes('TALLY_SKIP_DEPLOY_FRESHNESS'),
+    'release smoke must keep an explicit escape hatch for preview/custom-domain smoke',
+  );
+  assert(
+    smoke.includes('cannot be used with the canonical production aliases'),
+    'release smoke must not allow freshness skips for canonical production aliases',
+  );
   assert(smoke.includes('hasPartialAuthSmokeEnv'), 'release smoke must detect partial auth smoke configuration');
   assert(
     smoke.includes('Set both TALLY_AUTH_TOKEN and TALLY_AUTH_EMAIL'),

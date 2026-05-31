@@ -33,8 +33,11 @@ Required production verification after deploy:
 
 ```bash
 cd tally
+npm run check:deploy:fresh
 npm run smoke:release
 ```
+
+`npm run smoke:release` runs the deployment freshness check before hitting the live app/API. Do not call production ready until both the app and API aliases point at deployments newer than the latest relevant commits. If Vercel returns the free daily deployment quota error, stop inviting testers and retry after the quota window resets; local builds can still be green while production remains stale.
 
 For external alpha invites, make authenticated smoke mandatory:
 
@@ -55,6 +58,8 @@ Override the default URLs when testing preview/custom domains:
 ```bash
 TALLY_APP_URL=https://<app-host> TALLY_API_URL=https://<api-host> npm run smoke:release
 ```
+
+For a preview or non-Vercel custom-domain smoke where `vercel inspect` cannot identify the deployment, set `TALLY_SKIP_DEPLOY_FRESHNESS=1` and record the deployment URL manually in the release notes. Never use that override for the canonical production aliases.
 
 ## Hosting Projects
 

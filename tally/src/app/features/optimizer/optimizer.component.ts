@@ -1425,7 +1425,7 @@ export class OptimizerComponent implements OnChanges {
 
   readonly filteredResults = computed<Recommendation[]>(() => {
     let recs = this.results();
-    if (this.canAffordOnly()) {
+    if (this.canAffordOnly() && this.wallet.hasAnyPoints()) {
       recs = recs.filter(r => this.wallet.canCover(r.cards, r.ptsRequired ?? r.ptsBase));
     }
     if (this.sortBy() === 'coverage' && this.wallet.hasAnyPoints()) {

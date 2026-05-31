@@ -69,7 +69,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       <div class="alert-banner critical" *ngIf="visibleCriticalCount() > 0" aria-live="polite">
         <span class="alert-icon">⚠️</span>
         <div>
-          <div class="alert-title">{{ visibleCriticalCount() }} program{{ visibleCriticalCount() > 1 ? 's' : '' }} need immediate attention</div>
+          <div class="alert-title">{{ alertScopeLabel() }}{{ visibleCriticalCount() }} program{{ visibleCriticalCount() > 1 ? 's' : '' }} need immediate attention</div>
           <div class="alert-sub">Points may expire within 30 days. Act now.</div>
         </div>
       </div>
@@ -78,7 +78,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       <div class="alert-banner warning" *ngIf="visibleCriticalCount() === 0 && visibleWarningCount() > 0" aria-live="polite">
         <span class="alert-icon">🔔</span>
         <div>
-          <div class="alert-title">{{ visibleWarningCount() }} program{{ visibleWarningCount() > 1 ? 's' : '' }} need expiry review</div>
+          <div class="alert-title">{{ alertScopeLabel() }}{{ visibleWarningCount() }} program{{ visibleWarningCount() > 1 ? 's' : '' }} need expiry review</div>
           <div class="alert-sub">Set missing dates or plan qualifying activity for programs expiring within 90 days.</div>
         </div>
       </div>
@@ -87,9 +87,13 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       <div class="alert-banner safe" *ngIf="visibleStatuses().length > 0 && visibleCriticalCount() === 0 && visibleWarningCount() === 0 && !visibleHasWarnings()" aria-live="polite">
         <span class="alert-icon">✅</span>
         <div>
-          <div class="alert-title">All programs are in good shape</div>
+          <div class="alert-title">{{ showHeldOnly() ? 'My programs are in good shape' : 'All programs are in good shape' }}</div>
           <div class="alert-sub">No points expiring soon. Keep earning!</div>
         </div>
+      </div>
+
+      <div class="hidden-alert-note" *ngIf="showHeldOnly() && hiddenUrgentCount() > 0" aria-live="polite">
+        {{ hiddenUrgentCount() }} hidden program{{ hiddenUrgentCount() > 1 ? 's' : '' }} outside Mine still need expiry review.
       </div>
 
       <!-- Activity stats bar -->
@@ -283,6 +287,12 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
     .alert-icon { font-size: 20px; flex-shrink: 0; }
     .alert-title { font-size: 14px; font-weight: 600; color: var(--tally-red); margin-bottom: 2px; }
     .alert-sub { font-size: 12px; color: var(--tally-red); opacity: 0.8; }
+    .hidden-alert-note {
+      margin: -10px 0 14px; padding: 9px 12px;
+      border: 1px solid rgba(217,119,6,0.2); border-radius: 10px;
+      background: rgba(217,119,6,0.07); color: var(--tally-amber);
+      font-family: 'Geist Mono', monospace; font-size: 10px; line-height: 1.45;
+    }
 
     .expiry-list { display: flex; flex-direction: column; gap: 10px; }
     .filtered-empty {
@@ -510,7 +520,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       .date-input { min-width: 12rem; }
       .expiry-list {
         display: grid;
-        grid-template-columns: minmax(0, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
         align-items: start;
       }
       .activity-stats {
@@ -596,8 +606,20 @@ export class ExpiryComponent implements OnDestroy {
     this.visibleStatuses().some(status => status.urgency === 'warning' || status.urgency === 'critical' || status.urgency === 'expired')
   );
 
+  readonly hiddenUrgentCount = computed(() => {
+    if (!this.showHeldOnly()) return 0;
+    return this.expiry.statuses().filter(status =>
+      !this.isHeldProgram(status.cardId) &&
+      (status.urgency === 'warning' || status.urgency === 'critical' || status.urgency === 'expired')
+    ).length;
+  });
+
+  readonly bulkMarkableStatuses = computed(() =>
+    this.visibleStatuses().filter(status => status.urgency !== 'never' && !this.expiry.records()[status.cardId]?.lastActivityDate)
+  );
+
   readonly bulkMarkableCount = computed(() =>
-    this.visibleStatuses().filter(status => status.urgency !== 'never').length
+    this.bulkMarkableStatuses().length
   );
 
   readonly heldProgramIdSet = computed(() => new Set(this.prefs.preferences().heldProgramIds ?? []));
@@ -669,11 +691,9 @@ export class ExpiryComponent implements OnDestroy {
     this.bulkConfirmTimer = null;
     this.bulkConfirm.set(false);
 
-    // Mark all currently visible non-never programs as active today.
-    for (const status of this.visibleStatuses()) {
-      if (status.urgency !== 'never') {
-        this.expiry.setLastActivity(status.cardId, this.todayStr);
-      }
+    // Fill only missing dates; existing activity dates are intentional user data.
+    for (const status of this.bulkMarkableStatuses()) {
+      this.expiry.setLastActivity(status.cardId, this.todayStr);
     }
     this.bulkDone.set(true);
     if (this.bulkDoneTimer) clearTimeout(this.bulkDoneTimer);
@@ -721,6 +741,10 @@ export class ExpiryComponent implements OnDestroy {
     if (this.bulkDone()) return '✓ All updated';
     if (this.bulkConfirm()) return 'Tap again to confirm';
     return this.showHeldOnly() ? 'Mark mine today' : 'Mark all today';
+  }
+
+  alertScopeLabel(): string {
+    return this.showHeldOnly() ? 'My ' : '';
   }
 
   bulkButtonAriaLabel(): string {

@@ -14,6 +14,7 @@ class MockWalletService {
 
 class MockPreferencesService {
   preferences = signal({ heldProgramIds: [] as string[] });
+  updatePreferences = jasmine.createSpy('updatePreferences');
 }
 
 describe('CardsComponent', () => {
@@ -120,6 +121,14 @@ describe('CardsComponent', () => {
     const savedPills = Array.from(fixture.nativeElement.querySelectorAll('.cc-saved-pill') as NodeListOf<HTMLElement>)
       .map(node => node.textContent?.trim());
     expect(savedPills).toContain('Saved in wallet');
+  });
+
+  it('saves zero-balance programs from Cards without changing balances', () => {
+    const component = createComponent();
+
+    component.toggleHeldProgram('hyatt');
+
+    expect(prefs.updatePreferences).toHaveBeenCalledWith({ heldProgramIds: ['hyatt'] });
   });
 
   it('writes filter state durably and removes empty session search', () => {

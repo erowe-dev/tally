@@ -143,6 +143,7 @@ describe('WalletComponent', () => {
 
     expect(prefs.updatePreferences).not.toHaveBeenCalled();
     expect(component.heldToggleText('hyatt')).toBe('Balance saved');
+    expect(component.heldToggleLabel('hyatt', 'World of Hyatt')).toContain('counted as yours');
   });
 
   it('marks a program held when a positive balance is entered', () => {

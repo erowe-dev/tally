@@ -11,7 +11,26 @@ const hasAuthEmail = Boolean(process.env.TALLY_AUTH_EMAIL);
 const hasAuthSmokeEnv = hasAuthToken && hasAuthEmail;
 const hasPartialAuthSmokeEnv = hasAuthToken !== hasAuthEmail;
 const requireAuthSmoke = process.env.TALLY_REQUIRE_AUTH_SMOKE === '1';
+const skipDeployFreshness = process.env.TALLY_SKIP_DEPLOY_FRESHNESS === '1';
+const appUrl = process.env.TALLY_APP_URL ?? 'https://tally-theta-two.vercel.app';
+const apiUrl = process.env.TALLY_API_URL ?? 'https://tally-api-theta.vercel.app';
+const usingCanonicalProductionAliases =
+  appUrl === 'https://tally-theta-two.vercel.app' &&
+  apiUrl === 'https://tally-api-theta.vercel.app';
 
+if (skipDeployFreshness) {
+  if (usingCanonicalProductionAliases) {
+    console.error('');
+    console.error('FAIL Deployment freshness check');
+    console.error('     TALLY_SKIP_DEPLOY_FRESHNESS=1 cannot be used with the canonical production aliases.');
+    process.exit(1);
+  }
+  console.log('');
+  console.log('SKIP Deployment freshness check');
+  console.log('     TALLY_SKIP_DEPLOY_FRESHNESS=1 is set; only use this for preview/custom-domain smoke.');
+} else {
+  await run('Deployment freshness check', 'node', [join(scriptDir, 'check-deployment-freshness.mjs')]);
+}
 await run('Public production smoke', 'node', [join(scriptDir, 'production-smoke.mjs')]);
 
 if (hasPartialAuthSmokeEnv) {

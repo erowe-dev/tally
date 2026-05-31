@@ -117,6 +117,15 @@ describe('OptimizerComponent', () => {
     expect(hotelButton.getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('ignores hidden Can afford filter when wallet has no points', () => {
+    component.results.set([
+      { program: 'United', partner: 'Chase UR', cpp: 1.8, ptsBase: 50000, cards: ['chase_ur'], note: 'Test route' },
+    ]);
+    component.canAffordOnly.set(true);
+
+    expect(component.filteredResults().length).toBe(1);
+  });
+
   it('keeps an existing return date when it is after earliest departure', () => {
     component.latestReturn = '2026-06-20';
 

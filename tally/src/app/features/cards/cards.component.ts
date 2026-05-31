@@ -260,6 +260,19 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
               <span class="cc-chevron">{{ isExpanded(card.id) ? '▲' : '▼' }}</span>
             </div>
           </button>
+          <div class="cc-save-row">
+            <button
+              type="button"
+              class="cc-save-btn"
+              [class.active]="isHeldProgram(card.id)"
+              [class.balance-backed]="wallet.getBalance(card.id) > 0"
+              [attr.aria-pressed]="isHeldProgram(card.id)"
+              [attr.aria-disabled]="wallet.getBalance(card.id) > 0"
+              [attr.aria-label]="cardHeldToggleLabel(card.id, card.name)"
+              (click)="toggleHeldProgram(card.id)">
+              {{ cardHeldToggleText(card.id) }}
+            </button>
+          </div>
           <div class="partners" *ngIf="isExpanded(card.id)">
             <!-- Program-level strategic tip -->
             <div class="pro-tip" *ngIf="getProTip(card.id) as tip">
@@ -510,6 +523,23 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       -webkit-tap-highlight-color: transparent; text-align: left;
     }
     .cc-header:hover { background: var(--surface); }
+    .cc-save-row {
+      display: flex; justify-content: flex-end; padding: 0 18px 12px;
+    }
+    .cc-save-btn {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 8px; color: var(--text3);
+      font-family: 'Geist Mono', monospace; font-size: 9px;
+      letter-spacing: 0.08em; min-height: 40px; padding: 8px 12px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .cc-save-btn.active {
+      border-color: rgba(26,122,74,0.35); background: var(--tally-green-light);
+      color: var(--tally-green);
+    }
+    .cc-save-btn.balance-backed {
+      cursor: default; border-style: dashed; pointer-events: none;
+    }
     .cc-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0; }
     .cc-chevron {
       font-size: 8px; color: var(--text3); transition: transform 0.2s; line-height: 1;
@@ -910,6 +940,10 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         max-width: 100%;
         min-width: 0;
       }
+      .cc-save-row {
+        justify-content: stretch; padding: 0 14px 12px 60px;
+      }
+      .cc-save-btn { width: 100%; }
       .tf-row { align-items: flex-start; flex-wrap: wrap; }
       .tf-coverage { width: 100%; text-align: left; padding-left: 40px; white-space: normal; }
       .partner-row {
@@ -1155,6 +1189,29 @@ export class CardsComponent {
 
   isHeldProgram(cardId: string): boolean {
     return this.heldProgramIdSet().has(cardId) || this.wallet.getBalance(cardId) > 0;
+  }
+
+  cardHeldToggleText(cardId: string): string {
+    if (this.wallet.getBalance(cardId) > 0) return 'Balance saved';
+    return this.heldProgramIdSet().has(cardId) ? 'Saved' : 'Save program';
+  }
+
+  cardHeldToggleLabel(cardId: string, cardName: string): string {
+    if (this.wallet.getBalance(cardId) > 0) return `${cardName} is counted as yours because it has a saved balance`;
+    return this.heldProgramIdSet().has(cardId)
+      ? `Remove ${cardName} from your programs`
+      : `Save ${cardName} as a program you have`;
+  }
+
+  toggleHeldProgram(cardId: string): void {
+    if (this.wallet.getBalance(cardId) > 0) return;
+    const next = new Set(this.prefs.preferences().heldProgramIds ?? []);
+    if (next.has(cardId)) {
+      next.delete(cardId);
+    } else {
+      next.add(cardId);
+    }
+    this.prefs.updatePreferences({ heldProgramIds: Array.from(next) });
   }
 
   /** Partners to display for a card — filtered when search targets partner names */

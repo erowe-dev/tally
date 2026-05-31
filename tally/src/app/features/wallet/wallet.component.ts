@@ -166,6 +166,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
                   [class.active]="isHeldProgram(card.id)"
                   [class.balance-backed]="hasBalance(card.id)"
                   [attr.aria-pressed]="isHeldProgram(card.id)"
+                  [attr.aria-disabled]="hasBalance(card.id)"
                   [attr.aria-label]="heldToggleLabel(card.id, card.name)"
                   [title]="heldToggleLabel(card.id, card.name)"
                   (click)="toggleHeldProgram(card.id); $event.stopPropagation()">
@@ -642,6 +643,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     .held-toggle.balance-backed {
       cursor: default;
       border-style: dashed;
+      pointer-events: none;
     }
     .row-value {
       font-family: 'Geist Mono', monospace; font-size: 9px;
@@ -915,6 +917,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       }
       .goal-pts-input { width: 100%; text-align: left; }
       .action-row { flex-direction: column; }
+      .wallet-filter-bar { flex-direction: row; }
       .action-btn { max-width: none; }
     }
     @media (max-width:430px){.program-actions{grid-template-columns:1fr}.row-value{text-align:left}}

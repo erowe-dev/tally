@@ -207,6 +207,57 @@ describe('ExpiryComponent', () => {
     expect(component.calExportCount()).toBe(1);
   });
 
+  it('labels Mine-filtered alerts and discloses hidden urgent programs', () => {
+    expiry.statuses.set([
+      ...statuses,
+      {
+        cardId: 'aa_aadvantage',
+        programName: 'American AAdvantage',
+        daysRemaining: 12,
+        urgency: 'critical',
+        expiryDate: new Date(2026, 7, 17),
+        note: 'Activity extends expiry.',
+        actionNeeded: 'Add activity before expiry.',
+        quickActions: ['Shop through portal'],
+      },
+    ]);
+    const component = createComponent();
+
+    component.setHeldOnly(true);
+    fixture.detectChanges();
+
+    const safeTitle = fixture.nativeElement.querySelector('.alert-banner.safe .alert-title') as HTMLElement;
+    const hiddenNote = fixture.nativeElement.querySelector('.hidden-alert-note') as HTMLElement;
+
+    expect(safeTitle.textContent?.trim()).toBe('My programs are in good shape');
+    expect(hiddenNote.textContent).toContain('1 hidden program outside Mine');
+  });
+
+  it('bulk marks only missing activity dates', fakeAsync(() => {
+    expiry.statuses.set([
+      ...statuses,
+      {
+        cardId: 'aa_aadvantage',
+        programName: 'American AAdvantage',
+        daysRemaining: 80,
+        urgency: 'warning',
+        expiryDate: new Date(2026, 7, 17),
+        note: 'Activity extends expiry.',
+        actionNeeded: 'Add activity before expiry.',
+        quickActions: ['Shop through portal'],
+      },
+    ]);
+    expiry.records.set({ united_mp: { cardId: 'united_mp', lastActivityDate: '2026-01-01' } });
+    const component = createComponent();
+
+    component.markAllToday();
+    component.markAllToday();
+
+    expect(expiry.setLastActivity).toHaveBeenCalledOnceWith('aa_aadvantage', component.todayStr);
+
+    tick(3000);
+  }));
+
   it('includes held zero-balance programs in Mine', () => {
     prefs.preferences.set({ heldProgramIds: ['amex_mr'] });
     const component = createComponent();
