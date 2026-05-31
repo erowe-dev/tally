@@ -115,10 +115,21 @@ function latestCommitFor(paths) {
 function inspectDeployment(url) {
   const result = run('npx', ['vercel', 'inspect', url, '--format=json']);
   const json = JSON.parse(extractFirstJsonObject(result));
-  if (typeof json.createdAt !== 'number' || typeof json.url !== 'string') {
+  if (
+    typeof json.createdAt !== 'number' ||
+    typeof json.url !== 'string' ||
+    json.target !== 'production' ||
+    json.readyState !== 'READY' ||
+    !deploymentAliasesInclude(json, url)
+  ) {
     throw new Error(`Unexpected Vercel inspect response for ${url}`);
   }
   return json;
+}
+
+function deploymentAliasesInclude(deployment, url) {
+  const host = url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  return Array.isArray(deployment.aliases) && deployment.aliases.includes(host);
 }
 
 function run(command, args) {

@@ -123,6 +123,12 @@ function checkRunbookHealthContract() {
     'deployment freshness must verify the API Vercel project root directory stays unset for api/ CLI deploys',
   );
   assert(
+    freshness.includes("json.target !== 'production'") &&
+      freshness.includes("json.readyState !== 'READY'") &&
+      freshness.includes('deploymentAliasesInclude'),
+    'deployment freshness must verify inspected deployments are production, ready, and aliased',
+  );
+  assert(
     freshness.includes('release status: blocked until this alias points at the latest relevant commit'),
     'deployment freshness failures must explain that stale aliases block release readiness',
   );
