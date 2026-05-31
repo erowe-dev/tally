@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser, validateCardId } from '../lib/route-helpers';
+import { KNOWN_PROGRAM_ID_SET } from '../lib/program-ids';
 
 const router = Router();
 
@@ -16,7 +17,11 @@ router.get(
     const rows = await prisma.balance.findMany({ where: { userId: user.id } });
 
     const result: Record<string, number> = {};
-    for (const b of rows) result[b.cardId] = b.amount;
+    for (const b of rows) {
+      if (KNOWN_PROGRAM_ID_SET.has(b.cardId)) {
+        result[b.cardId] = b.amount;
+      }
+    }
     res.json(result);
   }),
 );

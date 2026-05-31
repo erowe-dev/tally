@@ -819,7 +819,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
     .field-row.compact-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .field { display: flex; flex-direction: column; gap: 4px; }
-    .field.full { grid-column: 1 / -1; }
+    .field.full { grid-column: 1/-1; }
     .field-label {
       font-family: 'Geist Mono', monospace;
       font-size: 9px; letter-spacing: 0.15em;
@@ -1008,7 +1008,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .wh-icon { font-size: 18px; flex-shrink: 0; }
     .wh-body { flex: 1; min-width: 0; }
     .wh-title { font-size: 13px; font-weight: 600; color: var(--tally-green); margin-bottom: 2px; }
-    .wh-sub { font-size: 11px; color: var(--tally-green-mid, #2d9e62); line-height: 1.4; }
+    .wh-sub { font-size: 11px; color: var(--tally-green-mid); line-height: 1.4; }
     .wh-arrow { font-size: 16px; color: var(--tally-green); flex-shrink: 0; }
 
     .results-header {
@@ -1051,7 +1051,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     }
     .route-unrecognized {
       display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
-      color: var(--tally-amber, #b45309); letter-spacing: 0.05em; margin-top: 2px;
+      color: var(--tally-amber); letter-spacing: 0.05em; margin-top: 2px;
     }
 
     .strategy-summary {
@@ -1109,7 +1109,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .already-saved-badge {
       display: inline-block; margin-left: 6px;
       font-family: 'Geist Mono', monospace; font-size: 9px;
-      color: var(--tally-amber, #d97706); letter-spacing: 0.06em;
+      color: var(--tally-amber); letter-spacing: 0.06em;
     }
     .rc-partner { font-size: 11px; color: var(--text2); margin-bottom: 2px; }
     .rc-note { font-size: 11px; color: var(--text3); font-style: italic; overflow-wrap: anywhere; }
@@ -1159,12 +1159,12 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       margin-top: 4px; margin-bottom: 4px;
       padding: 5px 8px;
       background: rgba(217,119,6,0.06); border-radius: 7px;
-      border-left: 2px solid var(--tally-amber, #d97706);
+      border-left: 2px solid var(--tally-amber);
     }
     .rc-gap-icon { font-size: 11px; flex-shrink: 0; line-height: 1.4; }
     .rc-gap-text {
       font-family: 'Geist Mono', monospace; font-size: 10px;
-      color: var(--tally-amber, #b45309); line-height: 1.45;
+      color: var(--tally-amber); line-height: 1.45;
     }
     .rc-gap-hint { color: var(--text3); }
 
@@ -1173,18 +1173,18 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       margin-top: 4px; margin-bottom: 4px;
       padding: 5px 8px; border-radius: 7px;
       background: rgba(217,119,6,0.06);
-      border-left: 2px solid var(--tally-amber, #d97706);
+      border-left: 2px solid var(--tally-amber);
     }
     .rc-expiry-warn.critical {
       background: rgba(220,38,38,0.06);
-      border-left-color: var(--tally-red, #dc2626);
+      border-left-color: var(--tally-red);
     }
     .rce-icon { font-size: 11px; flex-shrink: 0; line-height: 1.45; }
     .rce-text {
       font-family: 'Geist Mono', monospace; font-size: 10px;
-      color: var(--tally-amber, #b45309); line-height: 1.45;
+      color: var(--tally-amber); line-height: 1.45;
     }
-    .rc-expiry-warn.critical .rce-text { color: var(--tally-red, #dc2626); }
+    .rc-expiry-warn.critical .rce-text { color: var(--tally-red); }
 
     .no-results { text-align: center; padding: 32px 16px; }
     .no-results-icon { font-size: 32px; margin-bottom: 10px; }
@@ -1216,12 +1216,13 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     }
     .route-tip {
       display: flex; align-items: flex-start; gap: 8px;
+      grid-column: 1/-1;
       margin-top: 10px; padding: 10px 12px;
       background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.15);
       border-radius: 10px;
     }
     .rt-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
-    .rt-text { font-size: 11px; color: var(--tally-green-mid, #2d8a5a); line-height: 1.55; }
+    .rt-text { font-size: 11px; color: var(--tally-green-mid); line-height: 1.55; }
 
     .card-action-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
 
@@ -1308,6 +1309,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+      .card-action-row>:last-child:nth-child(odd) { grid-column: 1/-1; }
       .rc-coverage {
         display: grid;
         grid-template-columns: 1fr;

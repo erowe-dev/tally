@@ -135,7 +135,12 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
           </button>
           <div class="category-badge">{{ categoryLabel(s.category) }}</div>
           <div class="new-badge" *ngIf="s.isNew">✦ New</div>
-          <div class="spot-route" [innerHTML]="formatRoute(s.route)"></div>
+          <div class="spot-route">
+            <ng-container *ngFor="let part of routeParts(s.route); let last = last">
+              <span>{{ part }}</span>
+              <span class="arrow" *ngIf="!last"> → </span>
+            </ng-container>
+          </div>
           <div class="spot-detail">{{ s.detail.toUpperCase() }}</div>
           <div class="spot-stats">
             <div class="stat">
@@ -334,7 +339,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       font-size: 20px; font-weight: 400; color: var(--text); margin-bottom: 4px;
       padding-right: 70px; overflow-wrap: anywhere;
     }
-    :host ::ng-deep .spot-route .arrow { color: var(--tally-green); font-style: italic; }
+    .spot-route .arrow { color: var(--tally-green); font-style: italic; }
 
     .spot-detail {
       font-family: 'Geist Mono', monospace;
@@ -781,8 +786,8 @@ export class SweetspotsComponent {
     return this.data.transferBonuses.filter(b => b.expires >= today);
   });
 
-  formatRoute(route: string): string {
-    return route.replace('→', '<span class="arrow"> → </span>');
+  routeParts(route: string): string[] {
+    return route.split('→').map(part => part.trim()).filter(Boolean);
   }
 
   categoryLabel(cat: SweetSpot['category']): string {

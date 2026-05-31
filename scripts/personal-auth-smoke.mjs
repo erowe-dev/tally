@@ -3,7 +3,7 @@
 const apiUrl = normalizeUrl(process.env.TALLY_API_URL ?? 'https://tally-api-theta.vercel.app');
 const token = process.env.TALLY_AUTH_TOKEN;
 const email = process.env.TALLY_AUTH_EMAIL;
-const smokeCardId = 'codex_smoke_points';
+const smokeCardId = 'chase_ur';
 
 if (!token || !email) {
   console.error('Missing required env vars: TALLY_AUTH_TOKEN and TALLY_AUTH_EMAIL');
@@ -30,8 +30,14 @@ const checks = [
   {
     name: 'Balance write survives authenticated read',
     run: async () => {
+      const existingBalances = await request('/api/balances');
+      const previousAmount = existingBalances[smokeCardId];
       try {
-        await request(`/api/balances/${smokeCardId}`, { method: 'DELETE' });
+        await expectHttpError(
+          `/api/balances/codex_smoke_points`,
+          { method: 'PUT', body: JSON.stringify({ amount: 12345 }) },
+          400,
+        );
         await request(`/api/balances/${smokeCardId}`, {
           method: 'PUT',
           body: JSON.stringify({ amount: 12345 }),
@@ -39,10 +45,22 @@ const checks = [
         const balances = await request('/api/balances');
         assert(balances[smokeCardId] === 12345, `expected smoke balance, got ${JSON.stringify(balances)}`);
       } finally {
-        await request(`/api/balances/${smokeCardId}`, { method: 'DELETE' });
+        if (typeof previousAmount === 'number') {
+          await request(`/api/balances/${smokeCardId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ amount: previousAmount }),
+          });
+        } else {
+          await request(`/api/balances/${smokeCardId}`, { method: 'DELETE' });
+        }
       }
-      const afterDelete = await request('/api/balances');
-      assert(!(smokeCardId in afterDelete), `expected smoke balance to be deleted, got ${JSON.stringify(afterDelete)}`);
+      const afterRestore = await request('/api/balances');
+      assert(
+        typeof previousAmount === 'number'
+          ? afterRestore[smokeCardId] === previousAmount
+          : !(smokeCardId in afterRestore),
+        `expected smoke balance to be restored, got ${JSON.stringify(afterRestore)}`,
+      );
     },
   },
   {
@@ -152,7 +170,14 @@ const checks = [
     name: 'Expiry write/delete survives authenticated reads',
     run: async () => {
       const today = localDateString();
+      const existingRecords = await request('/api/expiry');
+      const previousRecord = existingRecords[smokeCardId];
       try {
+        await expectHttpError(
+          `/api/expiry/codex_smoke_points`,
+          { method: 'PUT', body: JSON.stringify({ lastActivityDate: today }) },
+          400,
+        );
         await request(`/api/expiry/${smokeCardId}`, {
           method: 'PUT',
           body: JSON.stringify({ lastActivityDate: today }),
@@ -160,10 +185,22 @@ const checks = [
         const records = await request('/api/expiry');
         assert(records[smokeCardId]?.lastActivityDate === today, `expected smoke expiry, got ${JSON.stringify(records)}`);
       } finally {
-        await request(`/api/expiry/${smokeCardId}`, { method: 'DELETE' });
+        if (previousRecord?.lastActivityDate) {
+          await request(`/api/expiry/${smokeCardId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ lastActivityDate: previousRecord.lastActivityDate }),
+          });
+        } else {
+          await request(`/api/expiry/${smokeCardId}`, { method: 'DELETE' });
+        }
       }
-      const afterDelete = await request('/api/expiry');
-      assert(!afterDelete[smokeCardId], `expected smoke expiry to be deleted, got ${JSON.stringify(afterDelete)}`);
+      const afterRestore = await request('/api/expiry');
+      assert(
+        previousRecord?.lastActivityDate
+          ? afterRestore[smokeCardId]?.lastActivityDate === previousRecord.lastActivityDate
+          : !afterRestore[smokeCardId],
+        `expected smoke expiry to be restored, got ${JSON.stringify(afterRestore)}`,
+      );
     },
   },
   {
@@ -253,6 +290,21 @@ async function requestWithMeta(path, init = {}) {
     data: body ? JSON.parse(body) : null,
     headers: res.headers,
   };
+}
+
+async function expectHttpError(path, init, expectedStatus) {
+  const res = await fetch(`${apiUrl}${path}`, {
+    ...init,
+    headers: {
+      ...authHeaders,
+      ...(init.headers ?? {}),
+    },
+  });
+  const body = await res.text();
+  assert(
+    res.status === expectedStatus,
+    `expected ${init.method ?? 'GET'} ${path} -> ${expectedStatus}, got ${res.status}; body=${body}`,
+  );
 }
 
 function localDateString(date = new Date()) {

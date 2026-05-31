@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser, validateCardId } from '../lib/route-helpers';
+import { KNOWN_PROGRAM_ID_SET } from '../lib/program-ids';
 
 const router = Router();
 
@@ -41,7 +42,9 @@ router.get(
 
     const result: Record<string, { cardId: string; lastActivityDate: string }> = {};
     for (const r of rows) {
-      result[r.cardId] = { cardId: r.cardId, lastActivityDate: r.lastActivityDate };
+      if (KNOWN_PROGRAM_ID_SET.has(r.cardId)) {
+        result[r.cardId] = { cardId: r.cardId, lastActivityDate: r.lastActivityDate };
+      }
     }
     res.json(result);
   }),

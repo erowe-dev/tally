@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from './prisma';
+import { KNOWN_PROGRAM_ID_SET } from './program-ids';
 
 /**
  * Shape of our custom errors — a plain Error with an HTTP status attached.
@@ -24,9 +25,9 @@ export async function requireUser(auth0Id: string) {
 }
 
 /**
- * Matches our card IDs (e.g. 'amex_mr', 'chase_ur', 'citi_ty'). Deliberately
- * strict — anything with spaces, slashes, or unicode is rejected before it
- * ever reaches Prisma.
+ * Matches our program IDs (e.g. 'amex_mr', 'chase_ur', 'citi_ty').
+ * Deliberately strict and allowlisted so unsupported IDs cannot drift into
+ * wallet/expiry sync rows.
  */
 const CARD_ID_RE = /^[a-z0-9_]{1,50}$/;
 
@@ -36,11 +37,15 @@ const CARD_ID_RE = /^[a-z0-9_]{1,50}$/;
  */
 export function validateCardId(req: Request, res: Response, next: NextFunction): void {
   const { cardId } = req.params;
-  if (!cardId || !CARD_ID_RE.test(cardId)) {
+  if (!isKnownCardId(cardId)) {
     res.status(400).json({ error: 'Invalid cardId', requestId: getResponseRequestId(res) });
     return;
   }
   next();
+}
+
+export function isKnownCardId(cardId: string | undefined): cardId is string {
+  return typeof cardId === 'string' && CARD_ID_RE.test(cardId) && KNOWN_PROGRAM_ID_SET.has(cardId);
 }
 
 /**
