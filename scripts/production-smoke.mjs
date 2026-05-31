@@ -138,6 +138,17 @@ const checks = [
     },
   },
   {
+    name: 'API rejects disallowed browser origins without 500s',
+    run: async () => {
+      const res = await fetch(`${apiUrl}/health`, {
+        headers: { Origin: 'https://not-tally.example' },
+      });
+      const body = await readBody(res);
+      assert(res.status === 403, `expected 403 for disallowed origin, got ${res.status}: ${body}`);
+      assert(res.headers.get('x-request-id'), 'disallowed CORS response missing X-Request-Id header');
+    },
+  },
+  {
     name: 'Telemetry endpoints accept valid payloads and reject bad events',
     run: async () => {
       const timestamp = new Date().toISOString();

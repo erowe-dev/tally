@@ -67,7 +67,9 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS: origin ${origin} not allowed`));
+        const error = new Error(`CORS: origin ${origin} not allowed`) as Error & { status: number };
+        error.status = 403;
+        callback(error);
       }
     },
     credentials: true,
