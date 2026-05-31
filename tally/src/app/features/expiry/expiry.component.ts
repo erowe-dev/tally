@@ -170,7 +170,9 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
             </ul>
             <div class="qa-links" *ngIf="getPortalLinks(status.cardId).length > 0">
               <a *ngFor="let link of getPortalLinks(status.cardId)"
-                class="qa-link" [href]="link.url" target="_blank" rel="noopener noreferrer">
+                class="qa-link" [href]="link.url"
+                [attr.aria-label]="portalLinkAriaLabel(link.label, status.programName)"
+                target="_blank" rel="noopener noreferrer">
                 🔗 {{ link.label }} →
               </a>
             </div>
@@ -521,9 +523,8 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       .bulk-today-btn { margin-left: auto; }
       .date-input { min-width: 12rem; }
       .expiry-list {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        align-items: start;
+        display: flex;
+        flex-direction: column;
       }
       .activity-stats {
         justify-content: flex-start;
@@ -779,6 +780,10 @@ export class ExpiryComponent implements OnDestroy {
 
   getPortalLinks(cardId: string): Array<{ label: string; url: string }> {
     return PORTAL_LINKS[cardId] ?? [];
+  }
+
+  portalLinkAriaLabel(label: string, programName: string): string {
+    return `Open ${label} to reset expiry activity for ${programName}`;
   }
 
   activityInputId(cardId: string): string {

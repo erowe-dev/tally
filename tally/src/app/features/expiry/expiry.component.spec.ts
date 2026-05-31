@@ -159,6 +159,27 @@ describe('ExpiryComponent', () => {
     expect(component.activityInputId('Program / With Spaces!')).toBe('expiry-last-activity-program-with-spaces');
   });
 
+  it('labels portal links with the destination and program context', () => {
+    expiry.statuses.set([
+      {
+        cardId: 'united_mp',
+        programName: 'United MileagePlus',
+        daysRemaining: 30,
+        urgency: 'critical',
+        expiryDate: new Date(2026, 6, 1),
+        note: 'Activity extends expiry.',
+        actionNeeded: 'Add activity before expiry.',
+        quickActions: ['Shop through portal'],
+      },
+    ]);
+    createComponent();
+
+    const link = fixture.nativeElement.querySelector('.qa-link') as HTMLAnchorElement;
+
+    expect(link.getAttribute('aria-label')).toBe('Open MileagePlus Shopping to reset expiry activity for United MileagePlus');
+    expect(link.href).toContain('shopping.mileageplus.com');
+  });
+
   it('requires a second tap before marking all expirable programs today', fakeAsync(() => {
     const component = createComponent();
 
