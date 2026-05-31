@@ -159,10 +159,12 @@ npm run verify
 After Vercel deploys, run:
 
 ```bash
-npm run smoke:prod
+npm run smoke:release
 ```
 
-For a personal signed-in API smoke, provide an Auth0 access token and email:
+`smoke:release` always runs the public production smoke. It also runs the signed-in API smoke when `TALLY_AUTH_TOKEN` and `TALLY_AUTH_EMAIL` are present. To make signed-in smoke mandatory in a release job, set `TALLY_REQUIRE_AUTH_SMOKE=1`.
+
+For a personal signed-in API smoke by itself, provide an Auth0 access token and email:
 
 ```powershell
 $env:TALLY_AUTH_TOKEN="<Auth0 access token for https://api.tally.app>"
