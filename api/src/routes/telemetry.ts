@@ -3,20 +3,10 @@ import { asyncRoute } from '../lib/route-helpers';
 import { createFixedWindowRateLimiter } from '../lib/fixed-window-rate-limit';
 import { sanitizeClientUrl } from '../lib/safe-client-url';
 import { sendError } from '../lib/http-response';
+import { buildAllowedOrigins, normalizeOrigin } from '../lib/origin-allowlist';
 
 const router = Router();
-const DEFAULT_ALLOWED_ORIGINS = [
-  'http://localhost:4200',
-  'https://tally-theta-two.vercel.app',
-  'https://tally.vercel.app',
-  'https://tallypoints.app',
-  'https://www.tallypoints.app',
-];
-const CONFIGURED_ORIGINS = (process.env['APP_ORIGINS'] ?? '')
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(Boolean);
-const ALLOWED_ORIGINS = new Set([...DEFAULT_ALLOWED_ORIGINS, ...CONFIGURED_ORIGINS]);
+const ALLOWED_ORIGINS = new Set(buildAllowedOrigins());
 
 const ANALYTICS_EVENTS = new Set([
   'tab_viewed',
@@ -121,7 +111,8 @@ export default router;
 
 function requireAllowedOrigin(req: Request, res: Response, next: NextFunction): void {
   const origin = req.get('origin');
-  if (!origin || !ALLOWED_ORIGINS.has(origin)) {
+  const normalizedOrigin = normalizeOrigin(origin);
+  if (!normalizedOrigin || !ALLOWED_ORIGINS.has(normalizedOrigin)) {
     sendError(res, 403, 'Telemetry origin not allowed');
     return;
   }

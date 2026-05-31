@@ -18,6 +18,7 @@ import searchesRouter from './routes/searches';
 import searchRouter from './routes/search';
 import telemetryRouter from './routes/telemetry';
 import { responseRequestId, sendError } from './lib/http-response';
+import { buildAllowedOrigins, normalizeOrigin } from './lib/origin-allowlist';
 
 const app = express();
 app.disable('x-powered-by');
@@ -25,18 +26,7 @@ const port = parseInt(process.env['PORT'] ?? '3000', 10);
 const startedAt = new Date().toISOString();
 const serviceVersion = getServiceVersion();
 
-const defaultAllowedOrigins = [
-  'http://localhost:4200',
-  'https://tally-theta-two.vercel.app',
-  'https://tally.vercel.app',
-  'https://tallypoints.app',
-  'https://www.tallypoints.app',
-];
-const configuredOrigins = (process.env['APP_ORIGINS'] ?? '')
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(Boolean);
-const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...configuredOrigins])];
+const allowedOrigins = new Set(buildAllowedOrigins());
 
 app.use((req, res, next) => {
   const requestId = getRequestId(req);
@@ -73,7 +63,8 @@ app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (curl, Vercel health checks, etc.)
-      if (!origin || allowedOrigins.includes(origin)) {
+      const normalizedOrigin = normalizeOrigin(origin);
+      if (!origin || (normalizedOrigin && allowedOrigins.has(normalizedOrigin))) {
         callback(null, true);
       } else {
         const error = new Error('CORS origin not allowed') as Error & { status: number };
