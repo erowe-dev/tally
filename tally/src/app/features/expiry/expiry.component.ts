@@ -46,11 +46,13 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
           (click)="markAllToday()"
           [disabled]="bulkMarkableCount() === 0"
           [class.confirm]="bulkConfirm()"
-          [class.done]="bulkDone()">
+          [class.done]="bulkDone()"
+          [attr.aria-label]="bulkButtonAriaLabel()">
           {{ bulkButtonLabel() }}
         </button>
         <button type="button" class="filter-held-btn" *ngIf="hasAnyHeldPrograms()"
           [class.active]="showHeldOnly()"
+          [attr.aria-pressed]="showHeldOnly()"
           (click)="toggleHeldOnly()">
           {{ showHeldOnly() ? '★ Mine' : '☆ Mine' }}
         </button>
@@ -686,6 +688,15 @@ export class ExpiryComponent implements OnDestroy {
     if (this.bulkDone()) return '✓ All updated';
     if (this.bulkConfirm()) return 'Tap again to confirm';
     return this.showHeldOnly() ? 'Mark mine today' : 'Mark all today';
+  }
+
+  bulkButtonAriaLabel(): string {
+    if (this.bulkMarkableCount() === 0) return 'All visible expirable programs already have activity dates';
+    if (this.bulkDone()) return 'All visible expirable programs marked with today as last activity';
+    if (this.bulkConfirm()) return 'Confirm marking visible expirable programs with today as last activity';
+    return this.showHeldOnly()
+      ? 'Mark my visible expirable programs with today as last activity'
+      : 'Mark all visible expirable programs with today as last activity';
   }
 
   /** Number of days elapsed since the last recorded activity date */

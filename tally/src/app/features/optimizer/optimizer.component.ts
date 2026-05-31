@@ -263,11 +263,15 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       <h2 class="section-title">Find the <em>best use</em><br>of your points</h2>
 
       <div class="toggle-row">
-        <div class="type-toggle">
-          <button type="button" class="toggle-btn" [class.active]="tripType() === 'flight'" (click)="tripType.set('flight')">
+        <div class="type-toggle" role="group" aria-label="Trip search type">
+          <button type="button" class="toggle-btn" [class.active]="tripType() === 'flight'"
+            [attr.aria-pressed]="tripType() === 'flight'"
+            (click)="tripType.set('flight')">
             ✈ Flights
           </button>
-          <button type="button" class="toggle-btn" [class.active]="tripType() === 'hotel'" (click)="tripType.set('hotel')">
+          <button type="button" class="toggle-btn" [class.active]="tripType() === 'hotel'"
+            [attr.aria-pressed]="tripType() === 'hotel'"
+            (click)="tripType.set('hotel')">
             🏨 Hotels
           </button>
         </div>
@@ -549,6 +553,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
 
       <!-- Quick Wins toggle — only shown when user has wallet data -->
       <button type="button" class="btn-quick-wins" *ngIf="wallet.hasAnyPoints()"
+        [attr.aria-expanded]="showQuickWins()"
         (click)="toggleQuickWins()">
         {{ showQuickWins() ? '✕ Hide' : '⚡ What can I book now?' }}
       </button>
@@ -662,15 +667,18 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         </section>
 
         <!-- Result filters (only when user has a wallet) -->
-        <div class="result-filters" *ngIf="wallet.hasAnyPoints()">
+        <div class="result-filters" *ngIf="wallet.hasAnyPoints()" role="group" aria-label="Result filters and sort">
           <button type="button" class="rf-btn" [class.active]="canAffordOnly()"
+            [attr.aria-pressed]="canAffordOnly()"
             (click)="canAffordOnly.set(!canAffordOnly())">
             ✓ Can afford
           </button>
           <div class="rf-sort">
             <button type="button" class="rf-btn" [class.active]="sortBy() === 'cpp'"
+              [attr.aria-pressed]="sortBy() === 'cpp'"
               (click)="sortBy.set('cpp')">Best CPP</button>
             <button type="button" class="rf-btn" [class.active]="sortBy() === 'coverage'"
+              [attr.aria-pressed]="sortBy() === 'coverage'"
               (click)="sortBy.set('coverage')">My Coverage</button>
           </div>
         </div>
@@ -756,7 +764,8 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             </button>
             <button type="button" class="howto-btn" *ngIf="getHowToSteps(rec.program).length > 0"
               (click)="toggleHowTo(rec.program)"
-              [class.open]="expandedHowTo() === rec.program">
+              [class.open]="expandedHowTo() === rec.program"
+              [attr.aria-expanded]="expandedHowTo() === rec.program">
               {{ expandedHowTo() === rec.program ? 'Hide steps' : 'How to book' }}
             </button>
           </div>

@@ -101,6 +101,21 @@ describe('OptimizerComponent', () => {
     expect(component.minLatestReturnDate()).toBe('2026-06-11');
   });
 
+  it('exposes trip type toggle state to assistive tech', () => {
+    const [flightButton, hotelButton] = Array.from(
+      fixture.nativeElement.querySelectorAll('.type-toggle .toggle-btn'),
+    ) as HTMLButtonElement[];
+
+    expect(flightButton.getAttribute('aria-pressed')).toBe('true');
+    expect(hotelButton.getAttribute('aria-pressed')).toBe('false');
+
+    hotelButton.click();
+    fixture.detectChanges();
+
+    expect(flightButton.getAttribute('aria-pressed')).toBe('false');
+    expect(hotelButton.getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('keeps an existing return date when it is after earliest departure', () => {
     component.latestReturn = '2026-06-20';
 

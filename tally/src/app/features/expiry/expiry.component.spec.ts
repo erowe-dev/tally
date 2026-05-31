@@ -108,6 +108,27 @@ describe('ExpiryComponent', () => {
     expect(sessionStorage.getItem(UI_KEY)).toBeNull();
   });
 
+  it('exposes Mine filter and bulk confirmation state to assistive tech', () => {
+    const component = createComponent();
+    let mineButton = fixture.nativeElement.querySelector('.filter-held-btn') as HTMLButtonElement;
+    const bulkButton = fixture.nativeElement.querySelector('.bulk-today-btn') as HTMLButtonElement;
+
+    expect(mineButton.getAttribute('aria-pressed')).toBe('false');
+    expect(bulkButton.getAttribute('aria-label')).toContain('Mark all visible expirable programs');
+
+    component.setHeldOnly(true);
+    fixture.detectChanges();
+    mineButton = fixture.nativeElement.querySelector('.filter-held-btn') as HTMLButtonElement;
+
+    expect(mineButton.getAttribute('aria-pressed')).toBe('true');
+    expect(bulkButton.getAttribute('aria-label')).toContain('Mark my visible expirable programs');
+
+    component.markAllToday();
+    fixture.detectChanges();
+
+    expect(bulkButton.getAttribute('aria-label')).toContain('Confirm marking visible expirable programs');
+  });
+
   it('clears activity when the native date input is emptied', () => {
     const component = createComponent();
     const input = document.createElement('input');
