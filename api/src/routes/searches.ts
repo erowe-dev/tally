@@ -10,6 +10,7 @@ const router = Router();
 const SEARCH_TYPES = new Set(['flight', 'hotel']);
 const CABIN_TYPES = new Set(['economy', 'premium', 'business', 'first']);
 const IATA_RE = /^[A-Z]{3}$/;
+const MAX_SAVED_SEARCHES = 5;
 
 router.get(
   '/',
@@ -45,6 +46,12 @@ router.post(
     const createData = toCreateData(parsed.data);
     if ('error' in createData) {
       res.status(400).json({ error: createData.error });
+      return;
+    }
+
+    const savedSearchCount = await prisma.savedSearch.count({ where: { userId: user.id } });
+    if (savedSearchCount >= MAX_SAVED_SEARCHES) {
+      res.status(409).json({ error: `Saved search limit is ${MAX_SAVED_SEARCHES}` });
       return;
     }
 

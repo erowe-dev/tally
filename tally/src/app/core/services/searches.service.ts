@@ -8,6 +8,7 @@ import { SavedSearch } from '../models';
 const STORAGE_KEY = 'tally_searches_v1';
 const PENDING_KEY = 'tally_searches_pending_v1';
 const DELETED_KEY = 'tally_searches_deleted_v1';
+const MAX_SAVED_SEARCHES = 5;
 
 export type SearchSyncState = 'idle' | 'loading' | 'synced' | 'error';
 
@@ -58,7 +59,12 @@ export class SearchesService {
     this._retryTrigger.update(n => n + 1);
   }
 
-  createSearch(search: Omit<SavedSearch, 'id' | 'createdAt' | 'updatedAt'>): SavedSearch {
+  createSearch(search: Omit<SavedSearch, 'id' | 'createdAt' | 'updatedAt'>): SavedSearch | null {
+    if (this._searches().length >= MAX_SAVED_SEARCHES) {
+      this.toast.error('Delete a saved search before adding another');
+      return null;
+    }
+
     const now = new Date().toISOString();
     const saved: SavedSearch = {
       ...search,
