@@ -206,6 +206,14 @@ import { TripsService } from '../../core/services/trips.service';
       .note-save-btn,
       .note-cancel-btn { flex: 1; }
     }
+    @media (max-width: 430px) {
+      .saved-card { grid-template-columns: auto minmax(0, 1fr); }
+      .saved-pts {
+        grid-column: 2;
+        text-align: left;
+      }
+      .saved-pts small { display: inline; margin-left: 3px; }
+    }
     @media (min-width: 760px) {
       .saved-card {
         display: grid;

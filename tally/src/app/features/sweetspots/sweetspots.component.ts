@@ -361,7 +361,7 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       font-size: 9px; letter-spacing: 0.1em; color: var(--text3); margin-top: 4px;
       overflow-wrap: anywhere;
     }
-    .spot-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .spot-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; margin-bottom: 12px; }
     .stat {
       background: var(--surface); border-radius: 10px; padding: 10px;
       text-align: center; display: flex; flex-direction: column; gap: 2px;
@@ -563,9 +563,6 @@ const BOOKING_URLS: Partial<Record<string, string>> = {
       }
       .spot-route {
         font-size: 18px;
-      }
-      .spot-stats {
-        grid-template-columns: 1fr 1fr;
       }
       .category-badge,
       .new-badge {

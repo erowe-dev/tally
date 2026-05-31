@@ -825,7 +825,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .toggle-btn.active { background: var(--tally-green); color: white; }
 
     .fields { margin-bottom: 14px; }
-    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; }
     .field-row.compact-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .field { display: flex; flex-direction: column; gap: 4px; }
     .field.full { grid-column: 1/-1; }
@@ -839,7 +839,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       border-radius: 10px; color: var(--text);
       font-family: 'Geist', sans-serif; font-size: 14px; font-weight: 500;
       padding: 11px 14px; outline: none; width: 100%;
-      transition: border-color 0.15s; -webkit-appearance: none;
+      box-sizing: border-box; transition: border-color 0.15s; -webkit-appearance: none;
     }
     .field-input:focus { border-color: var(--tally-green); }
     .field-input.invalid { border-color: var(--tally-red); background: var(--tally-red-light); }
@@ -1290,13 +1290,15 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     }
 
     @media (max-width: 560px) {
+      .field-row,
+      .field-row.compact-row {
+        grid-template-columns: 1fr;
+      }
       .rf-sort { width: 100%; margin-left: 0; }
       .rf-btn { flex: 1; }
     }
 
     @media (max-width: 430px) {
-      .field-row,
-      .field-row.compact-row,
       .strategy-grid {
         grid-template-columns: 1fr;
       }
