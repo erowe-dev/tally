@@ -7,6 +7,7 @@ import { retry, switchMap, timer } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ToastService } from './toast.service';
 import { NetworkService } from './network.service';
+import { LocalUserDataService } from './local-user-data.service';
 
 /**
  * Thin wrapper that bridges Auth0's RxJS observables into Angular signals.
@@ -23,6 +24,7 @@ export class AuthService {
   private http = inject(HttpClient);
   private toast = inject(ToastService);
   private network = inject(NetworkService);
+  private localUserData = inject(LocalUserDataService);
   private platformId = inject(PLATFORM_ID);
   private document = inject(DOCUMENT);
   private browserWindow = isPlatformBrowser(this.platformId) ? this.document.defaultView : null;
@@ -81,6 +83,7 @@ export class AuthService {
   }
 
   logout(): void {
+    this.localUserData.clearUserData();
     this.auth0.logout({
       logoutParams: {
         returnTo: this.browserWindow?.location.origin ?? environment.auth0.authorizationParams.redirect_uri,
