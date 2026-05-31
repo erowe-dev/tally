@@ -181,7 +181,8 @@ function normalizeAwardRequest(value: unknown): ParseResult<JsonObject> {
   const cabin = typeof body['cabin'] === 'string' && CABIN_TYPES.has(body['cabin'])
     ? body['cabin']
     : 'economy';
-  const passengers = normalizeInteger(body['passengers'], 1, 9, 1);
+  const passengers = normalizeInteger(body['passengers'], 1, 9, 1, 'passengers');
+  if ('error' in passengers) return { error: passengers.error };
   const dateWindow = dateWindowFromLooseFields(body, {
     requireStartDate: true,
     defaultFlexibility: 'exact',
@@ -196,7 +197,7 @@ function normalizeAwardRequest(value: unknown): ParseResult<JsonObject> {
       originAirport: origin,
       destinationAirport: destination,
       cabin,
-      passengers,
+      passengers: passengers.data,
       dateWindow: dateWindow.data,
       programs: programs.data,
     },
@@ -211,9 +212,12 @@ function normalizeHotelRequest(value: unknown): ParseResult<JsonObject> {
   if (!destination) return { error: 'destination is required' };
 
   const hotelCategory = normalizeText(body['hotelCategory'], 30) ?? 'mid';
-  const travelers = normalizeInteger(body['travelers'], 1, 9, 1);
-  const rooms = normalizeInteger(body['rooms'], 1, 4, 1);
-  const nights = normalizeInteger(body['nights'], 1, 30, 1);
+  const travelers = normalizeInteger(body['travelers'], 1, 9, 1, 'travelers');
+  if ('error' in travelers) return { error: travelers.error };
+  const rooms = normalizeInteger(body['rooms'], 1, 4, 1, 'rooms');
+  if ('error' in rooms) return { error: rooms.error };
+  const nights = normalizeInteger(body['nights'], 1, 30, 1, 'nights');
+  if ('error' in nights) return { error: nights.error };
   const chains = normalizeStringList(body['chains'], 20);
   const rawDateWindow = asRecord(body['dateWindow']);
   const dateWindow = rawDateWindow
@@ -225,9 +229,9 @@ function normalizeHotelRequest(value: unknown): ParseResult<JsonObject> {
     data: {
       destination,
       hotelCategory,
-      travelers,
-      rooms,
-      nights,
+      travelers: travelers.data,
+      rooms: rooms.data,
+      nights: nights.data,
       chains,
       dateWindow: dateWindow.data,
     },
@@ -348,11 +352,12 @@ function normalizeText(value: unknown, maxLength: number): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-function normalizeInteger(value: unknown, min: number, max: number, fallback: number): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
-  const rounded = Math.round(value);
-  if (rounded < min || rounded > max) return fallback;
-  return rounded;
+function normalizeInteger(value: unknown, min: number, max: number, fallback: number, fieldName: string): ParseResult<number> {
+  if (value === undefined || value === null) return { data: fallback };
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < min || value > max) {
+    return { error: `${fieldName} must be an integer from ${min} to ${max}` };
+  }
+  return { data: value };
 }
 
 function normalizeStringList(value: unknown, maxItems: number): string[] {

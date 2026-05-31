@@ -23,6 +23,7 @@ const checks = [
   { label: 'Program ID allowlists match app data', run: checkProgramIds },
   { label: 'Production readiness workflow enforces release gates', run: checkProductionReadinessWorkflow },
   { label: 'Saved search cap is concurrency-safe', run: checkSavedSearchConcurrencyGuard },
+  { label: 'Provider search rejects invalid numerics', run: checkProviderSearchNumericValidation },
   { label: 'No unused Angular starter shell files', run: checkNoStarterShellFiles },
   { label: 'No HostListener/HostBinding decorators in shell/shared components', run: checkNoHostListenerDecorator },
   { label: 'Initial bundle stays under 800 kB when stats are available', run: checkBundleBudget },
@@ -263,6 +264,23 @@ function checkSavedSearchConcurrencyGuard() {
   assert(
     !/const\s+savedSearchCount\s*=\s*await\s+prisma\.savedSearch\.count[\s\S]*?prisma\.savedSearch\.create/.test(route),
     'saved-search route must not use top-level count-then-create limit enforcement',
+  );
+}
+
+function checkProviderSearchNumericValidation() {
+  const route = read('api/src/routes/search.ts');
+  assert(
+    /function\s+normalizeInteger\([^)]*fieldName:\s*string\):\s*ParseResult<number>/.test(route),
+    'provider search normalizeInteger must return ParseResult<number> with a field name',
+  );
+  assert(route.includes('Number.isInteger(value)'), 'provider search must reject decimal numeric values');
+  for (const field of ['passengers', 'travelers', 'rooms', 'nights']) {
+    assert(route.includes(`'${field}'`), `provider search must validate ${field} explicitly`);
+    assert(route.includes(`if ('error' in ${field}) return { error: ${field}.error }`), `provider search must reject invalid ${field}`);
+  }
+  assert(
+    !/function\s+normalizeInteger[\s\S]*?return\s+fallback/.test(route),
+    'provider search normalizeInteger must not silently return fallback for invalid provided values',
   );
 }
 
