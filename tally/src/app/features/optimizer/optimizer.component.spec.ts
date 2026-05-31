@@ -69,6 +69,7 @@ describe('OptimizerComponent', () => {
   let fixture: ComponentFixture<OptimizerComponent>;
   let component: OptimizerComponent;
   let searches: MockSearchesService;
+  let wallet: MockWalletService;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -89,6 +90,7 @@ describe('OptimizerComponent', () => {
     fixture = TestBed.createComponent(OptimizerComponent);
     component = fixture.componentInstance;
     searches = TestBed.inject(SearchesService) as unknown as MockSearchesService;
+    wallet = TestBed.inject(WalletService) as unknown as MockWalletService;
     fixture.detectChanges();
   });
 
@@ -213,5 +215,33 @@ describe('OptimizerComponent', () => {
     chip.click();
 
     expect(searches.markRun).toHaveBeenCalledWith('search_1');
+  });
+
+  it('wires expandable Optimizer panels to controlled regions', () => {
+    wallet.hasAnyPoints.set(true);
+    component.showQuickWins.set(true);
+    component.results.set([
+      {
+        program: 'Air Canada Aeroplan',
+        partner: 'Air Canada',
+        cpp: 2.1,
+        ptsBase: 60000,
+        cards: ['amex_mr'],
+        note: 'Test route',
+      },
+    ]);
+    component.toggleHowTo('Air Canada Aeroplan');
+
+    fixture.detectChanges();
+
+    const quickWinsToggle = fixture.nativeElement.querySelector('.btn-quick-wins') as HTMLButtonElement;
+    expect(quickWinsToggle.getAttribute('aria-controls')).toBe('optimizer-quick-wins');
+    expect(fixture.nativeElement.querySelector('#optimizer-quick-wins')).not.toBeNull();
+
+    const howToId = component.howToPanelId('Air Canada Aeroplan');
+    const howToButton = fixture.nativeElement.querySelector('.howto-btn') as HTMLButtonElement;
+    expect(howToButton.getAttribute('aria-controls')).toBe(howToId);
+    expect(howToButton.getAttribute('aria-expanded')).toBe('true');
+    expect(fixture.nativeElement.querySelector(`#${howToId}`)).not.toBeNull();
   });
 });

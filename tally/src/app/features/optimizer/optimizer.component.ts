@@ -553,13 +553,14 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
 
       <!-- Quick Wins toggle — only shown when user has wallet data -->
       <button type="button" class="btn-quick-wins" *ngIf="wallet.hasAnyPoints()"
+        aria-controls="optimizer-quick-wins"
         [attr.aria-expanded]="showQuickWins()"
         (click)="toggleQuickWins()">
         {{ showQuickWins() ? '✕ Hide' : '⚡ What can I book now?' }}
       </button>
 
       <!-- Quick Wins panel -->
-      <div class="quick-wins-panel" *ngIf="showQuickWins()">
+      <div id="optimizer-quick-wins" class="quick-wins-panel" *ngIf="showQuickWins()">
         <div class="qw-header">
           <span class="section-eyebrow">{{ quickWins().length }} Affordable Options</span>
           <span class="qw-sub">Based on your current wallet balances</span>
@@ -765,12 +766,13 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             <button type="button" class="howto-btn" *ngIf="getHowToSteps(rec.program).length > 0"
               (click)="toggleHowTo(rec.program)"
               [class.open]="expandedHowTo() === rec.program"
+              [attr.aria-controls]="howToPanelId(rec.program)"
               [attr.aria-expanded]="expandedHowTo() === rec.program">
               {{ expandedHowTo() === rec.program ? 'Hide steps' : 'How to book' }}
             </button>
           </div>
           <!-- How-to panel -->
-          <div class="howto-panel" *ngIf="expandedHowTo() === rec.program">
+          <div class="howto-panel" [id]="howToPanelId(rec.program)" *ngIf="expandedHowTo() === rec.program">
             <ol class="howto-steps">
               <li *ngFor="let step of getHowToSteps(rec.program)">{{ step }}</li>
             </ol>
@@ -2282,8 +2284,16 @@ export class OptimizerComponent implements OnChanges {
   getHowToSteps(program: string): string[] { return HOW_TO_BOOK[program]?.steps ?? []; }
   getBookingUrl(program: string): string | null { return HOW_TO_BOOK[program]?.url ?? null; }
 
+  howToPanelId(program: string): string {
+    return `optimizer-howto-${this.safeDomId(program)}`;
+  }
+
   toggleHowTo(program: string): void {
     this.expandedHowTo.update(cur => cur === program ? null : program);
+  }
+
+  private safeDomId(value: string): string {
+    return value.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'item';
   }
 
 }
