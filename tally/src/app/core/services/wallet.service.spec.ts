@@ -21,6 +21,7 @@ class MockNetworkService {
 describe('WalletService', () => {
   const STORAGE_KEY = 'tally_wallet_v1';
   const PENDING_KEY = 'tally_wallet_pending_v1';
+  const HISTORY_KEY = 'tally_wallet_history_v1';
   let auth: MockAuthService;
   let network: MockNetworkService;
   let api: jasmine.SpyObj<ApiService>;
@@ -111,6 +112,21 @@ describe('WalletService', () => {
 
     expect(service.balances()).toEqual({ amex_mr: 12001 });
     expect(api.setBalance).toHaveBeenCalledOnceWith('amex_mr', 12001);
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({ amex_mr: 12001 });
+  });
+
+  it('clears unreadable local wallet storage on load', () => {
+    localStorage.setItem(STORAGE_KEY, '{not json');
+    localStorage.setItem(PENDING_KEY, '{not json');
+    localStorage.setItem(HISTORY_KEY, '{not json');
+
+    const service = createService();
+
+    expect(service.balances()).toEqual({});
+    expect(service.pendingCount()).toBe(0);
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+    expect(localStorage.getItem(HISTORY_KEY)).toBeNull();
   });
 
   it('falls back to cached data and can retry after an API load failure', () => {

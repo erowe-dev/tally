@@ -212,8 +212,12 @@ export class WalletService {
   private loadLocal(): Record<string, number> {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? this.sanitizeBalances(JSON.parse(raw) as unknown) : {};
+      if (!raw) return {};
+      const balances = this.sanitizeBalances(JSON.parse(raw) as unknown);
+      this.saveLocal(balances);
+      return balances;
     } catch {
+      this.removeStorageKey(STORAGE_KEY);
       return {};
     }
   }
@@ -229,8 +233,16 @@ export class WalletService {
   private loadPending(): Record<string, number> {
     try {
       const raw = localStorage.getItem(PENDING_KEY);
-      return raw ? this.sanitizeBalances(JSON.parse(raw) as unknown) : {};
+      if (!raw) return {};
+      const pending = this.sanitizeBalances(JSON.parse(raw) as unknown);
+      if (Object.keys(pending).length === 0) {
+        this.removeStorageKey(PENDING_KEY);
+      } else {
+        localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+      }
+      return pending;
     } catch {
+      this.removeStorageKey(PENDING_KEY);
       return {};
     }
   }
@@ -260,8 +272,12 @@ export class WalletService {
   private loadHistory(): HistoryEntry[] {
     try {
       const raw = localStorage.getItem(HISTORY_KEY);
-      return raw ? sanitizeHistory(JSON.parse(raw) as unknown) : [];
+      if (!raw) return [];
+      const history = sanitizeHistory(JSON.parse(raw) as unknown);
+      this.saveHistory(history);
+      return history;
     } catch {
+      this.removeStorageKey(HISTORY_KEY);
       return [];
     }
   }
@@ -287,6 +303,12 @@ export class WalletService {
 
   private isKnownProgramId(cardId: string): boolean {
     return this.data.cards.some(card => card.id === cardId);
+  }
+
+  private removeStorageKey(key: string): void {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
   }
 }
 

@@ -7,6 +7,7 @@ import { CabinClass, DateFlexibility, UserPreference } from '../models';
 
 const STORAGE_KEY = 'tally_preferences_v1';
 const PENDING_KEY = 'tally_preferences_pending_v1';
+const IATA_RE = /^[A-Z]{3}$/;
 const KNOWN_PROGRAM_IDS = new Set([
   'amex_mr',
   'chase_ur',
@@ -164,8 +165,17 @@ export class PreferencesService {
   private loadLocal(): UserPreference {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? sanitizePreferences(JSON.parse(raw) as Partial<UserPreference>) : { ...DEFAULT_PREFERENCES };
+      if (!raw) return { ...DEFAULT_PREFERENCES };
+      const parsed = JSON.parse(raw) as unknown;
+      if (!isRecord(parsed)) {
+        this.removeStorageKey(STORAGE_KEY);
+        return { ...DEFAULT_PREFERENCES };
+      }
+      const preferences = sanitizePreferences(parsed);
+      this.saveLocal(preferences);
+      return preferences;
     } catch {
+      this.removeStorageKey(STORAGE_KEY);
       return { ...DEFAULT_PREFERENCES };
     }
   }
@@ -179,8 +189,17 @@ export class PreferencesService {
   private loadPending(): UserPreference | null {
     try {
       const raw = localStorage.getItem(PENDING_KEY);
-      return raw ? sanitizePreferences(JSON.parse(raw) as Partial<UserPreference>) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as unknown;
+      if (!isRecord(parsed) || !validIsoDate(parsed['updatedAt'])) {
+        this.removeStorageKey(PENDING_KEY);
+        return null;
+      }
+      const preferences = sanitizePreferences(parsed);
+      this.savePending(preferences);
+      return preferences;
     } catch {
+      this.removeStorageKey(PENDING_KEY);
       return null;
     }
   }
@@ -194,6 +213,12 @@ export class PreferencesService {
   private clearPending(): void {
     try {
       localStorage.removeItem(PENDING_KEY);
+    } catch {}
+  }
+
+  private removeStorageKey(key: string): void {
+    try {
+      localStorage.removeItem(key);
     } catch {}
   }
 
@@ -212,7 +237,9 @@ export class PreferencesService {
 
 function sanitizePreferences(value: Partial<UserPreference>): UserPreference {
   return {
-    homeAirports: stringArray(value.homeAirports).map(code => code.toUpperCase()).slice(0, 5),
+    homeAirports: uniqueStringArray(stringArray(value.homeAirports).map(code => code.toUpperCase()))
+      .filter(code => IATA_RE.test(code))
+      .slice(0, 5),
     preferredCabin: isCabinClass(value.preferredCabin) ? value.preferredCabin : DEFAULT_PREFERENCES.preferredCabin,
     maxStops: value.maxStops === 0 || value.maxStops === 1 || value.maxStops === 2
       ? value.maxStops
@@ -255,4 +282,14 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
   return typeof value === 'number' && Number.isFinite(value)
     ? Math.min(max, Math.max(min, value))
     : fallback;
+}
+
+function isRecord(value: unknown): value is Partial<UserPreference> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validIsoDate(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp);
 }

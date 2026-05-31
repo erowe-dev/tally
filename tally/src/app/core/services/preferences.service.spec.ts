@@ -44,15 +44,42 @@ describe('PreferencesService', () => {
 
   it('loads and sanitizes held program ids from local storage', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      homeAirports: ['oma', 'Chicago', 'CDG', 'OMA'],
       preferredPrograms: ['amex_mr', 'unknown_program', 'amex_mr', 42, 'hyatt'],
       heldProgramIds: ['hyatt', 'hyatt', '', 42, 'unknown_program', 'amex_mr'],
     }));
 
     const service = TestBed.inject(PreferencesService);
 
+    expect(service.preferences().homeAirports).toEqual(['OMA', 'CDG']);
     expect(service.preferences().preferredPrograms).toEqual(['amex_mr', 'hyatt']);
     expect(service.preferences().heldProgramIds).toEqual(['hyatt', 'amex_mr']);
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+    expect(stored.homeAirports).toEqual(['OMA', 'CDG']);
+    expect(stored.preferredPrograms).toEqual(['amex_mr', 'hyatt']);
+    expect(stored.heldProgramIds).toEqual(['hyatt', 'amex_mr']);
   });
+
+  it('clears unreadable preference storage and ignores malformed pending changes', fakeAsync(() => {
+    localStorage.setItem(STORAGE_KEY, '{not json');
+    localStorage.setItem(PENDING_KEY, JSON.stringify({
+      heldProgramIds: ['hyatt'],
+      updatedAt: 'not a date',
+    }));
+    const auth = TestBed.inject(AuthService) as unknown as MockAuthService;
+    auth.isAuthenticated.set(true);
+    auth.isProvisioned.set(true);
+
+    const service = TestBed.inject(PreferencesService);
+    tick();
+
+    expect(service.preferences().heldProgramIds).toEqual([]);
+    expect(localStorage.getItem(STORAGE_KEY) ?? '').not.toContain('{not json');
+    expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+    expect(api.savePreferences).not.toHaveBeenCalledWith(jasmine.objectContaining({
+      heldProgramIds: ['hyatt'],
+    }));
+  }));
 
   it('saves held program ids through local storage and API sync', () => {
     const auth = TestBed.inject(AuthService) as unknown as MockAuthService;
