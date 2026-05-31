@@ -552,9 +552,11 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     }
     .cc-header:hover { background: var(--surface); }
     .cc-save-row {
-      display: flex; justify-content: flex-end; padding: 0 18px 12px;
+      display: grid; grid-template-columns: 46px minmax(0, 1fr);
+      align-items: center; gap: 14px; padding: 0 18px 12px;
     }
     .cc-save-btn {
+      grid-column: 2; justify-self: end; max-width: 100%;
       background: var(--surface); border: 1px solid var(--border2);
       border-radius: 8px; color: var(--text3);
       font-family: 'Geist Mono', monospace; font-size: 9px;
@@ -980,9 +982,10 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         min-width: 0;
       }
       .cc-save-row {
-        justify-content: stretch; padding: 0 14px 12px 60px;
+        grid-template-columns: 46px minmax(0, 1fr);
+        gap: 14px; padding: 0 14px 12px;
       }
-      .cc-save-btn { width: 100%; }
+      .cc-save-btn { width: 100%; justify-self: stretch; }
       .tf-row { align-items: flex-start; flex-wrap: wrap; }
       .tf-coverage { flex: 1 1 100%; width: 100%; min-width: 0; text-align: left; padding-left: 40px; white-space: normal; }
       .partner-row {
