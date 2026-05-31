@@ -34,6 +34,7 @@ const ERROR_CONTEXTS = new Set([
   'smoke',
   'unhandled_rejection',
 ]);
+const SENSITIVE_PROPERTY_RE = /(auth|authorization|code|email|jwt|password|secret|token)/i;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 60;
 const telemetryRateLimiter = createFixedWindowRateLimiter({
@@ -158,11 +159,12 @@ function validTimestamp(value: string): string {
   return Number.isFinite(parsed) ? new Date(parsed).toISOString() : new Date().toISOString();
 }
 
-function sanitizeProps(value: Record<string, unknown>): Record<string, string | number | boolean | null> {
+export function sanitizeProps(value: Record<string, unknown>): Record<string, string | number | boolean | null> {
   const result: Record<string, string | number | boolean | null> = {};
   for (const [key, raw] of Object.entries(value).slice(0, 20)) {
     const cleanKey = key.trim().slice(0, 60);
     if (!cleanKey) continue;
+    if (SENSITIVE_PROPERTY_RE.test(cleanKey)) continue;
     if (typeof raw === 'string') {
       result[cleanKey] = raw.slice(0, 200);
     } else if (typeof raw === 'number' && Number.isFinite(raw)) {

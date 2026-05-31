@@ -9,6 +9,7 @@ const USER_DATA_KEYS = [
   'tally_home_airport_v1',
   'tally_preferences_pending_v1',
   'tally_preferences_v1',
+  'tally_recent_airports_v1',
   'tally_route_history_v1',
   'tally_route_templates_v1',
   'tally_searches_deleted_v1',
