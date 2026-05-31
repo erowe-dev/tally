@@ -20,7 +20,8 @@
       "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
     }
   ],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

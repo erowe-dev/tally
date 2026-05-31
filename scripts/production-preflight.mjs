@@ -94,7 +94,11 @@ function checkVercelAppConfig() {
   );
   assert(config.outputDirectory === 'browser', 'tally/vercel.json must serve the prepared browser output');
   assert(
-    config.rewrites?.some(rewrite => rewrite.source === '/(.*)' && rewrite.destination === '/index.html'),
+    config.routes?.some(route => route.handle === 'filesystem'),
+    'tally/vercel.json must serve filesystem assets before SPA fallback',
+  );
+  assert(
+    config.routes?.some(route => route.dest === '/index.html'),
     'tally/vercel.json must fall back to /index.html for the Angular app shell',
   );
   assertAppVercelHeaders(config, configPath);
@@ -108,7 +112,11 @@ function checkVercelAppConfig() {
   const landingConfig = JSON.parse(read(landingConfigPath));
   assert(landingConfig.outputDirectory === 'browser', 'landing-root vercel.json must serve the prepared browser output');
   assert(
-    landingConfig.rewrites?.some(rewrite => rewrite.source === '/(.*)' && rewrite.destination === '/index.html'),
+    landingConfig.routes?.some(route => route.handle === 'filesystem'),
+    'landing-root vercel.json must serve filesystem assets before SPA fallback',
+  );
+  assert(
+    landingConfig.routes?.some(route => route.dest === '/index.html'),
     'landing-root vercel.json must fall back to /index.html for the Angular app shell',
   );
   assertAppVercelHeaders(landingConfig, landingConfigPath);
@@ -123,7 +131,11 @@ function checkVercelAppConfig() {
   );
   assert(rootConfig.outputDirectory === 'browser', 'repo-root vercel.json must serve the prepared browser output');
   assert(
-    rootConfig.rewrites?.some(rewrite => rewrite.source === '/(.*)' && rewrite.destination === '/index.html'),
+    rootConfig.routes?.some(route => route.handle === 'filesystem'),
+    'repo-root vercel.json must serve filesystem assets before SPA fallback',
+  );
+  assert(
+    rootConfig.routes?.some(route => route.dest === '/index.html'),
     'repo-root vercel.json must fall back to /index.html for the Angular app shell',
   );
   assertAppVercelHeaders(rootConfig, rootConfigPath);
