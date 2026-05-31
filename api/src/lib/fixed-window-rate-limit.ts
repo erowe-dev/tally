@@ -8,6 +8,7 @@ export interface RateLimitResult {
 interface RateLimitBucket {
   count: number;
   resetAt: number;
+  lastSeenAt: number;
 }
 
 interface FixedWindowRateLimiterOptions {
@@ -28,14 +29,20 @@ export function createFixedWindowRateLimiter(options: FixedWindowRateLimiterOpti
       const current = buckets.get(key);
       const bucket = current && current.resetAt > currentTime
         ? current
-        : { count: 0, resetAt: currentTime + options.windowMs };
+        : { count: 0, resetAt: currentTime + options.windowMs, lastSeenAt: currentTime };
 
       bucket.count += 1;
+      bucket.lastSeenAt = currentTime;
       buckets.set(key, bucket);
 
       if (buckets.size >= maxBuckets) {
         for (const [bucketKey, value] of buckets) {
           if (value.resetAt <= currentTime) buckets.delete(bucketKey);
+        }
+        while (buckets.size > maxBuckets) {
+          const oldestKey = oldestBucketKey(buckets);
+          if (!oldestKey || oldestKey === key) break;
+          buckets.delete(oldestKey);
         }
       }
 
@@ -47,4 +54,18 @@ export function createFixedWindowRateLimiter(options: FixedWindowRateLimiterOpti
       };
     },
   };
+}
+
+function oldestBucketKey(buckets: Map<string, RateLimitBucket>): string | null {
+  let oldestKey: string | null = null;
+  let oldestSeenAt = Infinity;
+
+  for (const [key, bucket] of buckets) {
+    if (bucket.lastSeenAt < oldestSeenAt) {
+      oldestSeenAt = bucket.lastSeenAt;
+      oldestKey = key;
+    }
+  }
+
+  return oldestKey;
 }

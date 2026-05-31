@@ -26,6 +26,26 @@ const afterReset = limiter.hit(key);
 assert(afterReset.allowed, 'request after reset window should be allowed');
 assert(afterReset.remaining === 2, `expected reset remaining value 2, got ${afterReset.remaining}`);
 
+currentTime = 1_800_000_000_000;
+const cappedLimiter = createFixedWindowRateLimiter({
+  maxRequests: 1,
+  windowMs: 60_000,
+  maxBuckets: 2,
+  now: () => currentTime,
+});
+
+assert(cappedLimiter.hit('a').allowed, 'first capped bucket should be allowed');
+currentTime += 1;
+assert(cappedLimiter.hit('b').allowed, 'second capped bucket should be allowed');
+currentTime += 1;
+assert(cappedLimiter.hit('c').allowed, 'new capped bucket should be allowed after evicting the oldest bucket');
+
+const retainedBucket = cappedLimiter.hit('b');
+assert(!retainedBucket.allowed, 'recent capped bucket should retain its request count');
+
+const evictedBucket = cappedLimiter.hit('a');
+assert(evictedBucket.allowed, 'oldest capped bucket should have been evicted and recreated');
+
 console.log('Fixed-window rate limiter check passed.');
 
 function assert(condition: boolean, message: string): void {
