@@ -6,6 +6,9 @@ import { environment } from '../../../environments/environment';
 import {
   AwardAvailabilityResult,
   CabinClass,
+  DateWindow,
+  HotelFitRequest,
+  HotelFitResult,
   HotelSearchIntent,
   ProviderCacheStatus,
   SavedTrip,
@@ -19,10 +22,15 @@ export interface ApiExpiryRecord {
 }
 
 export interface ProviderSearchResponse<T> {
+  provider: string;
   cacheStatus: ProviderCacheStatus;
   lastChecked: string;
   stale: boolean;
   source: string;
+  dataMode: 'planning_estimate';
+  availabilitySource: 'estimated_not_live';
+  isLive: false;
+  notice: string;
   results: T[];
 }
 
@@ -237,11 +245,12 @@ export class ApiService {
     );
   }
 
-  searchHotelFit(intent: HotelSearchIntent): Observable<ProviderSearchResponse<HotelSearchIntent>> {
+  searchHotelFit(intent: HotelSearchIntent): Observable<ProviderSearchResponse<HotelFitResult>> {
+    const request = toHotelFitRequest(intent);
     return this.withAuth(headers =>
-      this.http.post<ProviderSearchResponse<HotelSearchIntent>>(
+      this.http.post<ProviderSearchResponse<HotelFitResult>>(
         `${environment.apiUrl}/api/search/hotel-fit`,
-        intent,
+        request,
         { headers },
       ),
     );
@@ -272,6 +281,35 @@ export class ApiService {
       return null;
     }
   }
+}
+
+function toHotelFitRequest(intent: HotelSearchIntent): HotelFitRequest {
+  return {
+    destination: intent.destination,
+    hotelCategory: intent.hotelCategory,
+    travelers: intent.travelers,
+    rooms: intent.rooms,
+    nights: intent.nights ?? deriveNights(intent.checkInDate, intent.checkOutDate) ?? 1,
+    chains: intent.preferredChains,
+    dateWindow: toDateWindow(intent),
+  };
+}
+
+function toDateWindow(intent: HotelSearchIntent): DateWindow | undefined {
+  if (!intent.checkInDate && !intent.checkOutDate) return undefined;
+  return {
+    startDate: intent.checkInDate ?? '',
+    endDate: intent.checkOutDate ?? '',
+    flexibility: 'plus_minus_7',
+  };
+}
+
+function deriveNights(checkInDate: string | undefined, checkOutDate: string | undefined): number | null {
+  if (!checkInDate || !checkOutDate) return null;
+  const start = Date.parse(`${checkInDate}T00:00:00.000Z`);
+  const end = Date.parse(`${checkOutDate}T00:00:00.000Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return Math.min(30, Math.max(1, Math.round((end - start) / 86_400_000)));
 }
 
 function isBalanceMap(value: unknown): value is Record<string, number> {

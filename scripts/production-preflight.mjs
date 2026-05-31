@@ -24,6 +24,7 @@ const checks = [
   { label: 'Program ID allowlists match app data', run: checkProgramIds },
   { label: 'Production readiness workflow enforces release gates', run: checkProductionReadinessWorkflow },
   { label: 'Saved search cap is concurrency-safe', run: checkSavedSearchConcurrencyGuard },
+  { label: 'Provider search is labeled as planning data', run: checkProviderSearchPlanningLabel },
   { label: 'Provider search rejects invalid numerics', run: checkProviderSearchNumericValidation },
   { label: 'Authenticated smoke covers provider validation', run: checkAuthenticatedSmokeProviderValidation },
   { label: 'No unused Angular starter shell files', run: checkNoStarterShellFiles },
@@ -301,6 +302,20 @@ function checkProviderSearchNumericValidation() {
     !/function\s+normalizeInteger[\s\S]*?return\s+fallback/.test(route),
     'provider search normalizeInteger must not silently return fallback for invalid provided values',
   );
+}
+
+function checkProviderSearchPlanningLabel() {
+  const route = read('api/src/routes/search.ts');
+  assert(!route.includes("const PROVIDER = 'tally_stub'"), 'provider search must not expose stub provider naming');
+  assert(!route.includes('seatsAvailable'), 'provider search must not expose estimated seats as live availability');
+  assert(route.includes("const DATA_MODE = 'planning_estimate'"), 'provider search must label planning estimate data mode');
+  assert(route.includes("const AVAILABILITY_SOURCE = 'estimated_not_live'"), 'provider search must label non-live availability source');
+  assert(route.includes('isLive: false'), 'provider search responses must explicitly say they are not live');
+
+  const models = read('tally/src/app/core/models/index.ts');
+  assert(models.includes("dataMode: 'planning_estimate'"), 'app provider models must expose planning data mode');
+  assert(models.includes("availabilitySource: 'estimated_not_live'"), 'app provider models must expose non-live availability source');
+  assert(!models.includes('seatsAvailable'), 'app provider models must not expose estimated seats as live availability');
 }
 
 function checkAuthenticatedSmokeProviderValidation() {

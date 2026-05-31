@@ -124,6 +124,27 @@ export interface HotelSearchIntent {
   preferredChains: string[];
 }
 
+export interface HotelFitRequest {
+  destination: string;
+  dateWindow?: DateWindow;
+  hotelCategory?: HotelCategory;
+  travelers: number;
+  rooms: number;
+  nights: number;
+  chains: string[];
+}
+
+export interface HotelFitResult {
+  chain: string;
+  destination: string;
+  estimatedPointsPerNight: number;
+  fit: 'best_points_value' | 'cash_compare' | 'backup';
+  note: string;
+  dataMode: 'planning_estimate';
+  availabilitySource: 'estimated_not_live';
+  isLive: false;
+}
+
 export interface SavedSearch {
   id: string;
   searchType: SearchType;
@@ -152,9 +173,13 @@ export interface AwardAvailabilityResult {
   program: string;
   points: number;
   taxesUsd?: number;
-  seatsAvailable?: number;
+  estimatedSeatCount?: number;
   confidence: 'low' | 'medium' | 'high';
   bookingUrl?: string;
+  dataMode: 'planning_estimate';
+  availabilitySource: 'estimated_not_live';
+  isLive: false;
+  notice: string;
   lastChecked: string;
   expiresAt: string;
   cacheStatus: ProviderCacheStatus;

@@ -154,7 +154,7 @@ const checks = [
     },
   },
   {
-    name: 'Provider-backed award availability returns cached planning signal',
+    name: 'Provider-backed search returns clearly labeled planning estimates',
     run: async () => {
       const { data: response, headers } = await requestWithMeta('/api/search/award-availability', {
         method: 'POST',
@@ -171,8 +171,11 @@ const checks = [
           programs: ['amex_mr', 'chase_ur'],
         }),
       });
-      assert(response.provider === 'tally_stub', `expected stub provider, got ${JSON.stringify(response)}`);
+      assert(response.provider === 'tally_planning_estimate', `expected planning provider, got ${JSON.stringify(response)}`);
+      assert(response.dataMode === 'planning_estimate', `expected planning data mode, got ${JSON.stringify(response)}`);
+      assert(response.isLive === false, `expected non-live provider response, got ${JSON.stringify(response)}`);
       assert(Array.isArray(response.results) && response.results.length > 0, `expected provider results, got ${JSON.stringify(response)}`);
+      assert(response.results.every(result => result.isLive === false && !('seatsAvailable' in result)), `expected non-live planning results, got ${JSON.stringify(response)}`);
       assert(headers.get('x-ratelimit-limit') === '30', 'expected provider search rate limit header');
       assert(headers.get('x-ratelimit-remaining'), 'expected provider search remaining rate limit header');
       await expectHttpError('/api/search/award-availability', {
@@ -214,6 +217,17 @@ const checks = [
           nights: '5',
         }),
       }, 400);
+      const hotelFit = await request('/api/search/hotel-fit', {
+        method: 'POST',
+        body: JSON.stringify({
+          destination: 'Tokyo',
+          checkInDate: localDateString(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+          checkOutDate: localDateString(new Date(Date.now() + 34 * 24 * 60 * 60 * 1000)),
+          preferredChains: ['Hyatt', 'Hilton'],
+        }),
+      });
+      assert(hotelFit.dataMode === 'planning_estimate' && hotelFit.isLive === false, `expected hotel planning fit, got ${JSON.stringify(hotelFit)}`);
+      assert(Array.isArray(hotelFit.results) && hotelFit.results.every(result => result.isLive === false), `expected non-live hotel fit results, got ${JSON.stringify(hotelFit)}`);
     },
   },
   {

@@ -9,7 +9,7 @@ main().catch(error => {
 });
 
 async function main(): Promise<void> {
-  const { normalizeAwardRequest, normalizeHotelRequest } = await import('./search');
+  const { buildAwardSignal, normalizeAwardRequest, normalizeHotelRequest } = await import('./search');
 
   const validAward = {
     originAirport: 'ORD',
@@ -37,6 +37,25 @@ async function main(): Promise<void> {
     'passengers must be an integer from 1 to 9',
     'award search should reject string passengers',
   );
+  assertJson(
+    buildAwardSignal({
+      originAirport: 'ORD',
+      destinationAirport: 'CDG',
+      cabin: 'business',
+      passengers: 1,
+      dateWindow: { startDate: futureDate(30), endDate: futureDate(37), flexibility: 'plus_minus_7' },
+      programs: [],
+    }),
+    'award planning signal should not masquerade as live availability',
+    data => {
+      const first = Array.isArray(data['results']) ? data['results'][0] as Record<string, unknown> : null;
+      return !!first &&
+        first['provider'] === 'tally_planning_estimate' &&
+        first['availabilitySource'] === 'estimated_not_live' &&
+        first['isLive'] === false &&
+        !('seatsAvailable' in first);
+    },
+  );
 
   const validHotel = { destination: 'Paris' };
   assertData(
@@ -48,6 +67,19 @@ async function main(): Promise<void> {
     normalizeHotelRequest({ ...validHotel, travelers: null, rooms: null, nights: null }),
     'hotel search should default numeric fields when null',
     data => data['travelers'] === 1 && data['rooms'] === 1 && data['nights'] === 1,
+  );
+  assertData(
+    normalizeHotelRequest({
+      destination: 'Paris',
+      checkInDate: futureDate(30),
+      checkOutDate: futureDate(34),
+      preferredChains: ['Hyatt', 'Hilton', 'Hyatt'],
+    }),
+    'hotel search should accept the app hotel intent shape',
+    data =>
+      data['nights'] === 4 &&
+      JSON.stringify(data['chains']) === JSON.stringify(['Hyatt', 'Hilton']) &&
+      (data['dateWindow'] as Record<string, unknown>)['startDate'] === futureDate(30),
   );
   assertError(
     normalizeHotelRequest({ ...validHotel, travelers: 0 }),
@@ -80,6 +112,14 @@ function assertError(result: ParseResult<unknown>, expectedError: string, messag
   if (result.error !== expectedError) {
     throw new Error(`${message}: expected "${expectedError}", got "${result.error}"`);
   }
+}
+
+function assertJson(
+  result: Record<string, unknown>,
+  message: string,
+  predicate: (data: Record<string, unknown>) => boolean,
+): void {
+  if (!predicate(result)) throw new Error(message);
 }
 
 function futureDate(daysFromToday: number): string {

@@ -13,8 +13,11 @@ import { sendError } from '../lib/http-response';
 const router = Router();
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
-const PROVIDER = 'tally_stub';
-const SOURCE = 'deterministic_provider_cache_stub';
+const PROVIDER = 'tally_planning_estimate';
+const SOURCE = 'deterministic_planning_model';
+const DATA_MODE = 'planning_estimate';
+const AVAILABILITY_SOURCE = 'estimated_not_live';
+const PLANNING_NOTICE = 'Planning estimate only. Confirm live award or room availability directly before transferring points.';
 const CABIN_TYPES = new Set(['economy', 'premium', 'business', 'first']);
 const IATA_RE = /^[A-Z]{3}$/;
 const SEARCH_RATE_LIMIT_WINDOW_MS = 60_000;
@@ -158,6 +161,10 @@ function toProviderResponse(
   return {
     provider: cache.provider,
     source: cache.source,
+    dataMode: DATA_MODE,
+    availabilitySource: AVAILABILITY_SOURCE,
+    isLive: false,
+    notice: PLANNING_NOTICE,
     cacheStatus,
     normalizedRequest: cache.normalizedRequest,
     results,
@@ -216,10 +223,10 @@ export function normalizeHotelRequest(value: unknown): ParseResult<JsonObject> {
   if ('error' in travelers) return { error: travelers.error };
   const rooms = normalizeInteger(body['rooms'], 1, 4, 1, 'rooms');
   if ('error' in rooms) return { error: rooms.error };
-  const nights = normalizeInteger(body['nights'], 1, 30, 1, 'nights');
+  const nights = normalizeInteger(body['nights'], 1, 30, deriveNights(body) ?? 1, 'nights');
   if ('error' in nights) return { error: nights.error };
-  const chains = normalizeStringList(body['chains'], 20);
-  const rawDateWindow = asRecord(body['dateWindow']);
+  const chains = normalizeStringList(body['chains'] ?? body['preferredChains'], 20);
+  const rawDateWindow = asRecord(body['dateWindow']) ?? dateWindowFromHotelIntent(body);
   const dateWindow = rawDateWindow
     ? parseDateWindow(rawDateWindow, { defaultFlexibility: 'plus_minus_7', rejectPastStartDate: true })
     : { data: { startDate: '', endDate: '', flexibility: 'plus_minus_7' } as Prisma.InputJsonObject };
@@ -238,7 +245,7 @@ export function normalizeHotelRequest(value: unknown): ParseResult<JsonObject> {
   };
 }
 
-function buildAwardSignal(request: JsonObject): JsonObject {
+export function buildAwardSignal(request: JsonObject): JsonObject {
   const origin = String(request['originAirport']);
   const destination = String(request['destinationAirport']);
   const cabin = String(request['cabin']);
@@ -258,6 +265,10 @@ function buildAwardSignal(request: JsonObject): JsonObject {
       id: `${origin}-${destination}-${cabin}-${index}`,
       provider: PROVIDER,
       source: SOURCE,
+      dataMode: DATA_MODE,
+      availabilitySource: AVAILABILITY_SOURCE,
+      isLive: false,
+      notice: PLANNING_NOTICE,
       originAirport: origin,
       destinationAirport: destination,
       departureDate,
@@ -265,7 +276,7 @@ function buildAwardSignal(request: JsonObject): JsonObject {
       cabin,
       program,
       points: base + ((seed + index * 7_500) % 20_000),
-      seatsAvailable: 1 + ((seed + index) % 4),
+      estimatedSeatCount: 1 + ((seed + index) % 4),
       confidence: index === 0 ? 'high' : index === 1 ? 'medium' : 'low',
       lastChecked: new Date().toISOString(),
       expiresAt: new Date(Date.now() + CACHE_TTL_MS).toISOString(),
@@ -285,6 +296,9 @@ function buildHotelSignal(request: JsonObject): JsonObject {
     results: [
       {
         chain: 'Hyatt',
+        dataMode: DATA_MODE,
+        availabilitySource: AVAILABILITY_SOURCE,
+        isLive: false,
         destination,
         estimatedPointsPerNight: base + (seed % 8_000),
         fit: 'best_points_value',
@@ -292,6 +306,9 @@ function buildHotelSignal(request: JsonObject): JsonObject {
       },
       {
         chain: 'Hilton',
+        dataMode: DATA_MODE,
+        availabilitySource: AVAILABILITY_SOURCE,
+        isLive: false,
         destination,
         estimatedPointsPerNight: base + 15_000 + (seed % 12_000),
         fit: 'cash_compare',
@@ -299,6 +316,9 @@ function buildHotelSignal(request: JsonObject): JsonObject {
       },
       {
         chain: 'Marriott',
+        dataMode: DATA_MODE,
+        availabilitySource: AVAILABILITY_SOURCE,
+        isLive: false,
         destination,
         estimatedPointsPerNight: base + 10_000 + (seed % 10_000),
         fit: 'backup',
@@ -306,6 +326,27 @@ function buildHotelSignal(request: JsonObject): JsonObject {
       },
     ],
   };
+}
+
+function dateWindowFromHotelIntent(body: Record<string, unknown>): Record<string, unknown> | null {
+  if (!('checkInDate' in body) && !('checkOutDate' in body)) return null;
+  return {
+    startDate: body['checkInDate'] ?? '',
+    endDate: body['checkOutDate'] ?? '',
+    flexibility: body['dateFlexibility'] ?? 'plus_minus_7',
+  };
+}
+
+function deriveNights(body: Record<string, unknown>): number | null {
+  if (body['nights'] !== undefined && body['nights'] !== null) return null;
+  const checkIn = typeof body['checkInDate'] === 'string' ? body['checkInDate'] : '';
+  const checkOut = typeof body['checkOutDate'] === 'string' ? body['checkOutDate'] : '';
+  if (!checkIn || !checkOut) return null;
+
+  const start = Date.parse(`${checkIn}T00:00:00.000Z`);
+  const end = Date.parse(`${checkOut}T00:00:00.000Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return Math.min(30, Math.max(1, Math.round((end - start) / 86_400_000)));
 }
 
 function confidenceFromRequest(request: JsonObject): number {
