@@ -193,9 +193,11 @@ function checkProgramIds() {
   const dataServiceIds = extractProgramIds(read('tally/src/app/core/services/data.service.ts').split('readonly flightRecs:')[0]);
   const apiIds = extractStringArray(read('api/src/lib/program-ids.ts'), 'KNOWN_PROGRAM_IDS');
   const preferenceIds = extractNewSet(read('tally/src/app/core/services/preferences.service.ts'), 'KNOWN_PROGRAM_IDS');
+  const apiServiceIds = extractNewSet(read('tally/src/app/core/services/api.service.ts'), 'KNOWN_PROGRAM_IDS');
 
   assertListsMatch('API known program ids', apiIds, dataServiceIds);
   assertListsMatch('Preferences known program ids', preferenceIds, dataServiceIds);
+  assertListsMatch('ApiService cache validator program ids', apiServiceIds, dataServiceIds);
 }
 
 function extractProgramIds(source) {

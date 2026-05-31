@@ -11,9 +11,11 @@ const dataServiceIds = extractProgramIds(
 );
 const apiIds = extractStringArray(read('api/src/lib/program-ids.ts'), 'KNOWN_PROGRAM_IDS');
 const preferenceIds = extractNewSet(read('tally/src/app/core/services/preferences.service.ts'), 'KNOWN_PROGRAM_IDS');
+const apiServiceIds = extractNewSet(read('tally/src/app/core/services/api.service.ts'), 'KNOWN_PROGRAM_IDS');
 
 assertSame('API known program ids', apiIds, dataServiceIds);
 assertSame('Preferences known program ids', preferenceIds, dataServiceIds);
+assertSame('ApiService cache validator program ids', apiServiceIds, dataServiceIds);
 
 console.log(`Program ID check passed (${dataServiceIds.length} programs).`);
 
