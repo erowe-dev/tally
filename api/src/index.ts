@@ -118,6 +118,11 @@ app.use('/api/searches', searchesRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/telemetry', telemetryRouter);
 
+app.use('/api', (_req, res) => {
+  const requestId = typeof res.locals['requestId'] === 'string' ? res.locals['requestId'] : 'unknown';
+  res.status(404).json({ error: 'API route not found', requestId });
+});
+
 // Fallback error handler — any error that reaches here is unexpected.
 // Keeps the response shape consistent and avoids leaking stack traces.
 app.use((err: Error & { status?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

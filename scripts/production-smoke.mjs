@@ -191,6 +191,22 @@ const checks = [
     },
   },
   {
+    name: 'API unknown routes return JSON 404 with request id',
+    run: async () => {
+      const res = await fetch(`${apiUrl}/api/not-a-real-route`);
+      const body = await readBody(res);
+      assert(res.status === 404, `expected 404, got ${res.status}: ${body}`);
+      assert(res.headers.get('x-request-id'), 'unknown route missing X-Request-Id header');
+      assert(
+        (res.headers.get('content-type') ?? '').includes('application/json'),
+        `expected JSON content-type, got ${res.headers.get('content-type')}`,
+      );
+      const json = JSON.parse(body);
+      assert(json.error === 'API route not found', `expected JSON 404 body, got ${body}`);
+      assert(json.requestId, `expected requestId in 404 body, got ${body}`);
+    },
+  },
+  {
     name: 'Telemetry endpoints accept valid payloads and reject bad events',
     run: async () => {
       const timestamp = new Date().toISOString();
