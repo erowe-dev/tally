@@ -287,11 +287,15 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
               <div class="transfer-detail" *ngIf="isPartnerExpanded(card.id, p.name)">
                 <ng-container *ngIf="wallet.getBalance(card.id) > 0; else noBalance">
                   <div class="td-chain">
-                    <span class="td-amount">{{ wallet.getBalance(card.id) | number }}</span>
-                    <span class="td-prog">{{ card.short }}</span>
+                    <span class="td-side">
+                      <span class="td-amount">{{ wallet.getBalance(card.id) | number }}</span>
+                      <span class="td-prog">{{ card.short }}</span>
+                    </span>
                     <span class="td-arrow">→</span>
-                    <span class="td-amount result">{{ transferResult(wallet.getBalance(card.id), p.ratio) | number }}</span>
-                    <span class="td-prog">{{ p.name }}</span>
+                    <span class="td-side result">
+                      <span class="td-amount result">{{ transferResult(wallet.getBalance(card.id), p.ratio) | number }}</span>
+                      <span class="td-prog">{{ p.name }}</span>
+                    </span>
                   </div>
                   <div class="td-value">
                     Est. value: ~\${{ transferValue(wallet.getBalance(card.id), p.ratio, p.cpp) | number }}
@@ -590,8 +594,13 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       background: var(--surface); border-radius: 8px; padding: 9px 12px; margin: 2px 0 6px;
     }
     .td-chain {
-      display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap;
+      display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center; gap: 8px; margin-bottom: 4px;
     }
+    .td-side {
+      display: flex; align-items: baseline; gap: 5px; min-width: 0; flex-wrap: wrap;
+    }
+    .td-side.result { justify-content: flex-end; text-align: right; }
     .td-amount {
       font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--text); font-weight: 600;
     }
@@ -815,7 +824,8 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .calc-input:focus { border-color: var(--tally-green); }
     .calc-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
     .calc-row {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      display: grid; grid-template-columns: 44px minmax(0, 1fr) max-content 64px;
+      align-items: center; gap: 8px;
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 9px; padding: 9px 12px; transition: border-color 0.15s;
     }
@@ -865,6 +875,16 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       }
     }
     @media (max-width: 520px) {
+      .filter-row,
+      .sort-row,
+      .spend-cat-row {
+        flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none;
+      }
+      .filter-row::-webkit-scrollbar, .sort-row::-webkit-scrollbar, .spend-cat-row::-webkit-scrollbar { display: none; }
+      .filter-btn,
+      .sort-btn,
+      .sort-label,
+      .spend-cat-btn { flex: 0 0 auto; }
       .cc-header {
         display: grid;
         grid-template-columns: 46px minmax(0, 1fr);
@@ -882,6 +902,24 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       }
       .tf-row { align-items: flex-start; flex-wrap: wrap; }
       .tf-coverage { width: 100%; text-align: left; padding-left: 40px; white-space: normal; }
+      .partner-row {
+        grid-template-columns: 22px minmax(0, 1fr) 10px; align-items: flex-start;
+      }
+      .p-ratio { grid-column: 2; white-space: normal; }
+      .p-expand-icon { grid-column: 3; grid-row: 1; }
+      .calc-row { grid-template-columns: minmax(0, 1fr) max-content; }
+      .calc-cpp-label,
+      .calc-rating { grid-column: 1 / -1; }
+      .calc-val { margin-left: 0; text-align: right; }
+      .calc-rating { min-width: 0; text-align: left; }
+    }
+    @media (max-width: 430px) {
+      .td-chain { grid-template-columns: 1fr; gap: 4px; }
+      .td-side,
+      .td-side.result { justify-content: flex-start; text-align: left; }
+      .td-arrow {
+        justify-self: start; transform: rotate(90deg);
+      }
     }
     @media (max-width: 360px) {
       .cc-header {
@@ -890,8 +928,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         padding: 14px;
       }
       .cc-right {
-        flex-direction: column;
-        align-items: flex-end;
+        align-items: flex-start;
         gap: 4px;
       }
       .cc-partner-count {
@@ -903,19 +940,10 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
         padding-left: 14px;
         padding-right: 14px;
       }
-      .partner-row,
       .tf-row,
       .spend-result-row {
         align-items: flex-start;
       }
-      .partner-row {
-        grid-template-columns: 22px minmax(0, 1fr) 10px;
-      }
-      .p-ratio {
-        grid-column: 2;
-        white-space: normal;
-      }
-      .p-expand-icon { grid-column: 3; grid-row: 1; }
       .tf-coverage {
         white-space: normal;
       }

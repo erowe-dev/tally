@@ -415,6 +415,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
     .date-setter { border-top: 1px solid var(--border); padding-top: 12px; }
     .date-setter-top {
       display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px;
+      flex-wrap: wrap;
     }
     .field-label {
       font-family: 'Geist Mono', monospace;
@@ -425,7 +426,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       background: var(--tally-green); border: none; border-radius: 7px;
       color: white; font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.08em; min-height: 44px; padding: 8px 12px; cursor: pointer;
-      transition: opacity 0.15s;
+      transition: opacity 0.15s; flex: 0 0 auto;
     }
     .today-btn:hover { opacity: 0.85; }
     .date-row { display: flex; gap: 8px; align-items: center; }
@@ -520,14 +521,34 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       .pill-row > * { flex: 1 1 auto; }
       .pill-row .sync-pill { flex-basis: 100%; }
       .bulk-today-btn,
-      .filter-held-btn { flex: 1; }
+      .filter-held-btn {
+        flex: 1 1 calc(50% - 5px);
+        min-width: 0;
+        white-space: normal;
+      }
       .ec-header { align-items: flex-start; }
       .date-setter-top { align-items: flex-start; flex-direction: column; gap: 8px; }
       .today-btn { width: 100%; }
       .date-row { flex-direction: column; align-items: stretch; }
       .clear-btn { width: 100%; }
-      .activity-stats { justify-content: space-between; }
+      .activity-stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 10px;
+      }
+      .as-item {
+        min-width: 0;
+        padding: 8px 6px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--white);
+      }
       .as-sep { display: none; }
+    }
+    @media (max-width: 360px) {
+      .ec-header { flex-direction: column; }
+      .ec-days { text-align: left; }
     }
     @media (max-width: 400px) {
       .bulk-today-btn.confirm {

@@ -876,7 +876,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       .wallet-row { grid-template-columns: 38px minmax(220px, 1fr) minmax(240px, auto); }
       .quick-add { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
     }
-    @media (max-width: 520px) {
+    @media (max-width: 720px) {
       .wallet-row {
         grid-template-columns: 38px minmax(0, 1fr);
         align-items: start;
@@ -884,21 +884,22 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       .wallet-filter-bar { flex-direction: row; }
       .wallet-filter-btn { flex: 0 0 auto; }
       .program-actions {
-        grid-column: 1 / -1;
-        width: 100%;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(112px, 1.1fr);
+        grid-column: 1 / -1; width: 100%; display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(126px, 0.8fr);
+        align-items: stretch;
       }
       .input-wrap {
-        width: 100%;
-        min-width: 0;
-        align-items: stretch;
+        width: 100%; min-width: 0; align-items: stretch;
       }
       .balance-input { width: 100%; text-align: left; }
       .row-value { text-align: right; }
-      .held-toggle { min-width: 0; white-space: normal; }
+      .held-toggle {
+        min-width: 0; width: 100%; justify-content: center; white-space: normal;
+      }
       .quick-add { gap: 5px; }
       .qa-btn { flex: 1 1 calc(50% - 6px); }
+    }
+    @media (max-width: 520px) {
       .at-risk-banner { align-items: flex-start; flex-wrap: wrap; }
       .arb-action { width: 100%; }
       .goal-inputs,
@@ -909,7 +910,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       .action-row { flex-direction: column; }
       .action-btn { max-width: none; }
     }
-    @media (max-width:430px){.program-actions{grid-template-columns:1fr}}
+    @media (max-width:430px){.program-actions{grid-template-columns:1fr}.row-value{text-align:left}}
   `]
 })
 export class WalletComponent {
