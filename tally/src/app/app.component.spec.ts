@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, Type, signal } from '@angular/c
 import { ComponentFixture, DeferBlockState, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { SwUpdate } from '@angular/service-worker';
+import { Subject } from 'rxjs';
 import { AppComponent } from './app.component';
 import { WalletService } from './core/services/wallet.service';
 import { ExpiryService } from './core/services/expiry.service';
@@ -84,6 +85,14 @@ class MockAnalyticsService {
   track = jasmine.createSpy('track');
 }
 
+class MockSwUpdate {
+  isEnabled = false;
+  versionUpdates = new Subject<unknown>();
+  unrecoverable = new Subject<unknown>();
+  checkForUpdate = jasmine.createSpy('checkForUpdate').and.returnValue(Promise.resolve(false));
+  activateUpdate = jasmine.createSpy('activateUpdate').and.returnValue(Promise.resolve(true));
+}
+
 describe('AppComponent', () => {
   const navTabs: NavTab[] = ['optimizer', 'wallet', 'cards', 'sweetspots', 'expiry'];
   const publicTabs: NavTab[] = ['cards', 'sweetspots'];
@@ -100,6 +109,7 @@ describe('AppComponent', () => {
   let wallet: MockWalletService;
   let expiry: MockExpiryService;
   let analytics: MockAnalyticsService;
+  let swUpdate: MockSwUpdate;
 
   beforeEach(async () => {
     localStorage.clear();
@@ -108,6 +118,7 @@ describe('AppComponent', () => {
     wallet = new MockWalletService();
     expiry = new MockExpiryService();
     analytics = new MockAnalyticsService();
+    swUpdate = new MockSwUpdate();
 
     await TestBed.configureTestingModule({
       imports: [AppComponent],
@@ -118,7 +129,7 @@ describe('AppComponent', () => {
         { provide: NetworkService, useValue: new MockNetworkService() },
         { provide: NavigationService, useValue: new MockNavigationService() },
         { provide: AnalyticsService, useValue: analytics },
-        { provide: SwUpdate, useValue: { isEnabled: false, versionUpdates: { subscribe: () => ({ unsubscribe() {} }) } } },
+        { provide: SwUpdate, useValue: swUpdate },
       ],
     })
       .overrideComponent(AppComponent, {
@@ -346,5 +357,41 @@ describe('AppComponent', () => {
     tick();
 
     expect(scrollToSpy.calls.mostRecent().args[0] as unknown).toEqual({ top: 0, left: 0, behavior: 'auto' });
+  }));
+
+  it('shows the reload banner when a service worker update is ready', fakeAsync(() => {
+    swUpdate.isEnabled = true;
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    swUpdate.versionUpdates.next({ type: 'VERSION_READY' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.update-title')?.textContent).toContain('Update available');
+    fixture.destroy();
+  }));
+
+  it('shows the reload banner when the service worker cache is unrecoverable', fakeAsync(() => {
+    swUpdate.isEnabled = true;
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    swUpdate.unrecoverable.next({ reason: 'cache miss' });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.update-title')?.textContent).toContain('Update available');
+    fixture.destroy();
+  }));
+
+  it('checks for service worker updates after registration has had time to settle', fakeAsync(() => {
+    swUpdate.isEnabled = true;
+    const fixture = TestBed.createComponent(AppComponent);
+
+    expect(swUpdate.checkForUpdate).toHaveBeenCalledTimes(1);
+
+    tick(45_000);
+
+    expect(swUpdate.checkForUpdate).toHaveBeenCalledTimes(2);
+    fixture.destroy();
   }));
 });

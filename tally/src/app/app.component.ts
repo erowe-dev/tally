@@ -1,4 +1,4 @@
-import { Component, OnDestroy, signal, computed, inject, effect, PLATFORM_ID, isDevMode } from '@angular/core';
+import { Component, OnDestroy, signal, computed, inject, effect, PLATFORM_ID } from '@angular/core';
 import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { SwUpdate } from '@angular/service-worker';
 import { Subscription } from 'rxjs';
@@ -465,7 +465,8 @@ export class AppComponent implements OnDestroy {
   private document = inject(DOCUMENT);
   private swUpdate = inject(SwUpdate, { optional: true });
   private browserWindow = isPlatformBrowser(this.platformId) ? this.document.defaultView : null;
-  private swUpdateSub: Subscription | null = null;
+  private swUpdateSubs: Subscription[] = [];
+  private swUpdateCheckTimer: number | null = null;
   private readonly tabScrollPositions = new Map<NavTab, number>();
   private pendingScrollRestore: number | null = null;
 
@@ -528,11 +529,18 @@ export class AppComponent implements OnDestroy {
     this.browserWindow?.addEventListener('popstate', this.onPopState);
 
     // SW update — show reload banner when a new version is available
-    if (!isDevMode() && this.swUpdate?.isEnabled && this.browserWindow) {
-      this.swUpdateSub = this.swUpdate.versionUpdates.subscribe(evt => {
-        if (evt.type === 'VERSION_READY') this.showUpdateBanner.set(true);
-      });
+    if (this.swUpdate?.isEnabled && this.browserWindow) {
+      this.swUpdateSubs = [
+        this.swUpdate.versionUpdates.subscribe(evt => {
+          if (evt.type === 'VERSION_READY') this.showUpdateBanner.set(true);
+        }),
+        this.swUpdate.unrecoverable.subscribe(() => this.showUpdateBanner.set(true)),
+      ];
       this.checkForServiceWorkerUpdate();
+      this.swUpdateCheckTimer = this.browserWindow.setTimeout(() => {
+        this.checkForServiceWorkerUpdate();
+        this.swUpdateCheckTimer = null;
+      }, 45_000);
       // Proactively check on tab focus
       this.document.addEventListener('visibilitychange', this.onVisibilityChange);
     }
@@ -552,7 +560,10 @@ export class AppComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.swUpdateSub?.unsubscribe();
+    for (const sub of this.swUpdateSubs) sub.unsubscribe();
+    if (this.swUpdateCheckTimer !== null) {
+      this.browserWindow?.clearTimeout(this.swUpdateCheckTimer);
+    }
     if (this.pendingScrollRestore !== null) {
       this.browserWindow?.clearTimeout(this.pendingScrollRestore);
     }
@@ -686,7 +697,7 @@ export class AppComponent implements OnDestroy {
 
   reloadPage(): void {
     const reload = () => this.browserWindow?.location.reload();
-    if (!isDevMode() && this.swUpdate?.isEnabled) {
+    if (this.swUpdate?.isEnabled) {
       this.swUpdate.activateUpdate().then(reload).catch(reload);
       return;
     }
