@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { asyncRoute } from '../lib/route-helpers';
+import { createFixedWindowRateLimiter } from '../lib/fixed-window-rate-limit';
 
 const router = Router();
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -29,8 +30,15 @@ const ERROR_CONTEXTS = new Set([
   'manual',
   'smoke',
 ]);
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 60;
+const telemetryRateLimiter = createFixedWindowRateLimiter({
+  maxRequests: RATE_LIMIT_MAX_REQUESTS,
+  windowMs: RATE_LIMIT_WINDOW_MS,
+});
 
 router.use(requireAllowedOrigin);
+router.use(limitTelemetryRate);
 
 router.post(
   '/analytics',
@@ -112,6 +120,22 @@ function requireAllowedOrigin(req: Request, res: Response, next: NextFunction): 
     res.status(403).json({ error: 'Telemetry origin not allowed' });
     return;
   }
+  next();
+}
+
+function limitTelemetryRate(req: Request, res: Response, next: NextFunction): void {
+  const key = `${req.get('origin') ?? 'unknown'}:${req.ip}:${req.path}`;
+  const result = telemetryRateLimiter.hit(key);
+
+  res.setHeader('X-RateLimit-Limit', result.limit.toString());
+  res.setHeader('X-RateLimit-Remaining', result.remaining.toString());
+  res.setHeader('X-RateLimit-Reset', Math.ceil(result.resetAt / 1000).toString());
+
+  if (!result.allowed) {
+    res.status(429).json({ error: 'Telemetry rate limit exceeded' });
+    return;
+  }
+
   next();
 }
 

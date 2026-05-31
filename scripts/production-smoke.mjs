@@ -208,6 +208,8 @@ const checks = [
       });
       assert(analyticsRes.status === 204, `analytics expected 204, got ${analyticsRes.status}`);
       assert(analyticsRes.headers.get('x-request-id'), 'analytics missing X-Request-Id header');
+      assert(analyticsRes.headers.get('x-ratelimit-limit'), 'analytics missing rate limit header');
+      assert(analyticsRes.headers.get('x-ratelimit-remaining'), 'analytics missing remaining rate limit header');
 
       const errorsRes = await fetch(`${apiUrl}/api/telemetry/errors`, {
         method: 'POST',
@@ -224,6 +226,8 @@ const checks = [
       });
       assert(errorsRes.status === 204, `errors expected 204, got ${errorsRes.status}`);
       assert(errorsRes.headers.get('x-request-id'), 'errors missing X-Request-Id header');
+      assert(errorsRes.headers.get('x-ratelimit-limit'), 'errors missing rate limit header');
+      assert(errorsRes.headers.get('x-ratelimit-remaining'), 'errors missing remaining rate limit header');
 
       const invalidRes = await fetch(`${apiUrl}/api/telemetry/analytics`, {
         method: 'POST',
