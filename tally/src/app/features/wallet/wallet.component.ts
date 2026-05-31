@@ -448,7 +448,6 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     </div>
   `,
   styles: [`
-    /* Sync status pill — base in styles.scss */
     .sync-pill { margin-bottom: 20px; }
     .sync-retry {
       margin-left: auto; background: none; border: 1px solid currentColor;
@@ -469,30 +468,18 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       display: flex; align-items: flex-start; justify-content: space-between;
       gap: 12px; margin-bottom: 12px;
     }
-    .prefs-kicker {
-      display: block; font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.14em; text-transform: uppercase; color: var(--tally-green);
-      margin-bottom: 3px;
-    }
+    .prefs-kicker { display: block; color: var(--tally-green); margin-bottom: 3px; }
     .prefs-head h3 {
       margin: 0; font-family: 'Instrument Serif', serif;
       font-size: 22px; font-weight: 400; color: var(--text);
     }
-    .prefs-status {
-      font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.08em; color: var(--text3); white-space: nowrap;
-      padding-top: 3px;
-    }
+    .prefs-status { letter-spacing: 0.08em; color: var(--text3); white-space: nowrap; padding-top: 3px; }
     .prefs-status.error { color: var(--tally-amber); }
     .prefs-grid {
       display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
     }
-    .pref-field {
-      display: flex; flex-direction: column; gap: 5px;
-      font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
-    }
+    .pref-field { display: flex; flex-direction: column; gap: 5px; letter-spacing: 0.12em; color: var(--text3); }
     .pref-input {
       min-height: 44px; width: 100%;
       background: var(--white); border: 1.5px solid var(--border);
@@ -509,30 +496,23 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       .prefs-grid { grid-template-columns: 1fr; }
     }
 
-    /* Shimmer — base animation in styles.scss .shimmer-skeleton */
     .shimmer-row { height: 64px; margin-bottom: 10px; }
 
-    /* Program groups */
     .program-group { margin-bottom: 20px; }
     .group-header {
       display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
       padding: 0 2px;
     }
     .group-icon { font-size: 13px; }
-    .group-label {
-      font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3);
-      flex: 1;
-    }
+    .group-label { letter-spacing: 0.15em; color: var(--text3); flex: 1; }
     .group-total {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       color: var(--tally-green); letter-spacing: 0.04em;
     }
     .wallet-filter-bar { justify-content: flex-start; margin: 8px 0 16px; overflow-x: auto; }
     .wallet-filter-btn, .held-toggle { white-space: nowrap; }
-    .wallet-filter-btn.active, .held-toggle.active { border-color: rgba(26,122,74,0.35); background: var(--tally-green-light); color: var(--tally-green); }
+    .wallet-filter-btn.active, .held-toggle.active, .action-btn.share-btn.copied { border-color: rgba(26,122,74,0.35); background: var(--tally-green-light); color: var(--tally-green); }
 
-    /* Card list */
     .wallet-list { display: flex; flex-direction: column; gap: 8px; }
 
     .wallet-row {
@@ -550,13 +530,8 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     .card-info { min-width: 0; }
     .card-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .card-sub { font-size: 10px; color: var(--text3); font-family: 'Geist Mono', monospace; margin-top: 1px; }
-    /* Personalized Insights */
     .insights-strip { padding: 4px 0 8px; }
-    .insights-label {
-      font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.15em; text-transform: uppercase; color: var(--tally-green);
-      margin-bottom: 10px;
-    }
+    .insights-label { letter-spacing: 0.15em; color: var(--tally-green); margin-bottom: 10px; }
     .insight-card {
       display: flex; align-items: flex-start; gap: 10px;
       background: var(--surface); border: 1px solid var(--border);
@@ -567,25 +542,21 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     .ins-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
     .ins-sub { font-size: 11px; color: var(--text3); line-height: 1.45; }
 
-    /* Points Health Score */
     .health-score-card {
       display: flex; align-items: center; gap: 14px;
       background: var(--white); border: 1px solid var(--border);
       border-radius: 14px; padding: 14px 16px; margin-bottom: 20px;
     }
     .hs-left { text-align: center; flex-shrink: 0; min-width: 60px; }
-    .hs-label {
-      font-family: 'Geist Mono', monospace; font-size: 8px;
-      letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); margin-bottom: 4px;
-    }
+    .hs-label { font-size: 8px; letter-spacing: 0.14em; color: var(--text3); margin-bottom: 4px; }
     .hs-grade {
       font-family: 'Instrument Serif', serif; font-size: 40px; line-height: 1;
       color: var(--text);
     }
     .hs-grade.a { color: var(--tally-green); }
     .hs-grade.b { color: var(--tally-green-mid); }
-    .hs-grade.c { color: var(--tally-amber, #d97706); }
-    .hs-grade.d { color: var(--tally-red, #dc2626); }
+    .hs-grade.c { color: var(--tally-amber); }
+    .hs-grade.d { color: var(--tally-red); }
     .hs-score {
       font-family: 'Geist Mono', monospace; font-size: 10px;
       color: var(--text3); letter-spacing: 0.06em; margin-top: 2px;
@@ -601,14 +572,13 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     }
     .hs-bar.a { background: var(--tally-green); }
     .hs-bar.b { background: var(--tally-green-mid); }
-    .hs-bar.c { background: var(--tally-amber, #d97706); }
-    .hs-bar.d { background: var(--tally-red, #dc2626); }
+    .hs-bar.c { background: var(--tally-amber); }
+    .hs-bar.d { background: var(--tally-red); }
     .hs-tip { font-size: 11px; color: var(--text2); line-height: 1.45; }
 
-    /* Points at risk banner */
     .at-risk-banner {
       display: flex; align-items: center; gap: 10px;
-      background: var(--tally-red-light, #fef2f2);
+      background: var(--tally-red-light);
       border: 1px solid rgba(220,38,38,0.2); border-radius: 12px;
       padding: 12px 14px; margin-bottom: 16px;
     }
@@ -616,15 +586,15 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     .arb-body { flex: 1; min-width: 0; }
     .arb-title {
       font-family: 'Geist Mono', monospace; font-size: 13px;
-      font-weight: 600; color: var(--tally-red, #dc2626);
+      font-weight: 600; color: var(--tally-red);
     }
     .arb-sub {
       font-family: 'Geist Mono', monospace; font-size: 10px;
-      color: var(--tally-red, #dc2626); opacity: 0.8; margin-top: 2px;
+      color: var(--tally-red); opacity: 0.8; margin-top: 2px;
       letter-spacing: 0.04em;
     }
     .arb-action {
-      background: var(--tally-red, #dc2626); color: white;
+      background: var(--tally-red); color: white;
       border: none; border-radius: 8px; padding: 8px 12px; min-height: 44px;
       font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; cursor: pointer; flex-shrink: 0;
@@ -638,11 +608,11 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       letter-spacing: 0.05em; padding: 2px 6px; border-radius: 4px;
     }
     .expiry-badge-critical {
-      background: var(--tally-red-light, #fef2f2); color: var(--tally-red, #dc2626);
+      background: var(--tally-red-light); color: var(--tally-red);
       border: 1px solid rgba(220,38,38,0.2);
     }
     .expiry-badge-warning {
-      background: rgba(217,119,6,0.07); color: var(--tally-amber, #d97706);
+      background: rgba(217,119,6,0.07); color: var(--tally-amber);
       border: 1px solid rgba(217,119,6,0.2);
     }
 
@@ -668,10 +638,9 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     .held-toggle { background: var(--surface); }
     .row-value {
       font-family: 'Geist Mono', monospace; font-size: 9px;
-      color: var(--tally-green-mid, #2d8a5a); letter-spacing: 0.04em;
+      color: var(--tally-green-mid); letter-spacing: 0.04em;
     }
 
-    /* Quick-add increments */
     .quick-add {
       grid-column: 1 / -1;
       display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px;
@@ -706,7 +675,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       letter-spacing: 0.06em; margin-bottom: 12px;
     }
     .weekly-change.positive { color: var(--tally-green); }
-    .weekly-change.negative { color: var(--tally-red, #dc2626); }
+    .weekly-change.negative { color: var(--tally-red); }
     .maximize-btn-row { margin-bottom: 14px; }
     .maximize-btn {
       width: 100%; background: var(--tally-green); color: white;
@@ -722,13 +691,9 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       font-size: 13px; color: var(--tally-green); line-height: 1.5; text-align: left;
     }
 
-    /* Goal tracker */
     .goal-section { padding: 4px 0 8px; }
     .goal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .goal-label {
-      font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3);
-    }
+    .goal-label { letter-spacing: 0.15em; color: var(--text3); }
     .goal-toggle {
       background: none; border: 1px solid var(--border2); border-radius: 7px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 9px;
@@ -776,20 +741,16 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       font-family: 'Geist', sans-serif; font-size: 13px; color: var(--tally-green); font-weight: 600;
     }
 
-    /* Portfolio breakdown */
     .breakdown-wrap { margin: 12px 0 14px; }
-    .breakdown-label {
-      font-family: 'Geist Mono', monospace; font-size: 8px;
-      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin-bottom: 5px;
-    }
+    .breakdown-label { font-size: 8px; letter-spacing: 0.12em; color: var(--text3); margin-bottom: 5px; }
     .breakdown-bar {
       display: flex; height: 6px; border-radius: 99px; overflow: hidden; gap: 1px;
       background: var(--border); margin-bottom: 5px;
     }
-    .breakdown-seg { height: 100%; transition: width 0.5s ease; min-width: 2px; }
+    .breakdown-seg { height: 100%; min-width: 2px; }
     .breakdown-seg.seg-transfer { background: var(--tally-green); }
     .breakdown-seg.seg-airline  { background: #3b82f6; }
-    .breakdown-seg.seg-hotel    { background: var(--tally-amber, #d97706); }
+    .breakdown-seg.seg-hotel    { background: var(--tally-amber); }
     .breakdown-legend {
       display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
       font-family: 'Geist Mono', monospace; font-size: 8px; color: var(--text3);
@@ -797,21 +758,15 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     .bd-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
     .bd-dot.transfer { background: var(--tally-green); }
     .bd-dot.airline  { background: #3b82f6; }
-    .bd-dot.hotel    { background: var(--tally-amber, #d97706); }
+    .bd-dot.hotel    { background: var(--tally-amber); }
 
-    /* Sparkline */
     .sparkline-wrap {
       display: flex; align-items: center; gap: 8px; margin: 10px 0 14px;
       color: var(--tally-green);
     }
-    .sparkline-label {
-      font-family: 'Geist Mono', monospace; font-size: 8px;
-      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
-      white-space: nowrap;
-    }
+    .sparkline-label { font-size: 8px; letter-spacing: 0.12em; color: var(--text3); white-space: nowrap; }
     .sparkline { flex: 1; height: 28px; }
 
-    /* Action row */
     .action-row { display: flex; gap: 8px; margin-top: 14px; justify-content: center; }
     .action-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
@@ -820,21 +775,13 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       transition: all 0.15s; flex: 1; max-width: 140px;
     }
     .action-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
-    .action-btn.share-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
 
-    /* Spending Simulator */
     .spend-sim { margin-bottom: 20px; }
     .spend-sim-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .spend-sim-label {
-      font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3);
-    }
+    .spend-sim-label { letter-spacing: 0.15em; color: var(--text3); }
     .spend-sim-body { display: flex; gap: 8px; margin-bottom: 12px; }
     .sim-field { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-    .field-label-sm {
-      font-family: 'Geist Mono', monospace; font-size: 8px;
-      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
-    }
+    .field-label-sm { font-size: 8px; letter-spacing: 0.12em; color: var(--text3); }
     .sim-input {
       background: var(--white); border: 1.5px solid var(--border2);
       border-radius: 9px; color: var(--tally-green);
@@ -862,7 +809,6 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       flex-basis: 100%; font-size: 12px; color: var(--text2); line-height: 1.5;
     }
 
-    /* Next Milestone */
     .milestone-card {
       display: flex; align-items: center; gap: 12px;
       background: var(--white); border: 1px solid var(--border);
@@ -871,10 +817,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     }
     .milestone-icon { font-size: 22px; flex-shrink: 0; }
     .milestone-body { flex: 1; min-width: 0; }
-    .milestone-label {
-      font-family: 'Geist Mono', monospace; font-size: 8px;
-      letter-spacing: 0.14em; text-transform: uppercase; color: var(--text3); margin-bottom: 2px;
-    }
+    .milestone-label { font-size: 8px; letter-spacing: 0.14em; color: var(--text3); margin-bottom: 2px; }
     .milestone-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
     .milestone-bar-wrap { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 5px; }
     .milestone-bar { height: 100%; background: var(--tally-green); border-radius: 99px; transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
@@ -887,12 +830,15 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       font-size: 17px; color: var(--text2); line-height: 1.5;
     }
 
-    /* Transfer Calculator */
     .transfer-calc { margin-bottom: 20px; }
     .tc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .tc-label {
-      font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.15em; text-transform: uppercase; color: var(--text3);
+    .tc-label { letter-spacing: 0.15em; color: var(--text3); }
+    .prefs-kicker, .pref-field, .group-label, .insights-label, .goal-label,
+    .spend-sim-label, .tc-label {
+      font-family: 'Geist Mono', monospace; font-size: 9px; text-transform: uppercase;
+    }
+    .hs-label, .breakdown-label, .sparkline-label, .field-label-sm, .milestone-label {
+      font-family: 'Geist Mono', monospace; text-transform: uppercase;
     }
     .tc-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
     .tc-field { display: flex; flex-direction: column; gap: 4px; }
@@ -903,7 +849,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     }
     .tc-res-bonus {
       font-family: 'Geist Mono', monospace; font-size: 9px;
-      letter-spacing: 0.06em; color: var(--tally-amber, #d97706);
+      letter-spacing: 0.06em; color: var(--tally-amber);
       background: rgba(217,119,6,0.08); border: 1px solid rgba(217,119,6,0.2);
       border-radius: 6px; padding: 4px 10px; margin-bottom: 12px;
       display: inline-block;
@@ -918,7 +864,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       color: var(--tally-green); font-weight: 600;
     }
     .tc-res-val.tc-cash { color: var(--text); }
-    .tc-res-val.tc-bonus { color: var(--tally-amber, #d97706); font-size: 14px; }
+    .tc-res-val.tc-bonus { color: var(--tally-amber); font-size: 14px; }
     .tc-res-key {
       font-family: 'Geist Mono', monospace; font-size: 8px;
       color: var(--text3); letter-spacing: 0.08em; text-align: center;

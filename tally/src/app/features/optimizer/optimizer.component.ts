@@ -948,7 +948,6 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       font-family: 'Instrument Serif', serif;
       font-style: italic; font-size: 18px; line-height: 1.5; color: var(--text2);
     }
-    /* Quick destinations */
     .quick-dest-section { margin-top: 18px; text-align: left; }
     .qd-label {
       font-family: 'Geist Mono', monospace; font-size: 9px;
@@ -1006,7 +1005,6 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       outline: none;
     }
 
-    /* Result filter bar */
     .result-filters {
       display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
       margin-bottom: 12px;
@@ -1093,8 +1091,8 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     }
     .rc-partner { font-size: 11px; color: var(--text2); margin-bottom: 2px; }
     .rc-note { font-size: 11px; color: var(--text3); font-style: italic; overflow-wrap: anywhere; }
-    .rc-pts { text-align: right; flex-shrink: 0; }
     .rc-pts {
+      text-align: right; flex-shrink: 0;
       font-family: 'Geist Mono', monospace;
       font-size: 17px; color: var(--tally-green); white-space: nowrap;
     }
@@ -1205,11 +1203,14 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
 
     .card-action-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
 
-    .howto-btn {
+    .howto-btn, .save-btn, .copy-btn {
       background: none; border: 1px solid var(--border2); border-radius: 8px;
       color: var(--text3); font-family: 'Geist Mono', monospace; font-size: 10px;
       letter-spacing: 0.06em; padding: 8px 10px; cursor: pointer;
-      transition: all 0.15s; margin-left: auto;
+      transition: all 0.15s;
+    }
+    .howto-btn {
+      margin-left: auto;
     }
     .howto-btn:hover, .howto-btn.open {
       border-color: var(--tally-green); color: var(--tally-green);
@@ -1229,26 +1230,11 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       color: var(--tally-green); letter-spacing: 0.04em;
       text-decoration: none; margin-top: 4px;
     }
-    .save-btn {
-      background: none;
-      border: 1px solid var(--border2); border-radius: 8px;
-      color: var(--text3); font-family: 'Geist Mono', monospace;
-      font-size: 10px; letter-spacing: 0.08em; padding: 8px 10px;
-      cursor: pointer; transition: all 0.15s;
-    }
     .save-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .save-btn.saved { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
-    .copy-btn {
-      background: none;
-      border: 1px solid var(--border2); border-radius: 8px;
-      color: var(--text3); font-family: 'Geist Mono', monospace;
-      font-size: 10px; letter-spacing: 0.08em; padding: 8px 10px;
-      cursor: pointer; transition: all 0.15s;
-    }
     .copy-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .copy-btn.copied { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
 
-    /* Recent routes */
     .recent-routes {
       display: flex; align-items: flex-start; gap: 8px;
       margin-bottom: 12px; flex-wrap: wrap;
