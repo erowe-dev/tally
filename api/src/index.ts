@@ -19,6 +19,7 @@ import searchRouter from './routes/search';
 import telemetryRouter from './routes/telemetry';
 
 const app = express();
+app.disable('x-powered-by');
 const port = parseInt(process.env['PORT'] ?? '3000', 10);
 const startedAt = new Date().toISOString();
 const serviceVersion =

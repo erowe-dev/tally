@@ -15,6 +15,17 @@ const checks = [
       assert(json.status === 'ok', `expected status ok, got ${body}`);
       assert(json.service === 'tally-api', `expected service tally-api, got ${body}`);
       assert(json.database === 'ok', `expected database ok, got ${body}`);
+      assert(!res.headers.has('x-powered-by'), 'API must not expose X-Powered-By');
+      assert(res.headers.get('x-content-type-options') === 'nosniff', 'missing X-Content-Type-Options nosniff');
+      assert(res.headers.get('x-frame-options') === 'DENY', 'missing X-Frame-Options DENY');
+      assert(
+        res.headers.get('referrer-policy') === 'strict-origin-when-cross-origin',
+        'missing Referrer-Policy strict-origin-when-cross-origin',
+      );
+      assert(
+        (res.headers.get('permissions-policy') ?? '').includes('geolocation=()'),
+        'missing restrictive Permissions-Policy',
+      );
     },
   },
   {
