@@ -1304,6 +1304,17 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       }
       .rf-sort { width: 100%; margin-left: 0; }
       .rf-btn { flex: 1; }
+      .card-action-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .card-action-row>:last-child:nth-child(odd) { grid-column: 1/-1; }
+      .howto-btn,
+      .save-btn,
+      .copy-btn {
+        width: 100%;
+        margin-left: 0;
+      }
     }
 
     @media (max-width: 430px) {
@@ -1324,11 +1335,6 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       .rc-top { align-items: flex-start; flex-wrap: wrap; }
       .rc-pts { width: 100%; text-align: left; }
       .rc-pts small, .rc-cash { text-align: left; }
-      .card-action-row {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      .card-action-row>:last-child:nth-child(odd) { grid-column: 1/-1; }
       .rc-coverage {
         display: grid;
         grid-template-columns: 1fr;
@@ -1337,12 +1343,6 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       .rc-cov-label {
         white-space: normal;
         overflow-wrap: anywhere;
-      }
-      .howto-btn,
-      .save-btn,
-      .copy-btn {
-        width: 100%;
-        margin-left: 0;
       }
     }
   `]

@@ -522,12 +522,15 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
     @media (min-width: 760px) {
       .bulk-today-btn { margin-left: auto; }
       .date-input { min-width: 12rem; }
-      .expiry-list {
-        display: flex;
-        flex-direction: column;
-      }
       .activity-stats {
         justify-content: flex-start;
+      }
+    }
+    @media (min-width: 1100px) {
+      .expiry-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+        align-items: start;
       }
     }
     @media (max-width: 520px) {
