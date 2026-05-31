@@ -59,6 +59,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Basic security headers — no new package needed.
+// Keep these before CORS so rejected browser-origin requests still get them.
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
+  next();
+});
+
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -77,15 +87,6 @@ app.use(
 
 // Reasonable body size cap — we only ever POST small JSON payloads
 app.use(express.json({ limit: '32kb' }));
-
-// Basic security headers — no new package needed
-app.use((_req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
-  next();
-});
 
 app.get('/health', async (_req, res) => {
   try {

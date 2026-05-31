@@ -33,6 +33,27 @@ const checks = [
     },
   },
   {
+    name: 'API CORS preflight accepts first-party origins',
+    run: async () => {
+      const res = await fetch(`${apiUrl}/api/waitlist`, {
+        method: 'OPTIONS',
+        headers: {
+          Origin: appUrl,
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'content-type',
+        },
+      });
+      const body = await readBody(res);
+      assert(res.status === 204, `expected 204 preflight, got ${res.status}: ${body}`);
+      assert(res.headers.get('access-control-allow-origin') === appUrl, 'expected app origin to be allowed');
+      assert(
+        (res.headers.get('access-control-allow-methods') ?? '').includes('POST'),
+        'expected POST in allowed methods',
+      );
+      assertApiSecurityHeaders(res, 'allowed CORS preflight');
+    },
+  },
+  {
     name: 'Angular app shell is served',
     run: async () => {
       const res = await fetch(appUrl);
@@ -198,8 +219,30 @@ const checks = [
       const body = await readBody(res);
       assert(res.status === 403, `expected 403 for disallowed origin, got ${res.status}: ${body}`);
       assert(res.headers.get('x-request-id'), 'disallowed CORS response missing X-Request-Id header');
+      assert(!res.headers.has('access-control-allow-origin'), 'must not reflect disallowed origin');
+      assertApiSecurityHeaders(res, 'disallowed CORS response');
       const json = JSON.parse(body);
       assert(json.requestId, `disallowed CORS body missing requestId: ${body}`);
+    },
+  },
+  {
+    name: 'API rejects disallowed CORS preflights without reflecting origin',
+    run: async () => {
+      const res = await fetch(`${apiUrl}/api/waitlist`, {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://not-tally.example',
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'content-type',
+        },
+      });
+      const body = await readBody(res);
+      assert(res.status === 403, `expected 403 for disallowed preflight, got ${res.status}: ${body}`);
+      assert(res.headers.get('x-request-id'), 'disallowed preflight missing X-Request-Id header');
+      assert(!res.headers.has('access-control-allow-origin'), 'must not reflect disallowed preflight origin');
+      assertApiSecurityHeaders(res, 'disallowed CORS preflight');
+      const json = JSON.parse(body);
+      assert(json.requestId, `disallowed preflight body missing requestId: ${body}`);
     },
   },
   {
@@ -338,6 +381,19 @@ function normalizeUrl(value) {
 
 function isLocalUrl(value) {
   return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/.test(value);
+}
+
+function assertApiSecurityHeaders(res, label) {
+  assert(res.headers.get('x-content-type-options') === 'nosniff', `${label} missing X-Content-Type-Options nosniff`);
+  assert(res.headers.get('x-frame-options') === 'DENY', `${label} missing X-Frame-Options DENY`);
+  assert(
+    res.headers.get('referrer-policy') === 'strict-origin-when-cross-origin',
+    `${label} missing Referrer-Policy strict-origin-when-cross-origin`,
+  );
+  assert(
+    (res.headers.get('permissions-policy') ?? '').includes('geolocation=()'),
+    `${label} missing restrictive Permissions-Policy`,
+  );
 }
 
 function extractMainBundle(html) {
