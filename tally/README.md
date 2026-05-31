@@ -159,13 +159,15 @@ npm run verify
 After Vercel deploys, run:
 
 ```bash
-npm run smoke:release
 npm run check:deploy:fresh
+npm run smoke:release
 ```
 
-`smoke:release` always runs the public production smoke. It also runs the signed-in API smoke when both `TALLY_AUTH_TOKEN` and `TALLY_AUTH_EMAIL` are present; setting only one of those variables fails fast so a half-configured signed-in smoke cannot be skipped by accident. To make signed-in smoke mandatory in a release job, set `TALLY_REQUIRE_AUTH_SMOKE=1`.
+`smoke:release` runs deployment freshness first, then public production smoke. It also runs the signed-in API smoke when both `TALLY_AUTH_TOKEN` and `TALLY_AUTH_EMAIL` are present; setting only one of those variables fails fast so a half-configured signed-in smoke cannot be skipped by accident. To make signed-in smoke mandatory in a release job, set `TALLY_REQUIRE_AUTH_SMOKE=1`.
 
 `check:deploy:fresh` compares the live app/API aliases against the latest commits that affect each surface. It should pass before calling a release done; if it fails, production is still serving an older deployment even if smoke checks pass against that older build.
+
+For preview or custom-domain smoke where Vercel cannot inspect the deployment, set `TALLY_SKIP_DEPLOY_FRESHNESS=1` only with explicit `TALLY_APP_URL` and `TALLY_API_URL` overrides. The canonical production aliases never allow that skip.
 
 The Vercel app project root directory should be `tally`. Manual app deploys should be run from the repository root so the root `.vercelignore` prevents local build artifacts and API dependencies from being uploaded.
 

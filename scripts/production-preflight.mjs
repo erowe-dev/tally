@@ -104,6 +104,14 @@ function checkRunbookHealthContract() {
   const readme = read('tally/README.md');
   assert(readme.includes('schema: "ok"'), 'README production checks must mention schema-aware health readiness');
   assert(
+    /After Vercel deploys, run:\s*```bash\s*npm run check:deploy:fresh\s*npm run smoke:release\s*```/.test(readme),
+    'README production checks must run deployment freshness before release smoke',
+  );
+  assert(
+    readme.includes('The canonical production aliases never allow that skip'),
+    'README must document that freshness skips are forbidden for canonical production aliases',
+  );
+  assert(
     !readme.includes('provider endpoint disabled until configured'),
     'README must not claim telemetry provider endpoint is disabled',
   );
