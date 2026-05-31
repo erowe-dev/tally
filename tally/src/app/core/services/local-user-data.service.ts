@@ -15,6 +15,8 @@ const USER_DATA_KEYS = [
   'tally_searches_pending_v1',
   'tally_searches_v1',
   'tally_sweetspot_favs_v1',
+  'tally_trips_deleted_v1',
+  'tally_trips_pending_v1',
   'tally_trips_v1',
   'tally_wallet_goal_v1',
   'tally_wallet_history_v1',

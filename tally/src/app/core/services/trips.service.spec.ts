@@ -19,6 +19,8 @@ class MockNetworkService {
 
 describe('TripsService', () => {
   const STORAGE_KEY = 'tally_trips_v1';
+  const PENDING_KEY = 'tally_trips_pending_v1';
+  const DELETED_KEY = 'tally_trips_deleted_v1';
   let auth: MockAuthService;
   let network: MockNetworkService;
   let api: jasmine.SpyObj<ApiService>;
@@ -207,5 +209,96 @@ describe('TripsService', () => {
 
     expect(service.syncState()).toBe('synced');
     expect(api.getTrips).toHaveBeenCalledTimes(2);
+  });
+
+  it('replays offline note edits before accepting stale API trips', () => {
+    const localEditedTrip = {
+      id: 'server_1',
+      tripType: 'flight' as const,
+      origin: 'ORD',
+      destination: 'LHR',
+      cabin: 'business' as const,
+      passengers: 1,
+      programName: 'Virgin Atlantic Flying Club',
+      ptsRequired: 50000,
+      notes: 'offline edit',
+      createdAt: '2026-05-18T00:00:00.000Z',
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([localEditedTrip]));
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ server_1: localEditedTrip }));
+    api.getTrips.and.returnValue(of([{ ...localEditedTrip, notes: 'stale server note' }]));
+    api.updateTripNotes.and.returnValue(of({}));
+    auth.isResolved.set(true);
+    auth.isAuthenticated.set(true);
+    auth.isProvisioned.set(true);
+
+    const service = createService();
+    TestBed.flushEffects();
+
+    expect(service.trips()[0].notes).toBe('offline edit');
+    expect(api.updateTripNotes).toHaveBeenCalledWith('server_1', 'offline edit');
+    expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+  });
+
+  it('replays offline deletes and keeps deleted trips from resurrecting', () => {
+    const serverTrip = {
+      id: 'server_1',
+      tripType: 'hotel' as const,
+      destination: 'Tokyo',
+      hotelCat: 'mid' as const,
+      nights: 3,
+      programName: 'World of Hyatt',
+      ptsRequired: 45000,
+      createdAt: '2026-05-18T00:00:00.000Z',
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+    localStorage.setItem(DELETED_KEY, JSON.stringify(['server_1']));
+    api.getTrips.and.returnValue(of([serverTrip]));
+    api.deleteTrip.and.returnValue(of({}));
+    auth.isResolved.set(true);
+    auth.isAuthenticated.set(true);
+    auth.isProvisioned.set(true);
+
+    const service = createService();
+    TestBed.flushEffects();
+
+    expect(service.trips()).toEqual([]);
+    expect(api.deleteTrip).toHaveBeenCalledWith('server_1');
+    expect(localStorage.getItem(DELETED_KEY)).toBeNull();
+  });
+
+  it('queues offline clear-all deletes for real server trips', () => {
+    const serverTrip = {
+      id: 'server_1',
+      tripType: 'flight' as const,
+      origin: 'ORD',
+      destination: 'LHR',
+      cabin: 'business' as const,
+      passengers: 1,
+      programName: 'Virgin Atlantic Flying Club',
+      ptsRequired: 50000,
+      createdAt: '2026-05-18T00:00:00.000Z',
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([serverTrip]));
+    network.isOnline.set(false);
+    auth.isResolved.set(true);
+    auth.isAuthenticated.set(true);
+    auth.isProvisioned.set(true);
+    const service = createService();
+
+    service.clearAll();
+
+    expect(service.trips()).toEqual([]);
+    expect(JSON.parse(localStorage.getItem(DELETED_KEY) ?? '[]')).toEqual(['server_1']);
+    expect(api.deleteTrip).not.toHaveBeenCalled();
+
+    api.getTrips.and.returnValue(of([serverTrip]));
+    api.deleteTrip.and.returnValue(of({}));
+    network.isOnline.set(true);
+    service.retryLoad();
+    TestBed.flushEffects();
+
+    expect(api.deleteTrip).toHaveBeenCalledWith('server_1');
+    expect(localStorage.getItem(DELETED_KEY)).toBeNull();
   });
 });
