@@ -5,6 +5,13 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), '..');
+const appSecurityHeaders = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'geolocation=(), camera=(), microphone=()',
+};
+
 const checks = [
   { label: 'No legacy Render production references', run: checkNoLegacyRenderRefs },
   { label: 'Production environment targets Vercel API', run: checkProductionApiUrl },
@@ -94,6 +101,7 @@ function checkVercelAppConfig() {
     config.routes?.some(route => route.dest === '/index.html'),
     'tally/vercel.json must fall back to /index.html for the Angular app shell',
   );
+  assertAppVercelHeaders(config, configPath);
   assert(existsSync(join(root, 'tally/public/landing/index.html')), 'landing page must remain available from public/landing');
   assert(
     existsSync(join(root, 'tally/landing/scripts/prepare-vercel-output.mjs')),
@@ -112,6 +120,32 @@ function checkVercelAppConfig() {
   assert(
     rootConfig.routes?.some(route => route.dest === '/index.html'),
     'repo-root vercel.json must fall back to /index.html for the Angular app shell',
+  );
+  assertAppVercelHeaders(rootConfig, rootConfigPath);
+}
+
+function assertAppVercelHeaders(config, configPath) {
+  const securityRoute = config.routes?.find(route => route.src === '/(.*)' && route.headers);
+  assert(securityRoute?.continue === true, `${configPath} security header route must continue to filesystem/fallback routing`);
+
+  for (const [key, value] of Object.entries(appSecurityHeaders)) {
+    assert(
+      securityRoute.headers?.[key] === value,
+      `${configPath} must set ${key}: ${value} on all app shell responses`,
+    );
+  }
+
+  assert(
+    config.routes?.some(
+      route => route.src === '/ngsw.json' && route.headers?.['Cache-Control'] === 'no-cache' && route.continue === true,
+    ),
+    `${configPath} must prevent stale service worker manifests with Cache-Control: no-cache`,
+  );
+  assert(
+    config.routes?.some(
+      route => route.src === '/index.html' && route.headers?.['Cache-Control'] === 'no-cache' && route.continue === true,
+    ),
+    `${configPath} must prevent stale app shell HTML with Cache-Control: no-cache`,
   );
 }
 

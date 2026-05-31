@@ -2,6 +2,30 @@
   "buildCommand": "npm run build && node scripts/prepare-vercel-output.mjs",
   "outputDirectory": "browser",
   "routes": [
+    {
+      "src": "/(.*)",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "geolocation=(), camera=(), microphone=()"
+      },
+      "continue": true
+    },
+    {
+      "src": "/ngsw.json",
+      "headers": {
+        "Cache-Control": "no-cache"
+      },
+      "continue": true
+    },
+    {
+      "src": "/index.html",
+      "headers": {
+        "Cache-Control": "no-cache"
+      },
+      "continue": true
+    },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
