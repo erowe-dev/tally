@@ -280,13 +280,14 @@ interface TabChangeOptions {
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       position: sticky; top: 0; z-index: 100;
     }
-    .header-right { text-align: right; flex: 1; min-width: 0; }
+    .header-right { text-align: right; flex: 1; min-width: 0; overflow: hidden; }
     .pts-label {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       letter-spacing: 0.14em; color: var(--text3); text-transform: uppercase;
     }
     .pts-value {
       font-family: 'Geist Mono', monospace; font-size: 16px; color: var(--tally-green);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .user-menu { display: flex; align-items: center; gap: 8px; margin-left: 10px; }
     .user-avatar {
@@ -375,7 +376,7 @@ interface TabChangeOptions {
       .app-header { padding-inline: 14px; }
       .pts-value { font-size: 14px; }
       .user-menu { gap: 6px; margin-left: 0; }
-      .sign-out-btn { font-size: 10px; padding-inline: 8px; }
+      .sign-out-btn { display: none; }
       .expiry-ribbon-text { font-size: 11px; }
     }
     @media (min-width: 760px) {

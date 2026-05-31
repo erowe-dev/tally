@@ -37,26 +37,6 @@
         "maxAge": "30d",
         "strategy": "performance"
       }
-    },
-    {
-      "name": "api-balances",
-      "urls": ["https://tally-api-theta.vercel.app/api/balances"],
-      "cacheConfig": {
-        "maxSize": 1,
-        "maxAge": "1h",
-        "timeout": "5s",
-        "strategy": "freshness"
-      }
-    },
-    {
-      "name": "api-expiry",
-      "urls": ["https://tally-api-theta.vercel.app/api/expiry"],
-      "cacheConfig": {
-        "maxSize": 1,
-        "maxAge": "1h",
-        "timeout": "5s",
-        "strategy": "freshness"
-      }
     }
   ]
 }

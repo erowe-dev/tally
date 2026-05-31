@@ -1271,6 +1271,11 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       background: var(--tally-green-light);
     }
 
+    @media (max-width: 560px) {
+      .rf-sort { width: 100%; margin-left: 0; }
+      .rf-btn { flex: 1; }
+    }
+
     @media (max-width: 430px) {
       .field-row,
       .field-row.compact-row,
@@ -1279,8 +1284,6 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       }
       .field-note { font-size: 9px; }
       .result-filters { align-items: stretch; }
-      .rf-sort { width: 100%; margin-left: 0; }
-      .rf-btn { flex: 1; }
       .related-spots-btn,
       .btn-save-search,
       .saved-search-chip,

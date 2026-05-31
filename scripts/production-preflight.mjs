@@ -8,7 +8,7 @@ const root = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 const checks = [
   { label: 'No legacy Render production references', run: checkNoLegacyRenderRefs },
   { label: 'Production environment targets Vercel API', run: checkProductionApiUrl },
-  { label: 'Service worker caches only approved API reads', run: checkServiceWorkerApiCache },
+  { label: 'Service worker does not cache authenticated API reads', run: checkServiceWorkerApiCache },
   { label: 'Vercel app routing serves Angular shell at root', run: checkVercelAppConfig },
   { label: 'Vercel API function routing exists', run: checkVercelApiConfig },
   { label: 'Observability config is explicit', run: checkObservabilityConfig },
@@ -70,9 +70,10 @@ function checkServiceWorkerApiCache() {
   const groups = config.dataGroups ?? [];
   const allUrls = groups.flatMap(group => group.urls ?? []);
 
-  assert(allUrls.includes('https://tally-api-theta.vercel.app/api/balances'), 'missing balances API dataGroup URL');
-  assert(allUrls.includes('https://tally-api-theta.vercel.app/api/expiry'), 'missing expiry API dataGroup URL');
-  assert(!allUrls.some(url => /\/api\/trips|\/api\/users|\/api\/waitlist/.test(url)), 'service worker must not cache write/provisioning/waitlist endpoints');
+  assert(
+    !allUrls.some(url => /tally-api-theta\.vercel\.app\/api\//.test(url)),
+    'service worker must not cache authenticated API endpoints; services use localStorage read-through caches',
+  );
 }
 
 function checkVercelAppConfig() {

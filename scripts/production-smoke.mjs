@@ -124,7 +124,7 @@ const checks = [
         },
         body: JSON.stringify({
           message: 'production smoke',
-          context: 'manual',
+          context: 'smoke',
           url: appUrl,
           timestamp,
         }),
@@ -142,7 +142,7 @@ const checks = [
     },
   },
   {
-    name: 'Service worker caches only approved API reads',
+    name: 'Service worker does not cache authenticated API reads',
     run: async () => {
       const res = await fetch(`${appUrl}/ngsw.json`);
       const body = await readBody(res);
@@ -150,14 +150,12 @@ const checks = [
       const ngsw = JSON.parse(body);
       const urls = JSON.stringify(ngsw.dataGroups ?? []);
       assert(
-        urls.includes(`${apiUrl}/api/balances`) || urls.includes('tally-api') && urls.includes('api\\\\/balances'),
-        'missing balances data group',
-      );
-      assert(
-        urls.includes(`${apiUrl}/api/expiry`) || urls.includes('tally-api') && urls.includes('api\\\\/expiry'),
-        'missing expiry data group',
+        !urls.includes(`${apiUrl}/api/`) && !(urls.includes('tally-api') && urls.includes('api\\\\/')),
+        'service worker must not cache authenticated API endpoints',
       );
       assert(!urls.includes('/api/users'), 'must not cache user provisioning');
+      assert(!urls.includes('/api/balances'), 'must not cache balances in service worker');
+      assert(!urls.includes('/api/expiry'), 'must not cache expiry in service worker');
       assert(!urls.includes('/api/trips'), 'must not cache trips in service worker');
       assert(!urls.includes('/api/waitlist'), 'must not cache waitlist writes');
     },

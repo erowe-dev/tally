@@ -39,20 +39,6 @@ const configuredOrigins = (process.env['APP_ORIGINS'] ?? '')
   .filter(Boolean);
 const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...configuredOrigins])];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (curl, Vercel health checks, etc.)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS: origin ${origin} not allowed`));
-      }
-    },
-    credentials: true,
-  }),
-);
-
 app.use((req, res, next) => {
   const requestId = getRequestId(req);
   res.locals['requestId'] = requestId;
@@ -73,6 +59,20 @@ app.use((req, res, next) => {
 
   next();
 });
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, Vercel health checks, etc.)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    },
+    credentials: true,
+  }),
+);
 
 // Reasonable body size cap — we only ever POST small JSON payloads
 app.use(express.json({ limit: '32kb' }));

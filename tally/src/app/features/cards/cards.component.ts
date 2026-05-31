@@ -866,10 +866,19 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     @media (max-width: 520px) {
       .cc-header {
         display: grid;
-        grid-template-columns: 46px minmax(0, 1fr) auto;
+        grid-template-columns: 46px minmax(0, 1fr);
         align-items: start;
       }
-      .cc-right { flex-direction: column; align-items: flex-end; gap: 4px; }
+      .cc-right {
+        grid-column: 2;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 6px;
+        flex-wrap: wrap;
+        max-width: 100%;
+        min-width: 0;
+      }
       .tf-row { align-items: flex-start; flex-wrap: wrap; }
       .tf-coverage { width: 100%; text-align: left; padding-left: 40px; white-space: normal; }
     }

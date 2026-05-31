@@ -15,6 +15,7 @@ const ANALYTICS_EVENTS = new Set([
 const ERROR_CONTEXTS = new Set([
   'angular_unhandled',
   'manual',
+  'smoke',
 ]);
 
 router.post(
@@ -69,8 +70,8 @@ router.post(
       return;
     }
 
-    console.error(JSON.stringify({
-      level: 'error',
+    const logPayload = JSON.stringify({
+      level: context === 'smoke' ? 'info' : 'error',
       kind: 'client_error',
       requestId: res.locals['requestId'],
       context: context || 'manual',
@@ -78,7 +79,12 @@ router.post(
       stack: stringValue(body['stack'], 2000),
       url: stringValue(body['url'], 500),
       timestamp: validTimestamp(stringValue(body['timestamp'], 40)),
-    }));
+    });
+    if (context === 'smoke') {
+      console.info(logPayload);
+    } else {
+      console.error(logPayload);
+    }
 
     res.status(204).end();
   }),

@@ -7,6 +7,11 @@ import { routes } from './app.routes';
 import { TallyErrorHandler } from './core/services/error-reporter.service';
 import { environment } from '../environments/environment';
 
+const authRedirectUri =
+  typeof window === 'undefined'
+    ? environment.auth0.authorizationParams.redirect_uri
+    : window.location.origin;
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
@@ -20,7 +25,10 @@ export const appConfig: ApplicationConfig = {
     provideAuth0({
       domain: environment.auth0.domain,
       clientId: environment.auth0.clientId,
-      authorizationParams: environment.auth0.authorizationParams,
+      authorizationParams: {
+        ...environment.auth0.authorizationParams,
+        redirect_uri: authRedirectUri,
+      },
       // localstorage survives page refresh; memory (default) logs user out on refresh
       cacheLocation: 'localstorage',
       // Refresh tokens avoid silent iframe auth — required for iOS Safari

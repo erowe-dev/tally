@@ -1,4 +1,5 @@
-import { Injectable, inject, signal, computed, effect } from '@angular/core';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { Injectable, PLATFORM_ID, inject, signal, computed, effect } from '@angular/core';
 import { AuthService as Auth0Service } from '@auth0/auth0-angular';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
@@ -20,6 +21,9 @@ export class AuthService {
   private auth0 = inject(Auth0Service);
   private http = inject(HttpClient);
   private toast = inject(ToastService);
+  private platformId = inject(PLATFORM_ID);
+  private document = inject(DOCUMENT);
+  private browserWindow = isPlatformBrowser(this.platformId) ? this.document.defaultView : null;
 
   // Auth0 observables → signals
   readonly isAuthenticated = toSignal(this.auth0.isAuthenticated$, { initialValue: false });
@@ -88,7 +92,7 @@ export class AuthService {
   logout(): void {
     this.auth0.logout({
       logoutParams: {
-        returnTo: environment.auth0.authorizationParams.redirect_uri,
+        returnTo: this.browserWindow?.location.origin ?? environment.auth0.authorizationParams.redirect_uri,
       },
     });
   }

@@ -62,7 +62,12 @@ button { min-height: 44px; }
 input, select, textarea { min-height: 44px; }
 :focus-visible { outline: 2px solid var(--tally-green); outline-offset: 2px; }
 
-.page-content { padding: 24px 20px 0; }
+.page-content {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: 24px 20px 0;
+}
 
 @media (max-width: 380px) {
   .page-content { padding-inline: 14px; }
