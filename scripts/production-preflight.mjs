@@ -12,6 +12,7 @@ const checks = [
   { label: 'Vercel app routing serves Angular shell at root', run: checkVercelAppConfig },
   { label: 'Vercel API function routing exists', run: checkVercelApiConfig },
   { label: 'Observability config is explicit', run: checkObservabilityConfig },
+  { label: 'Program ID allowlists match app data', run: checkProgramIds },
   { label: 'No unused Angular starter shell files', run: checkNoStarterShellFiles },
   { label: 'No HostListener/HostBinding decorators in shell/shared components', run: checkNoHostListenerDecorator },
   { label: 'Initial bundle stays under 800 kB when stats are available', run: checkBundleBudget },
@@ -145,6 +146,37 @@ function checkObservabilityConfig() {
   assert(apiText.includes('service: \'tally-api\''), 'API health must identify service name');
   assert(apiText.includes("app.use('/api/telemetry'"), 'API must mount telemetry routes');
   assert(existsSync(join(root, 'api/src/routes/telemetry.ts')), 'telemetry route file is missing');
+}
+
+function checkProgramIds() {
+  const dataServiceIds = extractProgramIds(read('tally/src/app/core/services/data.service.ts').split('readonly flightRecs:')[0]);
+  const apiIds = extractStringArray(read('api/src/lib/program-ids.ts'), 'KNOWN_PROGRAM_IDS');
+  const preferenceIds = extractNewSet(read('tally/src/app/core/services/preferences.service.ts'), 'KNOWN_PROGRAM_IDS');
+
+  assertListsMatch('API known program ids', apiIds, dataServiceIds);
+  assertListsMatch('Preferences known program ids', preferenceIds, dataServiceIds);
+}
+
+function extractProgramIds(source) {
+  return [...source.matchAll(/\bid:\s*'([^']+)'/g)].map(match => match[1]);
+}
+
+function extractStringArray(source, name) {
+  const match = source.match(new RegExp(`const\\s+${name}\\s*=\\s*\\[([\\s\\S]*?)\\]`));
+  assert(match, `could not find ${name} array`);
+  return [...match[1].matchAll(/'([^']+)'/g)].map(item => item[1]);
+}
+
+function extractNewSet(source, name) {
+  const match = source.match(new RegExp(`const\\s+${name}\\s*=\\s*new\\s+Set\\s*\\(\\s*\\[([\\s\\S]*?)\\]\\s*\\)`));
+  assert(match, `could not find ${name} set`);
+  return [...match[1].matchAll(/'([^']+)'/g)].map(item => item[1]);
+}
+
+function assertListsMatch(label, actual, expected) {
+  const duplicates = actual.filter((id, index) => actual.indexOf(id) !== index);
+  assert(duplicates.length === 0, `${label} contains duplicate ids: ${[...new Set(duplicates)].join(', ')}`);
+  assert(actual.join(',') === expected.join(','), `${label} drifted from DataService cards`);
 }
 
 function checkNoHostListenerDecorator() {
