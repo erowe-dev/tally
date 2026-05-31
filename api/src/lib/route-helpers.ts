@@ -37,7 +37,7 @@ const CARD_ID_RE = /^[a-z0-9_]{1,50}$/;
 export function validateCardId(req: Request, res: Response, next: NextFunction): void {
   const { cardId } = req.params;
   if (!cardId || !CARD_ID_RE.test(cardId)) {
-    res.status(400).json({ error: 'Invalid cardId' });
+    res.status(400).json({ error: 'Invalid cardId', requestId: getResponseRequestId(res) });
     return;
   }
   next();
@@ -62,9 +62,13 @@ export function asyncRoute(
           ? httpErr.message
           : 'Internal server error';
       if (status >= 500) {
-        console.error('[api] Unhandled error:', err);
+        console.error('[api] Unhandled error:', { requestId: getResponseRequestId(res), err });
       }
-      res.status(status).json({ error: message });
+      res.status(status).json({ error: message, requestId: getResponseRequestId(res) });
     }
   };
+}
+
+function getResponseRequestId(res: Response): string {
+  return typeof res.locals['requestId'] === 'string' ? res.locals['requestId'] : 'unknown';
 }

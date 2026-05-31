@@ -82,8 +82,9 @@ interface TabChangeOptions {
       </div>
 
       <!-- Auth loading overlay — shown while Auth0 checks session on startup -->
-      <div class="auth-loading" *ngIf="auth.isLoading()">
+      <div class="auth-loading" *ngIf="auth.isLoading()" role="status" aria-live="polite">
         <div class="auth-spinner"></div>
+        <div class="auth-loading-text">Checking your session</div>
       </div>
 
       <header class="app-header">
@@ -130,18 +131,48 @@ interface TabChangeOptions {
           @if (activeTab() === 'optimizer' && auth.isAuthenticated()) {
             <tally-optimizer [prefill]="optimizerPrefill()" />
           }
+        } @placeholder {
+          <div class="defer-placeholder page-content" *ngIf="activeTab() === 'optimizer' && auth.isAuthenticated()">
+            <div class="shimmer-skeleton placeholder-title"></div>
+            <div class="shimmer-skeleton placeholder-block"></div>
+          </div>
+        } @loading {
+          <div class="defer-placeholder page-content" *ngIf="activeTab() === 'optimizer' && auth.isAuthenticated()">
+            <div class="shimmer-skeleton placeholder-title"></div>
+            <div class="shimmer-skeleton placeholder-block"></div>
+          </div>
         }
 
         @defer (when activeTab() === 'wallet' && auth.isAuthenticated()) {
           @if (activeTab() === 'wallet' && auth.isAuthenticated()) {
             <tally-wallet />
           }
+        } @placeholder {
+          <div class="defer-placeholder page-content" *ngIf="activeTab() === 'wallet' && auth.isAuthenticated()">
+            <div class="shimmer-skeleton placeholder-title"></div>
+            <div class="shimmer-skeleton placeholder-block"></div>
+          </div>
+        } @loading {
+          <div class="defer-placeholder page-content" *ngIf="activeTab() === 'wallet' && auth.isAuthenticated()">
+            <div class="shimmer-skeleton placeholder-title"></div>
+            <div class="shimmer-skeleton placeholder-block"></div>
+          </div>
         }
 
         @defer (when activeTab() === 'expiry' && auth.isAuthenticated()) {
           @if (activeTab() === 'expiry' && auth.isAuthenticated()) {
             <tally-expiry />
           }
+        } @placeholder {
+          <div class="defer-placeholder page-content" *ngIf="activeTab() === 'expiry' && auth.isAuthenticated()">
+            <div class="shimmer-skeleton placeholder-title"></div>
+            <div class="shimmer-skeleton placeholder-block"></div>
+          </div>
+        } @loading {
+          <div class="defer-placeholder page-content" *ngIf="activeTab() === 'expiry' && auth.isAuthenticated()">
+            <div class="shimmer-skeleton placeholder-title"></div>
+            <div class="shimmer-skeleton placeholder-block"></div>
+          </div>
         }
 
         <!-- Public tabs — loaded on demand -->
@@ -149,12 +180,32 @@ interface TabChangeOptions {
           @if (activeTab() === 'cards') {
             <tally-cards />
           }
+        } @placeholder {
+          <div class="defer-placeholder page-content" *ngIf="activeTab() === 'cards'">
+            <div class="shimmer-skeleton placeholder-title"></div>
+            <div class="shimmer-skeleton placeholder-block"></div>
+          </div>
+        } @loading {
+          <div class="defer-placeholder page-content" *ngIf="activeTab() === 'cards'">
+            <div class="shimmer-skeleton placeholder-title"></div>
+            <div class="shimmer-skeleton placeholder-block"></div>
+          </div>
         }
 
         @defer (when activeTab() === 'sweetspots') {
           @if (activeTab() === 'sweetspots') {
             <tally-sweetspots />
           }
+        } @placeholder {
+          <div class="defer-placeholder page-content" *ngIf="activeTab() === 'sweetspots'">
+            <div class="shimmer-skeleton placeholder-title"></div>
+            <div class="shimmer-skeleton placeholder-block"></div>
+          </div>
+        } @loading {
+          <div class="defer-placeholder page-content" *ngIf="activeTab() === 'sweetspots'">
+            <div class="shimmer-skeleton placeholder-title"></div>
+            <div class="shimmer-skeleton placeholder-block"></div>
+          </div>
         }
 
         <!-- Login prompt — shown when on a protected tab but not yet signed in -->
@@ -255,19 +306,24 @@ interface TabChangeOptions {
       background: var(--tally-amber); color: var(--off);
       font-family: 'Geist', sans-serif; font-size: 12px;
       text-align: center; padding: 8px 16px;
-      position: sticky; top: 0; z-index: 200;
+      position: relative; z-index: 200;
       display: flex; align-items: center; justify-content: center; gap: 6px;
     }
 
     /* Auth loading overlay */
     .auth-loading {
       position: fixed; inset: 0; background: var(--off);
-      display: flex; align-items: center; justify-content: center; z-index: 999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999;
+      gap: 12px;
     }
     .auth-spinner {
       width: 28px; height: 28px; border-radius: 50%;
       border: 3px solid var(--border); border-top-color: var(--tally-green);
       animation: spin 0.7s linear infinite;
+    }
+    .auth-loading-text {
+      font-family: 'Geist Mono', monospace; font-size: 10px;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3);
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -336,6 +392,13 @@ interface TabChangeOptions {
       scroll-padding-bottom: calc(var(--bottom-nav-clearance) + 24px);
     }
     .app-main::-webkit-scrollbar { display: none; }
+
+    .defer-placeholder {
+      display: flex; flex-direction: column; gap: 14px;
+      min-height: 320px;
+    }
+    .placeholder-title { width: min(320px, 70vw); height: 38px; }
+    .placeholder-block { width: 100%; height: 220px; border-radius: 16px; }
 
     /* Login prompt */
     .login-prompt {

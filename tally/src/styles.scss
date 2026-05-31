@@ -96,9 +96,6 @@ input, select, textarea { min-height: 44px; }
   }
 
   tally-optimizer {
-    .field-row,
-    .field-row.compact-row { margin-bottom: 0; }
-
     .fields .field-row:has(.full),
     .field-note { grid-column: 1 / -1; }
 
@@ -138,6 +135,9 @@ input, select, textarea { min-height: 44px; }
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
     }
+
+    .field-row,
+    .field-row.compact-row { margin-bottom: 0; }
   }
 }
 

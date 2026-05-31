@@ -24,6 +24,8 @@ npm run preflight:prod
 npm run verify
 ```
 
+`api/npm run verify` includes a production dependency audit. Keep it green before API deploys; the Angular audit currently has known Angular 18 ecosystem findings and remains a tracked public-beta upgrade gate.
+
 Required production verification after deploy:
 
 ```bash

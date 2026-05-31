@@ -319,7 +319,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             {{ airport.city }} · {{ airport.name }} · {{ airport.region }}
           </option>
         </datalist>
-        <p id="airport-search-help" class="field-note">Start with an airport code or city. Suggestions are bundled for offline use while live airport search is being wired in.</p>
+        <p id="airport-search-help" class="field-note">Start with an airport code or city. Suggestions are bundled for offline use so trip planning still works on the move.</p>
         <div class="field-row">
           <div class="field">
             <label class="field-label" for="optimizer-cabin">Cabin</label>
@@ -411,7 +411,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
               aria-describedby="hotel-destination-help">
           </div>
         </div>
-        <p id="hotel-destination-help" class="field-note">Hotel results now factor destination context into the planning summary, but Tally is not checking live rooms or booking rates yet.</p>
+        <p id="hotel-destination-help" class="field-note">Hotel results factor destination context into the planning summary; confirm live room availability and cash rates before transferring points.</p>
         <div class="field-row">
           <div class="field">
             <label class="field-label" for="optimizer-checkin">Check-in</label>
