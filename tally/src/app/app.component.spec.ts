@@ -333,24 +333,36 @@ describe('AppComponent', () => {
   });
 
   it('restores each tab to its remembered scroll position', fakeAsync(() => {
-    const scrollToSpy = spyOn(window, 'scrollTo');
-    spyOnProperty(window, 'scrollY', 'get').and.returnValues(360, 920, 920);
-
     const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const appMain = fixture.nativeElement.querySelector('.app-main') as HTMLElement;
+    const scrollToSpy = jasmine.createSpy('scrollTo');
+    let currentScrollTop = 0;
+    Object.defineProperty(appMain, 'scrollTop', {
+      configurable: true,
+      get: () => currentScrollTop,
+      set: value => currentScrollTop = value,
+    });
+    appMain.scrollTo = scrollToSpy;
     tick();
 
+    appMain.scrollTop = 360;
     fixture.componentInstance.handleTabChange('sweetspots');
     tick();
     expect(scrollToSpy.calls.mostRecent().args[0] as unknown).toEqual({ top: 0, left: 0, behavior: 'auto' });
 
+    appMain.scrollTop = 920;
     fixture.componentInstance.handleTabChange('cards');
     tick();
     expect(scrollToSpy.calls.mostRecent().args[0] as unknown).toEqual({ top: 360, left: 0, behavior: 'auto' });
   }));
 
   it('scrolls the active tab to top when selected again', fakeAsync(() => {
-    const scrollToSpy = spyOn(window, 'scrollTo');
     const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const appMain = fixture.nativeElement.querySelector('.app-main') as HTMLElement;
+    const scrollToSpy = jasmine.createSpy('scrollTo');
+    appMain.scrollTo = scrollToSpy;
     tick();
 
     fixture.componentInstance.handleTabChange('cards');

@@ -71,7 +71,7 @@ export default router;
 
 type ParseResult<T> = { data: T } | { error: string };
 
-function parsePreferences(body: Record<string, unknown>): ParseResult<{
+export function parsePreferences(body: Record<string, unknown>): ParseResult<{
   homeAirports?: Prisma.InputJsonValue;
   preferredCabin?: string | null;
   maxStops?: number | null;
@@ -184,9 +184,8 @@ function nullableString(value: unknown, maxLength: number): string | null {
 function nullableInteger(value: unknown, min: number, max: number): ParseResult<number | null> {
   if (value === null || value === undefined) return { data: null };
   if (typeof value !== 'number' || !Number.isFinite(value)) return { error: 'invalid number' };
-  const rounded = Math.round(value);
-  if (rounded < min || rounded > max) return { error: 'out of range' };
-  return { data: rounded };
+  if (!Number.isInteger(value) || value < min || value > max) return { error: 'out of range' };
+  return { data: value };
 }
 
 function nullableNumber(value: unknown, min: number, max: number): ParseResult<number | null> {

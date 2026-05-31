@@ -154,7 +154,7 @@ type ParsedSavedSearch = {
   lastRunAt?: Date | null;
 };
 
-function parseSavedSearch(body: Record<string, unknown>, requireType: boolean): ParseResult<ParsedSavedSearch> {
+export function parseSavedSearch(body: Record<string, unknown>, requireType: boolean): ParseResult<ParsedSavedSearch> {
   const data: ParsedSavedSearch = {};
 
   if ('searchType' in body) {
@@ -326,9 +326,8 @@ function nullableIata(value: unknown): ParseResult<string | null> {
 function nullableInteger(value: unknown, min: number, max: number): ParseResult<number | null> {
   if (value === null || value === undefined) return { data: null };
   if (typeof value !== 'number' || !Number.isFinite(value)) return { error: 'invalid number' };
-  const rounded = Math.round(value);
-  if (rounded < min || rounded > max) return { error: 'out of range' };
-  return { data: rounded };
+  if (!Number.isInteger(value) || value < min || value > max) return { error: 'out of range' };
+  return { data: value };
 }
 
 function parseDateTime(value: unknown): ParseResult<Date | null> {

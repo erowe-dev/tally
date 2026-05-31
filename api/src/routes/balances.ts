@@ -39,17 +39,16 @@ router.put(
     const { cardId } = req.params;
     const { amount } = req.body as { amount?: unknown };
 
-    const MAX_BALANCE = 50_000_000;
-    if (typeof amount !== 'number' || amount < 0 || !Number.isFinite(amount) || amount > MAX_BALANCE) {
-      sendError(res, 400, `amount must be a non-negative finite number ≤ ${MAX_BALANCE}`);
+    const parsedAmount = parseBalanceAmount(amount);
+    if ('error' in parsedAmount) {
+      sendError(res, 400, parsedAmount.error);
       return;
     }
 
-    const rounded = Math.round(amount);
     const balance = await prisma.balance.upsert({
       where: { userId_cardId: { userId: user.id, cardId } },
-      update: { amount: rounded },
-      create: { userId: user.id, cardId, amount: rounded },
+      update: { amount: parsedAmount.data },
+      create: { userId: user.id, cardId, amount: parsedAmount.data },
     });
 
     res.json({ cardId: balance.cardId, amount: balance.amount });
@@ -77,3 +76,21 @@ router.delete(
 );
 
 export default router;
+
+type ParseResult<T> = { data: T } | { error: string };
+
+const MAX_BALANCE = 50_000_000;
+
+export function parseBalanceAmount(amount: unknown): ParseResult<number> {
+  if (
+    typeof amount !== 'number' ||
+    !Number.isFinite(amount) ||
+    !Number.isInteger(amount) ||
+    amount < 0 ||
+    amount > MAX_BALANCE
+  ) {
+    return { error: `amount must be a non-negative integer ≤ ${MAX_BALANCE}` };
+  }
+
+  return { data: amount };
+}

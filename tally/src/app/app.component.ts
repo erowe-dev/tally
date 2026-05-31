@@ -1,4 +1,4 @@
-import { Component, OnDestroy, signal, computed, inject, effect, PLATFORM_ID } from '@angular/core';
+import { Component, ElementRef, OnDestroy, ViewChild, signal, computed, inject, effect, PLATFORM_ID } from '@angular/core';
 import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { SwUpdate } from '@angular/service-worker';
 import { Subscription } from 'rxjs';
@@ -124,7 +124,7 @@ interface TabChangeOptions {
         <span class="expiry-ribbon-arrow">→</span>
       </button>
 
-      <main class="app-main">
+      <main #appMain class="app-main">
 
         <!-- Protected tabs — loaded on demand after auth -->
         @defer (when activeTab() === 'optimizer' && auth.isAuthenticated()) {
@@ -470,6 +470,8 @@ export class AppComponent implements OnDestroy {
   private readonly tabScrollPositions = new Map<NavTab, number>();
   private pendingScrollRestore: number | null = null;
 
+  @ViewChild('appMain') private appMain?: ElementRef<HTMLElement>;
+
   activeTab = signal<NavTab>('cards'); // default to public tab
   optimizerPrefill = signal<{ fromCity?: string; toCity?: string; cabin?: string } | null>(null);
 
@@ -634,8 +636,9 @@ export class AppComponent implements OnDestroy {
   }
 
   private rememberActiveTabScroll(): void {
-    if (!this.browserWindow) return;
-    this.tabScrollPositions.set(this.activeTab(), this.browserWindow.scrollY);
+    const scrollContainer = this.appMain?.nativeElement;
+    if (!scrollContainer) return;
+    this.tabScrollPositions.set(this.activeTab(), scrollContainer.scrollTop);
   }
 
   private restoreTabScroll(tab: NavTab, options: { forceTop?: boolean } = {}): void {
@@ -646,7 +649,7 @@ export class AppComponent implements OnDestroy {
 
     const top = options.forceTop ? 0 : (this.tabScrollPositions.get(tab) ?? 0);
     this.pendingScrollRestore = this.browserWindow.setTimeout(() => {
-      this.browserWindow?.scrollTo({ top, left: 0, behavior: 'auto' });
+      this.appMain?.nativeElement.scrollTo({ top, left: 0, behavior: 'auto' });
       this.pendingScrollRestore = null;
     });
   }

@@ -1962,8 +1962,7 @@ export class OptimizerComponent implements OnChanges {
     }
     this.showQuickWins.set(false);
     this.analyze();
-    // Scroll to top of page-content
-    document.querySelector('.page-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+    document.querySelector('.app-main')?.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   ngOnChanges(changes: SimpleChanges): void {

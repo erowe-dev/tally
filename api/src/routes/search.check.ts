@@ -1,6 +1,8 @@
 process.env['AUTH0_DOMAIN'] = process.env['AUTH0_DOMAIN'] ?? 'dev-2iqdjh6lgnv6pnz5.us.auth0.com';
 process.env['AUTH0_AUDIENCE'] = process.env['AUTH0_AUDIENCE'] ?? 'https://api.tally.app';
 
+export {};
+
 main().catch(error => {
   console.error(error);
   process.exit(1);
