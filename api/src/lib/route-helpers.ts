@@ -8,18 +8,20 @@ import { responseRequestId, sendError } from './http-response';
  */
 export interface HttpError extends Error {
   status?: number;
+  code?: string;
 }
 
 /**
- * Looks up the DB user for the authenticated Auth0 sub. Throws 404 if the
- * user row hasn't been provisioned yet (client should call POST /api/users/me
- * before any other authenticated call — AuthService handles this automatically).
+ * Looks up the DB user for the authenticated Auth0 sub. Throws a typed 428 if
+ * the user row hasn't been provisioned yet (client should call POST /api/users/me
+ * before any other authenticated call; AuthService handles this automatically).
  */
 export async function requireUser(auth0Id: string) {
   const user = await prisma.user.findUnique({ where: { auth0Id } });
   if (!user) {
     const err: HttpError = new Error('User not found — call POST /api/users/me first');
-    err.status = 404;
+    err.status = 428;
+    err.code = 'user_not_provisioned';
     throw err;
   }
   return user;
@@ -70,7 +72,7 @@ export function asyncRoute(
       if (status >= 500) {
         console.error('[api] Unhandled error:', { requestId: responseRequestId(res), err });
       }
-      sendError(res, status, message);
+      sendError(res, status, message, httpErr.code);
     }
   };
 }

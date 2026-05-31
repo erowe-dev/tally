@@ -4,6 +4,10 @@ export function responseRequestId(res: Response): string {
   return typeof res.locals['requestId'] === 'string' ? res.locals['requestId'] : 'unknown';
 }
 
-export function sendError(res: Response, status: number, error: string): void {
-  res.status(status).json({ error, requestId: responseRequestId(res) });
+export function sendError(res: Response, status: number, error: string, code?: string): void {
+  res.status(status).json({
+    error,
+    ...(code ? { code } : {}),
+    requestId: responseRequestId(res),
+  });
 }

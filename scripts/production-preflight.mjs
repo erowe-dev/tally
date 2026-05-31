@@ -21,6 +21,8 @@ const checks = [
   { label: 'Landing page remains invite-only', run: checkLandingInviteOnly },
   { label: 'Vercel API function routing exists', run: checkVercelApiConfig },
   { label: 'Observability config is explicit', run: checkObservabilityConfig },
+  { label: 'Unprovisioned API users get a typed response', run: checkUnprovisionedUserContract },
+  { label: 'Angular API calls require provisioned auth', run: checkAngularProvisionedAuthGuard },
   { label: 'Program ID allowlists match app data', run: checkProgramIds },
   { label: 'Production readiness workflow enforces release gates', run: checkProductionReadinessWorkflow },
   { label: 'Saved search cap is concurrency-safe', run: checkSavedSearchConcurrencyGuard },
@@ -243,6 +245,27 @@ function checkObservabilityConfig() {
   assert(apiText.includes('service: \'tally-api\''), 'API health must identify service name');
   assert(apiText.includes("app.use('/api/telemetry'"), 'API must mount telemetry routes');
   assert(existsSync(join(root, 'api/src/routes/telemetry.ts')), 'telemetry route file is missing');
+}
+
+function checkUnprovisionedUserContract() {
+  const routeHelpers = read('api/src/lib/route-helpers.ts');
+  const responseHelpers = read('api/src/lib/http-response.ts');
+  const helperCheck = read('api/src/lib/route-helpers.check.ts');
+  assert(routeHelpers.includes('user_not_provisioned'), 'requireUser must expose user_not_provisioned code');
+  assert(routeHelpers.includes('err.status = 428'), 'requireUser must return 428 for provisioning races');
+  assert(routeHelpers.includes('sendError(res, status, message, httpErr.code)'), 'asyncRoute must forward typed error codes');
+  assert(responseHelpers.includes('code?: string'), 'sendError must accept optional stable error codes');
+  assert(helperCheck.includes('err\\.status\\s*=\\s*428'), 'route helper check must guard unprovisioned status');
+}
+
+function checkAngularProvisionedAuthGuard() {
+  const api = read('tally/src/app/core/services/api.service.ts');
+  const spec = read('tally/src/app/core/services/api.service.spec.ts');
+  assert(api.includes('private auth = inject(AuthService)'), 'ApiService must inject AuthService');
+  assert(api.includes('withProvisionedAuth'), 'ApiService must define a provision-aware auth wrapper');
+  assert(api.includes('if (!this.auth.isProvisioned())'), 'ApiService must reject calls before user provisioning');
+  assert(!/getBalances\(\):[\s\S]*?return this\.withAuth/.test(api), 'protected API methods must not call withAuth directly');
+  assert(spec.includes('does not request a token before user provisioning finishes'), 'ApiService spec must cover provisioning gate');
 }
 
 function checkProgramIds() {

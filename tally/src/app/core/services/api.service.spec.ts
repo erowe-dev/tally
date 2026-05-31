@@ -3,21 +3,25 @@ import { HttpClient } from '@angular/common/http';
 import { AuthService as Auth0Service } from '@auth0/auth0-angular';
 import { of, throwError } from 'rxjs';
 import { ApiService } from './api.service';
+import { AuthService } from './auth.service';
 
 describe('ApiService cache validation', () => {
   let auth0: jasmine.SpyObj<Auth0Service>;
   let http: jasmine.SpyObj<HttpClient>;
+  let auth: { isProvisioned: jasmine.Spy };
 
   beforeEach(() => {
     localStorage.clear();
     auth0 = jasmine.createSpyObj<Auth0Service>('Auth0Service', ['getAccessTokenSilently']);
     http = jasmine.createSpyObj<HttpClient>('HttpClient', ['get']);
+    auth = { isProvisioned: jasmine.createSpy('isProvisioned').and.returnValue(true) };
     auth0.getAccessTokenSilently.and.returnValue(of('token'));
 
     TestBed.configureTestingModule({
       providers: [
         ApiService,
         { provide: Auth0Service, useValue: auth0 },
+        { provide: AuthService, useValue: auth },
         { provide: HttpClient, useValue: http },
       ],
     });
@@ -69,6 +73,20 @@ describe('ApiService cache validation', () => {
       next: () => done.fail('expected malformed cache to be rejected'),
       error: error => {
         expect(error).toEqual(jasmine.any(Error));
+        done();
+      },
+    });
+  });
+
+  it('does not request a token before user provisioning finishes', done => {
+    auth.isProvisioned.and.returnValue(false);
+
+    TestBed.inject(ApiService).getBalances().subscribe({
+      next: () => done.fail('expected unprovisioned API call to be rejected'),
+      error: error => {
+        expect(error.message).toContain('User not provisioned');
+        expect(auth0.getAccessTokenSilently).not.toHaveBeenCalled();
+        expect(http.get).not.toHaveBeenCalled();
         done();
       },
     });

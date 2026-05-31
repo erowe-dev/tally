@@ -15,6 +15,7 @@ import {
   SavedSearch,
   UserPreference,
 } from '../models';
+import { AuthService } from './auth.service';
 
 export interface ApiExpiryRecord {
   cardId: string;
@@ -78,6 +79,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 export class ApiService {
   private http = inject(HttpClient);
   private auth0 = inject(Auth0Service);
+  private auth = inject(AuthService);
 
   // Wraps any HTTP call with a fresh Auth0 access token
   private withAuth<T>(call: (headers: HttpHeaders) => Observable<T>): Observable<T> {
@@ -88,10 +90,17 @@ export class ApiService {
     );
   }
 
+  private withProvisionedAuth<T>(call: (headers: HttpHeaders) => Observable<T>): Observable<T> {
+    if (!this.auth.isProvisioned()) {
+      return throwError(() => new Error('User not provisioned'));
+    }
+    return this.withAuth(call);
+  }
+
   // ── Balances ────────────────────────────────────────────────────────────────
 
   getBalances(): Observable<Record<string, number>> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.get<Record<string, number>>(
         `${environment.apiUrl}/api/balances`,
         { headers },
@@ -114,7 +123,7 @@ export class ApiService {
   }
 
   setBalance(cardId: string, amount: number): Observable<unknown> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.put(
         `${environment.apiUrl}/api/balances/${cardId}`,
         { amount },
@@ -126,7 +135,7 @@ export class ApiService {
   // ── Expiry records ──────────────────────────────────────────────────────────
 
   getExpiryRecords(): Observable<Record<string, ApiExpiryRecord>> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.get<Record<string, ApiExpiryRecord>>(
         `${environment.apiUrl}/api/expiry`,
         { headers },
@@ -149,7 +158,7 @@ export class ApiService {
   }
 
   setExpiryRecord(cardId: string, lastActivityDate: string): Observable<unknown> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.put(
         `${environment.apiUrl}/api/expiry/${cardId}`,
         { lastActivityDate },
@@ -159,7 +168,7 @@ export class ApiService {
   }
 
   deleteExpiryRecord(cardId: string): Observable<unknown> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.delete(
         `${environment.apiUrl}/api/expiry/${cardId}`,
         { headers },
@@ -170,25 +179,25 @@ export class ApiService {
   // ── Trips ───────────────────────────────────────────────────────────────────
 
   getTrips(): Observable<SavedTrip[]> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.get<SavedTrip[]>(`${environment.apiUrl}/api/trips`, { headers }),
     );
   }
 
   createTrip(trip: Omit<SavedTrip, 'id' | 'createdAt'>): Observable<SavedTrip> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.post<SavedTrip>(`${environment.apiUrl}/api/trips`, trip, { headers }),
     );
   }
 
   deleteTrip(id: string): Observable<unknown> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.delete(`${environment.apiUrl}/api/trips/${id}`, { headers }),
     );
   }
 
   updateTripNotes(id: string, notes: string): Observable<unknown> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.patch(`${environment.apiUrl}/api/trips/${id}`, { notes }, { headers }),
     );
   }
@@ -196,13 +205,13 @@ export class ApiService {
   // ── Preferences ────────────────────────────────────────────────────────────
 
   getPreferences(): Observable<UserPreference | null> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.get<UserPreference | null>(`${environment.apiUrl}/api/preferences`, { headers }),
     );
   }
 
   savePreferences(preferences: UserPreference): Observable<UserPreference> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.put<UserPreference>(`${environment.apiUrl}/api/preferences`, preferences, { headers }),
     );
   }
@@ -210,25 +219,25 @@ export class ApiService {
   // ── Saved searches ─────────────────────────────────────────────────────────
 
   getSavedSearches(): Observable<SavedSearch[]> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.get<SavedSearch[]>(`${environment.apiUrl}/api/searches`, { headers }),
     );
   }
 
   createSavedSearch(search: Omit<SavedSearch, 'id' | 'createdAt' | 'updatedAt'>): Observable<SavedSearch> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.post<SavedSearch>(`${environment.apiUrl}/api/searches`, search, { headers }),
     );
   }
 
   updateSavedSearch(id: string, changes: Partial<Omit<SavedSearch, 'id' | 'createdAt'>>): Observable<SavedSearch> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.put<SavedSearch>(`${environment.apiUrl}/api/searches/${id}`, changes, { headers }),
     );
   }
 
   deleteSavedSearch(id: string): Observable<unknown> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.delete(`${environment.apiUrl}/api/searches/${id}`, { headers }),
     );
   }
@@ -236,7 +245,7 @@ export class ApiService {
   // ── Provider-backed search ─────────────────────────────────────────────────
 
   searchAwardAvailability(request: AwardAvailabilityRequest): Observable<ProviderSearchResponse<AwardAvailabilityResult>> {
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.post<ProviderSearchResponse<AwardAvailabilityResult>>(
         `${environment.apiUrl}/api/search/award-availability`,
         request,
@@ -247,7 +256,7 @@ export class ApiService {
 
   searchHotelFit(intent: HotelSearchIntent): Observable<ProviderSearchResponse<HotelFitResult>> {
     const request = toHotelFitRequest(intent);
-    return this.withAuth(headers =>
+    return this.withProvisionedAuth(headers =>
       this.http.post<ProviderSearchResponse<HotelFitResult>>(
         `${environment.apiUrl}/api/search/hotel-fit`,
         request,

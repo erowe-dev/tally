@@ -26,6 +26,19 @@ function mockResponse(requestId?: string) {
 }
 
 {
+  const { res, calls } = mockResponse('req_456');
+  sendError(res, 428, 'User not found — call POST /api/users/me first', 'user_not_provisioned');
+  assert.deepEqual(calls, [{
+    status: 428,
+    body: {
+      error: 'User not found — call POST /api/users/me first',
+      code: 'user_not_provisioned',
+      requestId: 'req_456',
+    },
+  }]);
+}
+
+{
   const { res, calls } = mockResponse();
   assert.equal(responseRequestId(res), 'unknown');
   sendError(res, 500, 'Internal server error');
