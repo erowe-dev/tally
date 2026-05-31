@@ -72,6 +72,9 @@ describe('OptimizerComponent', () => {
   let wallet: MockWalletService;
 
   beforeEach(async () => {
+    localStorage.clear();
+    sessionStorage.clear();
+
     await TestBed.configureTestingModule({
       imports: [OptimizerComponent],
       providers: [
@@ -282,5 +285,74 @@ describe('OptimizerComponent', () => {
     const bookingLink = fixture.nativeElement.querySelector('.howto-link') as HTMLAnchorElement;
     expect(bookingLink.getAttribute('rel')).toBe('noopener noreferrer');
     expect(bookingLink.getAttribute('aria-label')).toBe('Open booking guidance for Air Canada Aeroplan');
+  });
+
+  it('sanitizes persisted route history before rendering recent routes', () => {
+    fixture.destroy();
+    localStorage.setItem('tally_route_history_v1', JSON.stringify([
+      {
+        tripType: 'flight',
+        fromCity: '  Omaha  ',
+        toCity: 'Tokyo',
+        cabin: 'business',
+        passengers: 2.4,
+        hotelCategory: 'luxury',
+        hotelNights: 4,
+        label: '  Omaha to Tokyo  ',
+        ts: '2026-06-01T10:00:00.000Z',
+      },
+      {
+        tripType: 'flight',
+        fromCity: 'Duplicate',
+        toCity: 'Route',
+        cabin: 'business',
+        passengers: 1,
+        hotelCategory: 'luxury',
+        hotelNights: 1,
+        label: 'Omaha to Tokyo',
+        ts: '2026-06-02T10:00:00.000Z',
+      },
+      {
+        tripType: 'rocket',
+        fromCity: 'Bad',
+        toCity: 'Data',
+        cabin: 'business',
+        passengers: 99,
+        hotelCategory: 'luxury',
+        hotelNights: 100,
+        label: 'Invalid',
+        ts: 'not-a-date',
+      },
+    ]));
+
+    fixture = TestBed.createComponent(OptimizerComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(component.recentRoutes().length).toBe(1);
+    expect(component.recentRoutes()[0]).toEqual(jasmine.objectContaining({
+      tripType: 'flight',
+      fromCity: 'Omaha',
+      toCity: 'Tokyo',
+      cabin: 'business',
+      passengers: 2,
+      hotelCategory: 'luxury',
+      hotelNights: 4,
+      label: 'Omaha to Tokyo',
+      ts: '2026-06-01T10:00:00.000Z',
+    }));
+    expect(JSON.parse(localStorage.getItem('tally_route_history_v1') ?? '[]').length).toBe(1);
+  });
+
+  it('caps route history saved from repeated analyses', () => {
+    for (let i = 0; i < 7; i += 1) {
+      component.fromCity = `OR${i}`;
+      component.toCity = `DE${i}`;
+      component.analyze();
+    }
+
+    const stored = JSON.parse(localStorage.getItem('tally_route_history_v1') ?? '[]') as unknown[];
+    expect(component.recentRoutes().length).toBe(5);
+    expect(stored.length).toBe(5);
   });
 });

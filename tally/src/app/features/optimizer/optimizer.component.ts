@@ -51,6 +51,8 @@ const ROUTE_HISTORY_KEY = 'tally_route_history_v1';
 const MAX_ROUTE_HISTORY = 5;
 const HOME_AIRPORT_KEY = 'tally_home_airport_v1';
 const MAX_SAVED_SEARCHES = 5;
+const CABIN_CLASSES = new Set<CabinClass>(['economy', 'premium', 'business', 'first']);
+const HOTEL_CATEGORIES = new Set<HotelCategory>(['budget', 'mid', 'luxury', 'top']);
 
 const ROUTE_LABELS: Record<string, string> = {
   transatlantic: 'US ↔ Europe',
@@ -1992,12 +1994,74 @@ export class OptimizerComponent implements OnChanges {
   private loadRouteHistory(): RouteHistoryEntry[] {
     try {
       const raw = localStorage.getItem(ROUTE_HISTORY_KEY);
-      return raw ? (JSON.parse(raw) as RouteHistoryEntry[]) : [];
-    } catch { return []; }
+      if (!raw) return [];
+      const entries = this.sanitizeRouteHistory(JSON.parse(raw) as unknown);
+      this.saveRouteHistory(entries);
+      return entries;
+    } catch {
+      return [];
+    }
   }
 
   private saveRouteHistory(entries: RouteHistoryEntry[]): void {
-    try { localStorage.setItem(ROUTE_HISTORY_KEY, JSON.stringify(entries)); } catch {}
+    try { localStorage.setItem(ROUTE_HISTORY_KEY, JSON.stringify(this.sanitizeRouteHistory(entries))); } catch {}
+  }
+
+  private sanitizeRouteHistory(value: unknown): RouteHistoryEntry[] {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set<string>();
+    const entries: RouteHistoryEntry[] = [];
+
+    for (const raw of value) {
+      if (!raw || typeof raw !== 'object') continue;
+      const item = raw as Partial<RouteHistoryEntry>;
+      const tripType = item.tripType === 'hotel' ? 'hotel' : item.tripType === 'flight' ? 'flight' : null;
+      const cabin = CABIN_CLASSES.has(item.cabin as CabinClass) ? item.cabin as CabinClass : null;
+      const hotelCategory = HOTEL_CATEGORIES.has(item.hotelCategory as HotelCategory)
+        ? item.hotelCategory as HotelCategory
+        : null;
+      if (!tripType || !cabin || !hotelCategory) continue;
+
+      const passengers = this.clampWholeNumber(item.passengers, 1, 9);
+      const hotelNights = this.clampWholeNumber(item.hotelNights, 1, 30);
+      const label = this.cleanHistoryText(item.label, 96);
+      if (!label || seen.has(label)) continue;
+      seen.add(label);
+
+      entries.push({
+        tripType,
+        fromCity: this.cleanHistoryText(item.fromCity, 40),
+        toCity: this.cleanHistoryText(item.toCity, 40),
+        cabin,
+        passengers,
+        hotelCategory,
+        hotelNights,
+        label,
+        ts: this.validIsoDate(item.ts),
+      });
+
+      if (entries.length >= MAX_ROUTE_HISTORY) break;
+    }
+
+    return entries;
+  }
+
+  private cleanHistoryText(value: unknown, maxLength: number): string {
+    return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+  }
+
+  private clampWholeNumber(value: unknown, min: number, max: number): number {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(parsed)) return min;
+    return Math.min(max, Math.max(min, Math.round(parsed)));
+  }
+
+  private validIsoDate(value: unknown): string {
+    if (typeof value === 'string') {
+      const parsed = Date.parse(value);
+      if (Number.isFinite(parsed)) return new Date(parsed).toISOString();
+    }
+    return new Date().toISOString();
   }
 
   private buildSavedSearchPayload(): Omit<SavedSearch, 'id' | 'createdAt' | 'updatedAt'> {
