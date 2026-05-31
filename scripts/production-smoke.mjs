@@ -14,6 +14,7 @@ const checks = [
       const json = JSON.parse(body);
       assert(json.status === 'ok', `expected status ok, got ${body}`);
       assert(json.service === 'tally-api', `expected service tally-api, got ${body}`);
+      assert(typeof json.version === 'string' && json.version.length > 0, `expected non-empty version, got ${body}`);
       assert(json.database === 'ok', `expected database ok, got ${body}`);
       assert(!res.headers.has('x-powered-by'), 'API must not expose X-Powered-By');
       assert(res.headers.get('x-content-type-options') === 'nosniff', 'missing X-Content-Type-Options nosniff');

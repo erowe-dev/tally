@@ -22,10 +22,7 @@ const app = express();
 app.disable('x-powered-by');
 const port = parseInt(process.env['PORT'] ?? '3000', 10);
 const startedAt = new Date().toISOString();
-const serviceVersion =
-  process.env['VERCEL_GIT_COMMIT_SHA']?.slice(0, 12) ??
-  process.env['COMMIT_SHA']?.slice(0, 12) ??
-  'local';
+const serviceVersion = getServiceVersion();
 
 const defaultAllowedOrigins = [
   'http://localhost:4200',
@@ -146,4 +143,16 @@ function getRequestId(req: express.Request): string {
   const fromHeader = req.header('x-request-id');
   if (fromHeader && fromHeader.length <= 100) return fromHeader;
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getServiceVersion(): string {
+  const candidates = [
+    process.env['VERCEL_GIT_COMMIT_SHA'],
+    process.env['COMMIT_SHA'],
+    process.env['VERCEL_GIT_COMMIT_REF'],
+  ];
+  const version = candidates
+    .map(candidate => candidate?.trim())
+    .find((candidate): candidate is string => Boolean(candidate));
+  return version ? version.slice(0, 12) : 'local';
 }
