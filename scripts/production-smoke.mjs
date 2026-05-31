@@ -205,8 +205,9 @@ const checks = [
       const body = await readBody(res);
       assert(res.status === 410, `expected 410 for closed waitlist, got ${res.status}: ${body}`);
       const json = JSON.parse(body);
-      assert(json.contactEmail, `expected contactEmail in closed response, got ${body}`);
+      assert(json.code === 'waitlist_closed', `expected waitlist_closed code in closed response, got ${body}`);
       assert(json.requestId, `expected requestId in closed response, got ${body}`);
+      assert(res.headers.get('cache-control') === 'no-store', 'expected closed waitlist response to be no-store');
       assert(
         res.headers.get('access-control-allow-origin') === 'https://tallypoints.app',
         'expected CORS allow-origin for tallypoints.app',
