@@ -3,9 +3,10 @@ import { Injectable, PLATFORM_ID, inject, signal, computed, effect } from '@angu
 import { AuthService as Auth0Service } from '@auth0/auth0-angular';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
-import { filter, switchMap, take, retry, timer } from 'rxjs';
+import { retry, switchMap, timer } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ToastService } from './toast.service';
+import { NetworkService } from './network.service';
 
 /**
  * Thin wrapper that bridges Auth0's RxJS observables into Angular signals.
@@ -21,6 +22,7 @@ export class AuthService {
   private auth0 = inject(Auth0Service);
   private http = inject(HttpClient);
   private toast = inject(ToastService);
+  private network = inject(NetworkService);
   private platformId = inject(PLATFORM_ID);
   private document = inject(DOCUMENT);
   private browserWindow = isPlatformBrowser(this.platformId) ? this.document.defaultView : null;
@@ -40,49 +42,38 @@ export class AuthService {
   // effect()s on this to avoid racing ahead of POST /api/users/me.
   private _isProvisioned = signal(false);
   readonly isProvisioned = this._isProvisioned.asReadonly();
+  private _isProvisioning = signal(false);
+  private _provisionAttemptKey = signal<string | null>(null);
 
   constructor() {
     effect(() => {
       if (!this.isLoading()) this._hasResolvedOnce.set(true);
     }, { allowSignalWrites: true });
 
-    // On first login: provision the user row in our database.
-    // - `filter(Boolean)` waits for a truthy isAuthenticated$ emission
-    // - `take(1)` on both pipes ensures this runs exactly once per session
-    // - `retry` with exponential backoff handles transient API/network failures
-    //   (cold API start, brief connectivity blip, etc.)
-    this.auth0.isAuthenticated$
-      .pipe(
-        filter(Boolean),
-        take(1),
-        switchMap(() => this.auth0.user$),
-        filter(u => u != null),
-        take(1),
-        switchMap(user =>
-          this.auth0.getAccessTokenSilently().pipe(
-            switchMap(token =>
-              this.http.post(
-                `${environment.apiUrl}/api/users/me`,
-                { email: user!.email },
-                { headers: { Authorization: `Bearer ${token}` } },
-              ),
-            ),
-          ),
-        ),
-        // Up to 3 retries with exponential backoff: 1s, 2s, 4s
-        retry({
-          count: 3,
-          delay: (_err, retryCount) => timer(Math.pow(2, retryCount - 1) * 1000),
-        }),
-      )
-      .subscribe({
-        next: () => this._isProvisioned.set(true),
-        error: _err => {
-          this.toast.error('Could not connect to server — data saves locally only');
-          // Leave isProvisioned=false — other services stay in localStorage-only
-          // mode rather than hitting the API and 404-ing
-        },
-      });
+    effect(() => {
+      if (!this.isAuthenticated()) {
+        this._isProvisioned.set(false);
+        this._isProvisioning.set(false);
+        this._provisionAttemptKey.set(null);
+        return;
+      }
+
+      if (!this.network.isOnline()) {
+        this._isProvisioning.set(false);
+        this._provisionAttemptKey.set(null);
+        return;
+      }
+
+      const user = this.user();
+      const userKey = user?.sub ?? user?.email;
+      if (!user || !userKey || this._isProvisioned() || this._isProvisioning()) return;
+
+      const attemptKey = String(userKey);
+      if (this._provisionAttemptKey() === attemptKey) return;
+
+      this._provisionAttemptKey.set(attemptKey);
+      this.provisionCurrentUser(user.email ?? null);
+    }, { allowSignalWrites: true });
   }
 
   login(): void {
@@ -93,6 +84,34 @@ export class AuthService {
     this.auth0.logout({
       logoutParams: {
         returnTo: this.browserWindow?.location.origin ?? environment.auth0.authorizationParams.redirect_uri,
+      },
+    });
+  }
+
+  private provisionCurrentUser(email: string | null): void {
+    this._isProvisioning.set(true);
+    this.auth0.getAccessTokenSilently().pipe(
+      switchMap(token =>
+        this.http.post(
+          `${environment.apiUrl}/api/users/me`,
+          { email },
+          { headers: { Authorization: `Bearer ${token}` } },
+        ),
+      ),
+      retry({
+        count: 3,
+        delay: (_err, retryCount) => timer(Math.pow(2, retryCount - 1) * 1000),
+      }),
+    ).subscribe({
+      next: () => {
+        this._isProvisioned.set(true);
+        this._isProvisioning.set(false);
+      },
+      error: _err => {
+        this._isProvisioning.set(false);
+        this.toast.error('Could not connect to server — data saves locally only');
+        // Keep isProvisioned=false. When the network signal flips offline→online,
+        // the attempt key is cleared and provisioning will retry automatically.
       },
     });
   }
