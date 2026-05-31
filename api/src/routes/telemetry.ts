@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { asyncRoute } from '../lib/route-helpers';
 import { createFixedWindowRateLimiter } from '../lib/fixed-window-rate-limit';
+import { sanitizeClientUrl } from '../lib/safe-client-url';
 
 const router = Router();
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -101,7 +102,7 @@ router.post(
       context: context || 'manual',
       message,
       stack: stringValue(body['stack'], 2000),
-      url: stringValue(body['url'], 500),
+      url: sanitizeClientUrl(body['url']),
       timestamp: validTimestamp(stringValue(body['timestamp'], 40)),
     });
     if (context === 'smoke') {
