@@ -9,6 +9,10 @@ const STORAGE_KEY = 'tally_searches_v1';
 const PENDING_KEY = 'tally_searches_pending_v1';
 const DELETED_KEY = 'tally_searches_deleted_v1';
 const MAX_SAVED_SEARCHES = 5;
+const IATA_RE = /^[A-Z]{3}$/;
+const FLEX_VALUES = new Set(['exact', 'plus_minus_3', 'plus_minus_7', 'month', 'next_60_days']);
+const CABIN_VALUES = new Set(['economy', 'premium', 'business', 'first']);
+const HOTEL_CATEGORY_VALUES = new Set(['budget', 'mid', 'luxury', 'top']);
 
 export type SearchSyncState = 'idle' | 'loading' | 'synced' | 'error';
 
@@ -66,12 +70,16 @@ export class SearchesService {
     }
 
     const now = new Date().toISOString();
-    const saved: SavedSearch = {
+    const saved = sanitizeSavedSearch({
       ...search,
       id: `local_${Date.now()}`,
       createdAt: now,
       updatedAt: now,
-    };
+    });
+    if (!saved) {
+      this.toast.error('Saved search could not be created');
+      return null;
+    }
     const updated = [saved, ...this._searches()];
     this._searches.set(updated);
     this.saveLocal(updated);
@@ -82,9 +90,9 @@ export class SearchesService {
 
   updateSearch(id: string, changes: Partial<Omit<SavedSearch, 'id' | 'createdAt'>>): void {
     const updatedAt = new Date().toISOString();
-    const updated = this._searches().map(search =>
-      search.id === id ? { ...search, ...changes, updatedAt } : search,
-    );
+    const updated = this._searches()
+      .map(search => search.id === id ? sanitizeSavedSearch({ ...search, ...changes, updatedAt }) : search)
+      .filter((search): search is SavedSearch => Boolean(search));
     const changed = updated.find(search => search.id === id);
     if (!changed) return;
 
@@ -121,6 +129,7 @@ export class SearchesService {
   }
 
   private hydrateFromApi(apiSearches: SavedSearch[]): void {
+    const cleanApiSearches = apiSearches.map(sanitizeSavedSearch).filter((search): search is SavedSearch => Boolean(search));
     const localSearches = this.loadLocal();
     const pending = this.loadPending();
     const deleted = new Set(this.loadDeleted());
@@ -138,7 +147,7 @@ export class SearchesService {
       const merged = [
         ...pendingSearches,
         ...localOnly.filter(search => !pendingIds.has(search.id)),
-        ...apiSearches.filter(search => !deleted.has(search.id) && !pending[search.id]),
+        ...cleanApiSearches.filter(search => !deleted.has(search.id) && !pending[search.id]),
       ];
       this._searches.set(merged);
       this.saveLocal(merged);
@@ -149,7 +158,7 @@ export class SearchesService {
       this._syncState.set('synced');
       for (const search of localSearches) this.createRemoteSearch(search);
     } else {
-      const filtered = apiSearches.filter(search => !deleted.has(search.id));
+      const filtered = cleanApiSearches.filter(search => !deleted.has(search.id));
       this._searches.set(filtered);
       this.saveLocal(filtered);
       this._syncState.set('synced');
@@ -225,7 +234,9 @@ export class SearchesService {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw) as unknown;
-      return Array.isArray(parsed) ? parsed.filter(isSavedSearch) : [];
+      return Array.isArray(parsed)
+        ? parsed.map(sanitizeSavedSearch).filter((search): search is SavedSearch => Boolean(search)).slice(0, MAX_SAVED_SEARCHES)
+        : [];
     } catch {
       return [];
     }
@@ -233,7 +244,11 @@ export class SearchesService {
 
   private saveLocal(searches: SavedSearch[]): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
+      const sanitized = searches
+        .map(sanitizeSavedSearch)
+        .filter((search): search is SavedSearch => Boolean(search))
+        .slice(0, MAX_SAVED_SEARCHES);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
     } catch {}
   }
 
@@ -244,7 +259,10 @@ export class SearchesService {
       const parsed = JSON.parse(raw) as unknown;
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
       return Object.fromEntries(
-        Object.entries(parsed).filter((entry): entry is [string, SavedSearch] => isSavedSearch(entry[1])),
+        Object.entries(parsed)
+          .map(([id, value]) => [id, sanitizeSavedSearch(value)] as const)
+          .filter((entry): entry is readonly [string, SavedSearch] => Boolean(entry[1]))
+          .map(([_id, search]) => [search.id, search]),
       );
     } catch {
       return {};
@@ -274,7 +292,9 @@ export class SearchesService {
       const raw = localStorage.getItem(DELETED_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw) as unknown;
-      return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+      return Array.isArray(parsed)
+        ? parsed.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 100)
+        : [];
     } catch {
       return [];
     }
@@ -298,17 +318,133 @@ export class SearchesService {
   }
 }
 
-function isSavedSearch(value: unknown): value is SavedSearch {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const candidate = value as SavedSearch;
-  return (
-    typeof candidate.id === 'string' &&
-    (candidate.searchType === 'flight' || candidate.searchType === 'hotel') &&
-    typeof candidate.destinationText === 'string' &&
-    !!candidate.dateWindow &&
-    typeof candidate.dateWindow === 'object' &&
-    typeof candidate.passengers === 'number' &&
-    typeof candidate.createdAt === 'string' &&
-    typeof candidate.updatedAt === 'string'
-  );
+function sanitizeSavedSearch(value: unknown): SavedSearch | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const candidate = value as Partial<SavedSearch>;
+  const id = boundedString(candidate.id, 100);
+  const searchType = candidate.searchType === 'flight' || candidate.searchType === 'hotel' ? candidate.searchType : null;
+  const destinationText = boundedString(candidate.destinationText, 160);
+  const dateWindow = sanitizeDateWindow(candidate.dateWindow);
+  const createdAt = validIsoString(candidate.createdAt);
+  const updatedAt = validIsoString(candidate.updatedAt);
+  const passengers = clampInteger(candidate.passengers, 1, 9);
+
+  if (!id || !searchType || !destinationText || !dateWindow || !createdAt || !updatedAt || passengers === null) {
+    return null;
+  }
+
+  const originAirport = optionalIata(candidate.originAirport);
+  const destinationAirport = optionalIata(candidate.destinationAirport);
+  const cabin = typeof candidate.cabin === 'string' && CABIN_VALUES.has(candidate.cabin) ? candidate.cabin : undefined;
+  const hotelIntent = sanitizeHotelIntent(candidate.hotelIntent);
+  const notes = boundedString(candidate.notes, 1000);
+  const lastRunAt = validIsoString(candidate.lastRunAt);
+
+  return {
+    id,
+    searchType,
+    ...(originAirport ? { originAirport } : {}),
+    ...(destinationAirport ? { destinationAirport } : {}),
+    destinationText,
+    dateWindow,
+    ...(cabin ? { cabin } : {}),
+    passengers,
+    ...(hotelIntent ? { hotelIntent } : {}),
+    ...(notes ? { notes } : {}),
+    ...(lastRunAt ? { lastRunAt } : {}),
+    createdAt,
+    updatedAt,
+  };
+}
+
+function sanitizeDateWindow(value: unknown): SavedSearch['dateWindow'] | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const candidate = value as Partial<SavedSearch['dateWindow']>;
+  const startDate = validDateOnlyOrEmpty(candidate.startDate);
+  const endDate = validDateOnlyOrEmpty(candidate.endDate);
+  const flexibility = typeof candidate.flexibility === 'string' && FLEX_VALUES.has(candidate.flexibility)
+    ? candidate.flexibility as SavedSearch['dateWindow']['flexibility']
+    : null;
+  if (startDate === null || endDate === null || !flexibility) return null;
+  if (startDate && endDate && endDate < startDate) return null;
+
+  const tripLengthMin = clampInteger(candidate.tripLengthMin, 1, 60);
+  const tripLengthMax = clampInteger(candidate.tripLengthMax, 1, 60);
+  if (tripLengthMin !== null && tripLengthMax !== null && tripLengthMax < tripLengthMin) return null;
+
+  return {
+    startDate,
+    endDate,
+    flexibility,
+    ...(tripLengthMin !== null ? { tripLengthMin } : {}),
+    ...(tripLengthMax !== null ? { tripLengthMax } : {}),
+  };
+}
+
+function sanitizeHotelIntent(value: unknown): SavedSearch['hotelIntent'] | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const candidate = value as Partial<NonNullable<SavedSearch['hotelIntent']>>;
+  const destination = boundedString(candidate.destination, 160);
+  const travelers = clampInteger(candidate.travelers, 1, 9);
+  const rooms = clampInteger(candidate.rooms, 1, 4);
+  if (!destination || travelers === null || rooms === null) return undefined;
+
+  const checkInDate = validDateOnly(candidate.checkInDate);
+  const checkOutDate = validDateOnly(candidate.checkOutDate);
+  const nights = clampInteger(candidate.nights, 1, 60);
+  const hotelCategory = typeof candidate.hotelCategory === 'string' && HOTEL_CATEGORY_VALUES.has(candidate.hotelCategory)
+    ? candidate.hotelCategory
+    : undefined;
+  const preferredChains = Array.isArray(candidate.preferredChains)
+    ? [...new Set(candidate.preferredChains.filter((item): item is string => typeof item === 'string').map(item => item.trim()).filter(Boolean).slice(0, 20))]
+    : [];
+
+  return {
+    destination,
+    ...(checkInDate ? { checkInDate } : {}),
+    ...(checkOutDate ? { checkOutDate } : {}),
+    ...(nights !== null ? { nights } : {}),
+    ...(hotelCategory ? { hotelCategory } : {}),
+    travelers,
+    rooms,
+    preferredChains,
+  };
+}
+
+function boundedString(value: unknown, maxLength: number): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().slice(0, maxLength);
+  return normalized.length > 0 ? normalized : null;
+}
+
+function optionalIata(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim().toUpperCase();
+  return IATA_RE.test(normalized) ? normalized : undefined;
+}
+
+function validDateOnly(value: unknown): string | null {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+    ? value
+    : null;
+}
+
+function validDateOnlyOrEmpty(value: unknown): string | null {
+  if (value === '') return '';
+  return validDateOnly(value);
+}
+
+function validIsoString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+}
+
+function clampInteger(value: unknown, min: number, max: number): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const rounded = Math.round(value);
+  return rounded >= min && rounded <= max ? rounded : null;
 }

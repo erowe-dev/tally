@@ -74,6 +74,77 @@ describe('SearchesService', () => {
     expect(api.createSavedSearch).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalledWith('Delete a saved search before adding another');
   });
+
+  it('drops malformed saved searches and normalizes supported cached records', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([
+      {
+        ...savedSearch('valid_search'),
+        originAirport: 'ord',
+        destinationAirport: 'not-an-airport',
+        notes: 'x'.repeat(1200),
+        passengers: 1.4,
+        lastRunAt: 'not-a-date',
+      },
+      {
+        ...savedSearch('bad_date'),
+        dateWindow: { startDate: '2026-06-20', endDate: '2026-06-10', flexibility: 'plus_minus_3' },
+      },
+      {
+        id: 'missing-fields',
+        searchType: 'flight',
+      },
+    ]));
+
+    const service = createService();
+
+    expect(service.searches().length).toBe(1);
+    expect(service.searches()[0]).toEqual(jasmine.objectContaining({
+      id: 'valid_search',
+      originAirport: 'ORD',
+      passengers: 1,
+    }));
+    expect(service.searches()[0].destinationAirport).toBeUndefined();
+    expect(service.searches()[0].notes?.length).toBe(1000);
+    expect(service.searches()[0].lastRunAt).toBeUndefined();
+  });
+
+  it('keeps saved searches without explicit date bounds for flexible planning', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([
+      {
+        ...savedSearch('open_dates'),
+        dateWindow: { startDate: '', endDate: '', flexibility: 'next_60_days' },
+      },
+    ]));
+
+    const service = createService();
+
+    expect(service.searches()[0].dateWindow).toEqual({
+      startDate: '',
+      endDate: '',
+      flexibility: 'next_60_days',
+    });
+  });
+
+  it('normalizes pending searches by their saved id before retrying', () => {
+    localStorage.setItem(PENDING_KEY, JSON.stringify({
+      stale_key: {
+        ...savedSearch('actual_id'),
+        originAirport: 'ord',
+      },
+      invalid_pending: {
+        id: 'invalid_pending',
+        searchType: 'flight',
+      },
+    }));
+
+    const service = createService();
+    service.createSearch(searchPayload('Seoul'));
+
+    const pending = JSON.parse(localStorage.getItem(PENDING_KEY) ?? '{}');
+    expect(pending.actual_id.originAirport).toBe('ORD');
+    expect(pending.stale_key).toBeUndefined();
+    expect(pending.invalid_pending).toBeUndefined();
+  });
 });
 
 function searchPayload(destinationText: string): Omit<SavedSearch, 'id' | 'createdAt' | 'updatedAt'> {
