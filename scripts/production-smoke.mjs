@@ -45,6 +45,32 @@ const checks = [
     },
   },
   {
+    name: 'Service worker manifest matches current app shell bundle',
+    run: async () => {
+      const shellRes = await fetch(`${appUrl}/index.html?ngsw-bypass=true`);
+      const shell = await readBody(shellRes);
+      assert(shellRes.ok, `expected shell 2xx, got ${shellRes.status}: ${shell}`);
+      const mainBundle = extractMainBundle(shell);
+      assert(mainBundle, 'could not find current main bundle in app shell');
+
+      const ngswRes = await fetch(`${appUrl}/ngsw.json?ngsw-bypass=true`);
+      const ngswBody = await readBody(ngswRes);
+      assert(ngswRes.ok, `expected ngsw 2xx, got ${ngswRes.status}: ${ngswBody}`);
+      const ngsw = JSON.parse(ngswBody);
+      assert(
+        ngsw.hashTable?.[`/${mainBundle}`],
+        `service worker manifest does not include current shell bundle /${mainBundle}`,
+      );
+
+      const bundleRes = await fetch(`${appUrl}/${mainBundle}`);
+      assert(bundleRes.ok, `current main bundle ${mainBundle} is not reachable: ${bundleRes.status}`);
+      assert(
+        (bundleRes.headers.get('content-type') ?? '').includes('javascript'),
+        `expected JavaScript bundle content-type, got ${bundleRes.headers.get('content-type')}`,
+      );
+    },
+  },
+  {
     name: 'Landing page remains available under /landing/',
     run: async () => {
       const res = await fetch(`${appUrl}/landing/`);
@@ -276,6 +302,10 @@ function normalizeUrl(value) {
 
 function isLocalUrl(value) {
   return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/.test(value);
+}
+
+function extractMainBundle(html) {
+  return html.match(/main-[A-Z0-9]+\.js/)?.[0] ?? '';
 }
 
 async function readBody(res) {
