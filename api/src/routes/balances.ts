@@ -50,4 +50,24 @@ router.put(
   }),
 );
 
+// DELETE /api/balances/:cardId
+// Removes a single balance row. Useful for smoke cleanup and for treating
+// "no balance" as distinct from a persisted zero-balance record.
+router.delete(
+  '/:cardId',
+  checkJwt,
+  jwtErrorHandler,
+  validateCardId,
+  asyncRoute(async (req, res) => {
+    const user = await requireUser(getAuth0Id(req));
+    const { cardId } = req.params;
+
+    await prisma.balance.deleteMany({
+      where: { userId: user.id, cardId },
+    });
+
+    res.status(204).send();
+  }),
+);
+
 export default router;
