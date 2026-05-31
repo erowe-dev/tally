@@ -222,7 +222,15 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
         </div>
         <div class="summary-note" *ngIf="visibleProgramGroups().length === 0">
           <strong>No programs match this filter.</strong>
-          <span>Save a program with “I have this” or add a balance to bring it into Mine.</span>
+          <span *ngIf="walletProgramFilter() === 'all'; else filteredEmptyCopy">
+            Save a program with “I have this” or add a balance to bring it into Mine.
+          </span>
+          <ng-template #filteredEmptyCopy>
+            <span>Switch back to all programs to save one, or add a balance to bring it into this view.</span>
+            <button type="button" class="goal-toggle filter-reset-btn" (click)="setWalletProgramFilter('all')">
+              Show all programs
+            </button>
+          </ng-template>
         </div>
       </ng-container>
 
@@ -542,17 +550,20 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       font-family: 'Geist Mono', monospace; font-size: 10px;
       color: var(--tally-green); letter-spacing: 0.04em;
     }
-    .wallet-filter-bar { justify-content: flex-start; margin: 8px 0 16px; overflow-x: auto; }
+    .wallet-filter-bar {
+      justify-content: flex-start; margin: 8px 0 16px;
+      flex-wrap: wrap; overflow: visible;
+    }
     .wallet-filter-btn, .held-toggle { white-space: nowrap; }
     .wallet-filter-btn.active, .held-toggle.active, .action-btn.share-btn.copied { border-color: rgba(26,122,74,0.35); background: var(--tally-green-light); color: var(--tally-green); }
 
-    .wallet-list { display: flex; flex-direction: column; gap: 8px; }
+    .wallet-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 
     .wallet-row {
       background: var(--white); border: 1px solid var(--border);
       border-radius: 14px; padding: 12px 14px;
-      display: grid; grid-template-columns: 38px minmax(0, 1fr) auto;
-      align-items: center; gap: 12px;
+      display: grid; grid-template-columns: 38px minmax(0, 1fr);
+      align-items: start; gap: 12px;
       min-height: 70px;
     }
     .card-badge {
@@ -683,7 +694,11 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       border-color: rgba(26,122,74,0.35);
       background: var(--tally-green-light);
     }
-    .program-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+    .program-actions {
+      grid-column: 1 / -1; width: 100%; display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(150px, 0.75fr);
+      align-items: stretch; gap: 8px; min-width: 0;
+    }
     .held-toggle { background: var(--surface); }
     .held-status-chip {
       display: inline-flex;
@@ -703,6 +718,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     .quick-add {
       grid-column: 1 / -1;
       display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px;
+      scroll-margin-bottom: 140px;
     }
     .qa-btn {
       background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2);
@@ -746,6 +762,11 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.2);
       border-radius: 10px; padding: 12px 16px;
       font-size: 13px; color: var(--tally-green); line-height: 1.5; text-align: left;
+    }
+    .summary-note span { display: block; }
+    .filter-reset-btn {
+      margin-top: 10px; background: var(--white); border-color: rgba(26,122,74,0.25);
+      color: var(--tally-green);
     }
 
     .goal-section { padding: 4px 0 8px; }
@@ -932,22 +953,22 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--text3); letter-spacing: 0.06em; text-align: center;
     }
-    @media (min-width: 760px) {
-      .wallet-row { grid-template-columns: 38px minmax(220px, 1fr) minmax(240px, auto); }
+    @media (min-width: 900px) {
+      .wallet-row {
+        grid-template-columns: 38px minmax(260px, 1fr) minmax(320px, auto);
+        align-items: center;
+      }
+      .program-actions {
+        grid-column: auto; width: auto; display: flex;
+        align-items: center; justify-content: flex-end;
+      }
+      .input-wrap { min-width: 150px; align-items: flex-end; }
+      .balance-control-row { justify-content: flex-end; }
+      .balance-input { width: 102px; text-align: right; }
       .quick-add { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
     }
-    @media (max-width: 720px) {
-      .wallet-row {
-        grid-template-columns: 38px minmax(0, 1fr);
-        align-items: start;
-      }
-      .wallet-filter-bar { flex-direction: row; }
+    @media (max-width: 899px) {
       .wallet-filter-btn { flex: 0 0 auto; }
-      .program-actions {
-        grid-column: 1 / -1; width: 100%; display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(126px, 0.8fr);
-        align-items: stretch;
-      }
       .input-wrap {
         width: 100%; min-width: 0; align-items: stretch;
       }
@@ -960,6 +981,7 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       .quick-add { gap: 5px; }
       .qa-btn { flex: 1 1 calc(50% - 6px); }
     }
+    @media (max-width:560px){.program-actions{grid-template-columns:1fr}.row-value{text-align:left}}
     @media (max-width: 520px) {
       .at-risk-banner { align-items: flex-start; flex-wrap: wrap; }
       .arb-action { width: 100%; }
@@ -972,7 +994,6 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
       .wallet-filter-bar { flex-direction: row; }
       .action-btn { max-width: none; }
     }
-    @media (max-width:430px){.program-actions{grid-template-columns:1fr}.row-value{text-align:left}}
   `]
 })
 export class WalletComponent {

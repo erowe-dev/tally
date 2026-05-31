@@ -69,7 +69,8 @@ interface NavItem { id: NavTab; label: string; icon: string; }
       position: absolute; top: -4px; right: -8px;
       background: var(--tally-red); color: var(--on-accent);
       font-family: 'Geist Mono', monospace; font-size: 9px;
-      width: 15px; height: 15px; border-radius: 50%;
+      min-width: 16px; width: auto; height: 16px; border-radius: 999px;
+      padding: 0 4px; box-sizing: border-box;
       display: flex; align-items: center; justify-content: center;
     }
 

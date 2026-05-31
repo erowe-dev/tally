@@ -381,6 +381,7 @@ interface TabChangeOptions {
     .expiry-ribbon-text {
       flex: 1; font-family: 'Geist', sans-serif; font-size: 12px;
       color: var(--tally-red, #dc2626); font-weight: 500; text-align: left;
+      min-width: 0; overflow-wrap: anywhere; line-height: 1.35;
     }
     .expiry-ribbon-arrow {
       font-size: 14px; color: var(--tally-red, #dc2626); flex-shrink: 0;

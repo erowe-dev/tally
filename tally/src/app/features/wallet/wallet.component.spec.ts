@@ -220,6 +220,23 @@ describe('WalletComponent', () => {
     expect(options.map(option => option.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false']);
   });
 
+  it('offers a way out when the Mine filter is empty', () => {
+    const component = createComponent();
+    component.setWalletProgramFilter('held');
+
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.wallet-row').length).toBe(0);
+    const reset = fixture.nativeElement.querySelector('.filter-reset-btn') as HTMLButtonElement;
+    expect(reset.textContent).toContain('Show all programs');
+
+    reset.click();
+    fixture.detectChanges();
+
+    expect(component.walletProgramFilter()).toBe('all');
+    expect(fixture.nativeElement.querySelectorAll('.wallet-row').length).toBe(2);
+  });
+
   it('wires quick-add disclosure controls to the expanded panel', () => {
     const component = createComponent();
 

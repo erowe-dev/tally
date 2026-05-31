@@ -1267,7 +1267,8 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .howto-link {
       display: inline-block; font-family: 'Geist Mono', monospace; font-size: 10px;
       color: var(--tally-green); letter-spacing: 0.04em;
-      text-decoration: none; margin-top: 4px;
+      text-decoration: none; margin-top: 4px; max-width: 100%;
+      overflow-wrap: anywhere; word-break: break-word;
     }
     .save-btn:hover { border-color: var(--tally-green); color: var(--tally-green); }
     .save-btn.saved { border-color: var(--tally-green); color: var(--tally-green); background: var(--tally-green-light); }
