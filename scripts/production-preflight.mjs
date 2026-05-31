@@ -18,6 +18,7 @@ const checks = [
   { label: 'Runbook documents schema-aware health', run: checkRunbookHealthContract },
   { label: 'Service worker does not cache authenticated API reads', run: checkServiceWorkerApiCache },
   { label: 'Vercel app routing serves Angular shell at root', run: checkVercelAppConfig },
+  { label: 'Vercel deploy upload excludes local build artifacts', run: checkVercelIgnore },
   { label: 'Landing page remains invite-only', run: checkLandingInviteOnly },
   { label: 'Vercel API function routing exists', run: checkVercelApiConfig },
   { label: 'Observability config is explicit', run: checkObservabilityConfig },
@@ -154,6 +155,13 @@ function checkVercelAppConfig() {
     'repo-root vercel.json must fall back to /index.html for the Angular app shell',
   );
   assertAppVercelHeaders(rootConfig, rootConfigPath);
+}
+
+function checkVercelIgnore() {
+  const ignore = read('.vercelignore').split(/\r?\n/);
+  for (const entry of ['api', 'tally/node_modules', 'tally/dist', 'tally/browser', '.git', '.vercel']) {
+    assert(ignore.includes(entry), `.vercelignore must exclude ${entry}`);
+  }
 }
 
 function assertAppVercelHeaders(config, configPath) {

@@ -167,6 +167,8 @@ npm run check:deploy:fresh
 
 `check:deploy:fresh` compares the live app/API aliases against the latest commits that affect each surface. It should pass before calling a release done; if it fails, production is still serving an older deployment even if smoke checks pass against that older build.
 
+The Vercel app project root directory should be `tally`. Manual app deploys should be run from the repository root so the root `.vercelignore` prevents local build artifacts and API dependencies from being uploaded.
+
 For a personal signed-in API smoke by itself, provide an Auth0 access token and email:
 
 ```powershell

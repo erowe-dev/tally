@@ -5,13 +5,17 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const teamId = process.env.TALLY_VERCEL_TEAM_ID ?? 'team_jdcUPNYX4V3zsoeFSLSCkLtx';
 const toleranceMs = Number(process.env.TALLY_DEPLOY_FRESHNESS_TOLERANCE_MS ?? 120_000);
 
 const targets = [
   {
     label: 'App',
     url: process.env.TALLY_APP_URL ?? 'https://tally-theta-two.vercel.app',
+    projectId: process.env.TALLY_APP_PROJECT_ID ?? 'prj_SvxfAHWhMTnJxHwhJcfkzwbN9yzn',
+    expectedRootDirectory: 'tally',
     paths: [
+      '.vercelignore',
       'tally/angular.json',
       'tally/ngsw-config.json',
       'tally/package.json',
@@ -23,6 +27,7 @@ const targets = [
   {
     label: 'API',
     url: process.env.TALLY_API_URL ?? 'https://tally-api-theta.vercel.app',
+    projectId: process.env.TALLY_API_PROJECT_ID ?? 'prj_YDaGg8AXfjdWi6KlN0qj6GP6lyp0',
     paths: [
       'api/package.json',
       'api/prisma',
@@ -39,6 +44,7 @@ console.log('');
 
 for (const target of targets) {
   try {
+    assertProjectSettings(target);
     const latestCommit = latestCommitFor(target.paths);
     const deployment = inspectDeployment(target.url);
     const deployedAt = new Date(deployment.createdAt);
@@ -72,6 +78,23 @@ if (failures > 0) {
 }
 
 console.log('All deployment freshness checks passed.');
+
+function assertProjectSettings(target) {
+  if (!target.expectedRootDirectory) return;
+
+  const result = run('npx', [
+    'vercel',
+    'api',
+    `/v9/projects/${target.projectId}?teamId=${teamId}`,
+    '--raw',
+  ]);
+  const project = JSON.parse(extractFirstJsonObject(result));
+  if (project.rootDirectory !== target.expectedRootDirectory) {
+    throw new Error(
+      `Expected Vercel project rootDirectory ${JSON.stringify(target.expectedRootDirectory)}, got ${JSON.stringify(project.rootDirectory)}`,
+    );
+  }
+}
 
 function latestCommitFor(paths) {
   const result = run('git', ['log', '-1', '--format=%H%x09%ct', '--', ...paths]);
