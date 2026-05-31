@@ -68,6 +68,17 @@ const checks = [
     run: async () => {
       const existing = await request('/api/preferences');
       try {
+        await expectHttpError(
+          '/api/preferences',
+          {
+            method: 'PUT',
+            body: JSON.stringify({
+              ...(existing ?? {}),
+              preferredPrograms: ['unknown_program'],
+            }),
+          },
+          400,
+        );
         const updated = await request('/api/preferences', {
           method: 'PUT',
           body: JSON.stringify({
@@ -164,6 +175,21 @@ const checks = [
       assert(Array.isArray(response.results) && response.results.length > 0, `expected provider results, got ${JSON.stringify(response)}`);
       assert(headers.get('x-ratelimit-limit') === '30', 'expected provider search rate limit header');
       assert(headers.get('x-ratelimit-remaining'), 'expected provider search remaining rate limit header');
+      await expectHttpError('/api/search/award-availability', {
+        method: 'POST',
+        body: JSON.stringify({
+          originAirport: 'ORD',
+          destinationAirport: 'NRT',
+          cabin: 'business',
+          passengers: 1,
+          dateWindow: {
+            startDate: localDateString(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+            endDate: localDateString(new Date(Date.now() + 37 * 24 * 60 * 60 * 1000)),
+            flexibility: 'plus_minus_7',
+          },
+          programs: ['unknown_program'],
+        }),
+      }, 400);
     },
   },
   {

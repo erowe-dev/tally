@@ -3,7 +3,7 @@ import type { Prisma, UserPreference } from '@prisma/client';
 import { checkJwt, getAuth0Id, jwtErrorHandler } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser } from '../lib/route-helpers';
-import { KNOWN_PROGRAM_IDS, KNOWN_PROGRAM_ID_SET } from '../lib/program-ids';
+import { KNOWN_PROGRAM_IDS, knownProgramIdsFromJson, parseProgramIdArray } from '../lib/program-ids';
 
 const router = Router();
 
@@ -114,7 +114,7 @@ function parsePreferences(body: Record<string, unknown>): ParseResult<{
   }
 
   if ('preferredPrograms' in body) {
-    const programs = parseStringArray(body['preferredPrograms'], 30, false);
+    const programs = parseProgramIdArray(body['preferredPrograms'], MAX_HELD_PROGRAMS);
     if ('error' in programs) return programs;
     data.preferredPrograms = programs.data;
   }
@@ -159,8 +159,8 @@ function toPreferenceDto(preferences: UserPreference) {
     homeAirports: asStringArray(preferences.homeAirports),
     preferredCabin: preferences.preferredCabin ?? 'business',
     maxStops: preferences.maxStops ?? 1,
-    preferredPrograms: asStringArray(preferences.preferredPrograms),
-    heldProgramIds: asStringArray(preferences.heldProgramIds),
+    preferredPrograms: knownProgramIdsFromJson(preferences.preferredPrograms),
+    heldProgramIds: knownProgramIdsFromJson(preferences.heldProgramIds),
     hotelChains: asStringArray(preferences.hotelChains),
     defaultTravelers: preferences.defaultTravelers ?? 1,
     dateFlexibility: preferences.dateFlexibility ?? 'plus_minus_3',
@@ -214,13 +214,10 @@ function parseStringArray(value: unknown, maxItems: number, iataOnly: boolean): 
 }
 
 function parseKnownProgramIds(value: unknown): ParseResult<string[]> {
-  const parsed = parseStringArray(value, MAX_HELD_PROGRAMS, false);
-  if ('error' in parsed) return parsed;
-
-  const unknown = parsed.data.find(id => !KNOWN_PROGRAM_ID_SET.has(id));
-  if (unknown) return { error: `Unknown held program id: ${unknown}` };
-
-  return parsed;
+  const parsed = parseProgramIdArray(value, MAX_HELD_PROGRAMS);
+  return 'error' in parsed
+    ? { error: parsed.error.replace('Unknown program id:', 'Unknown held program id:') }
+    : parsed;
 }
 
 function asStringArray(value: Prisma.JsonValue): string[] {

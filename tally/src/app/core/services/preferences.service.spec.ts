@@ -44,11 +44,13 @@ describe('PreferencesService', () => {
 
   it('loads and sanitizes held program ids from local storage', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      preferredPrograms: ['amex_mr', 'unknown_program', 'amex_mr', 42, 'hyatt'],
       heldProgramIds: ['hyatt', 'hyatt', '', 42, 'unknown_program', 'amex_mr'],
     }));
 
     const service = TestBed.inject(PreferencesService);
 
+    expect(service.preferences().preferredPrograms).toEqual(['amex_mr', 'hyatt']);
     expect(service.preferences().heldProgramIds).toEqual(['hyatt', 'amex_mr']);
   });
 
@@ -58,11 +60,17 @@ describe('PreferencesService', () => {
     auth.isProvisioned.set(true);
     const service = TestBed.inject(PreferencesService);
 
-    service.updatePreferences({ heldProgramIds: ['chase_ur', 'chase_ur', 'hyatt'] });
+    service.updatePreferences({
+      preferredPrograms: ['unknown_program', 'chase_ur', 'hyatt', 'chase_ur'],
+      heldProgramIds: ['chase_ur', 'chase_ur', 'hyatt'],
+    });
 
+    expect(service.preferences().preferredPrograms).toEqual(['chase_ur', 'hyatt']);
     expect(service.preferences().heldProgramIds).toEqual(['chase_ur', 'hyatt']);
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}').preferredPrograms).toEqual(['chase_ur', 'hyatt']);
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}').heldProgramIds).toEqual(['chase_ur', 'hyatt']);
     expect(api.savePreferences).toHaveBeenCalledWith(jasmine.objectContaining({
+      preferredPrograms: ['chase_ur', 'hyatt'],
       heldProgramIds: ['chase_ur', 'hyatt'],
     }));
   });

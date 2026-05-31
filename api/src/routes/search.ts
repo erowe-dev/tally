@@ -7,6 +7,7 @@ import { prisma } from '../lib/prisma';
 import { asyncRoute, requireUser } from '../lib/route-helpers';
 import { dateWindowFromLooseFields, parseDateWindow } from '../lib/date-window';
 import { createFixedWindowRateLimiter } from '../lib/fixed-window-rate-limit';
+import { parseProgramIdArray } from '../lib/program-ids';
 
 const router = Router();
 
@@ -186,7 +187,8 @@ function normalizeAwardRequest(value: unknown): ParseResult<JsonObject> {
     rejectPastStartDate: true,
   });
   if ('error' in dateWindow) return { error: dateWindow.error };
-  const programs = normalizeStringList(body['programs'], 20);
+  const programs = normalizeProgramIds(body['programs']);
+  if ('error' in programs) return { error: programs.error };
 
   return {
     data: {
@@ -195,7 +197,7 @@ function normalizeAwardRequest(value: unknown): ParseResult<JsonObject> {
       cabin,
       passengers,
       dateWindow: dateWindow.data,
-      programs,
+      programs: programs.data,
     },
   };
 }
@@ -360,4 +362,9 @@ function normalizeStringList(value: unknown, maxItems: number): string[] {
     .filter(Boolean)
     .slice(0, maxItems);
   return [...new Set(strings)];
+}
+
+function normalizeProgramIds(value: unknown): ParseResult<string[]> {
+  if (value === undefined || value === null) return { data: [] };
+  return parseProgramIdArray(value);
 }

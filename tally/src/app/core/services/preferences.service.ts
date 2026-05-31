@@ -217,7 +217,7 @@ function sanitizePreferences(value: Partial<UserPreference>): UserPreference {
     maxStops: value.maxStops === 0 || value.maxStops === 1 || value.maxStops === 2
       ? value.maxStops
       : DEFAULT_PREFERENCES.maxStops,
-    preferredPrograms: uniqueStringArray(value.preferredPrograms).slice(0, 20),
+    preferredPrograms: uniqueStringArray(value.preferredPrograms).filter(id => KNOWN_PROGRAM_IDS.has(id)),
     heldProgramIds: uniqueStringArray(value.heldProgramIds).filter(id => KNOWN_PROGRAM_IDS.has(id)),
     hotelChains: uniqueStringArray(value.hotelChains).slice(0, 20),
     defaultTravelers: clampInteger(value.defaultTravelers, 1, 9, DEFAULT_PREFERENCES.defaultTravelers),
