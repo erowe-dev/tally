@@ -120,19 +120,29 @@ function checkVercelApiConfig() {
 }
 
 function checkObservabilityConfig() {
-  const envFiles = [
-    'tally/src/environments/environment.ts',
-    'tally/src/environments/environment.production.ts',
-  ];
-  for (const file of envFiles) {
-    const text = read(file);
-    assert(text.includes('analytics:'), `${file} missing analytics config`);
-    assert(text.includes('errorReporting:'), `${file} missing errorReporting config`);
-  }
+  const devEnv = read('tally/src/environments/environment.ts');
+  assert(devEnv.includes('analytics:'), 'dev environment missing analytics config');
+  assert(devEnv.includes('errorReporting:'), 'dev environment missing errorReporting config');
+
+  const prodEnv = read('tally/src/environments/environment.production.ts');
+  assert(prodEnv.includes('analytics:'), 'production environment missing analytics config');
+  assert(prodEnv.includes('errorReporting:'), 'production environment missing errorReporting config');
+  assert(/analytics:\s*{[\s\S]*?enabled:\s*true/.test(prodEnv), 'production analytics must be enabled');
+  assert(/errorReporting:\s*{[\s\S]*?enabled:\s*true/.test(prodEnv), 'production error reporting must be enabled');
+  assert(
+    prodEnv.includes("endpoint: 'https://tally-api-theta.vercel.app/api/telemetry/analytics'"),
+    'production analytics endpoint must target the telemetry API',
+  );
+  assert(
+    prodEnv.includes("endpoint: 'https://tally-api-theta.vercel.app/api/telemetry/errors'"),
+    'production error reporting endpoint must target the telemetry API',
+  );
 
   const apiText = read('api/src/index.ts');
   assert(apiText.includes('X-Request-Id'), 'API must emit X-Request-Id');
   assert(apiText.includes('service: \'tally-api\''), 'API health must identify service name');
+  assert(apiText.includes("app.use('/api/telemetry'"), 'API must mount telemetry routes');
+  assert(existsSync(join(root, 'api/src/routes/telemetry.ts')), 'telemetry route file is missing');
 }
 
 function checkNoHostListenerDecorator() {
