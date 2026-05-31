@@ -12,6 +12,7 @@ type SpendCat = 'travel' | 'dining' | 'groceries' | 'gas' | 'online' | 'general'
 
 const CARD_UI_STATE_KEY = 'tally_cards_ui_v1';
 const CARD_SEARCH_STATE_KEY = 'tally_cards_search_session_v1';
+const MAX_CARD_SEARCH_LENGTH = 80;
 interface CardUiState {
   activeCat?: CatFilter;
   cardSort?: CardSortMode;
@@ -1352,27 +1353,35 @@ export class CardsComponent {
     try {
       const raw = localStorage.getItem(CARD_UI_STATE_KEY);
       if (!raw) return {};
-      const parsed = JSON.parse(raw) as CardUiState;
-      return {
-        activeCat: this.isCatFilter(parsed.activeCat) ? parsed.activeCat : undefined,
-        cardSort: this.isCardSortMode(parsed.cardSort) ? parsed.cardSort : undefined,
-        greatOnly: typeof parsed.greatOnly === 'boolean' ? parsed.greatOnly : undefined,
-        showHeldOnly: typeof parsed.showHeldOnly === 'boolean' ? parsed.showHeldOnly : undefined,
-      };
+      const parsed = JSON.parse(raw) as unknown;
+      const sanitized = this.sanitizeUiState(parsed);
+      this.saveUiState(sanitized);
+      return sanitized;
     } catch {
       return {};
     }
   }
 
+  private sanitizeUiState(value: unknown): CardUiState {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    const parsed = value as CardUiState;
+    return {
+        activeCat: this.isCatFilter(parsed.activeCat) ? parsed.activeCat : undefined,
+        cardSort: this.isCardSortMode(parsed.cardSort) ? parsed.cardSort : undefined,
+        greatOnly: typeof parsed.greatOnly === 'boolean' ? parsed.greatOnly : undefined,
+        showHeldOnly: typeof parsed.showHeldOnly === 'boolean' ? parsed.showHeldOnly : undefined,
+    };
+  }
+
   private saveUiState(state: CardUiState): void {
     try {
-      localStorage.setItem(CARD_UI_STATE_KEY, JSON.stringify(state));
+      localStorage.setItem(CARD_UI_STATE_KEY, JSON.stringify(this.sanitizeUiState(state)));
     } catch {}
   }
 
   private loadSearchState(): string {
     try {
-      return sessionStorage.getItem(CARD_SEARCH_STATE_KEY) ?? '';
+      return this.cleanSearchText(sessionStorage.getItem(CARD_SEARCH_STATE_KEY));
     } catch {
       return '';
     }
@@ -1380,9 +1389,14 @@ export class CardsComponent {
 
   private saveSearchState(value: string): void {
     try {
-      if (value) sessionStorage.setItem(CARD_SEARCH_STATE_KEY, value);
+      const clean = this.cleanSearchText(value);
+      if (clean) sessionStorage.setItem(CARD_SEARCH_STATE_KEY, clean);
       else sessionStorage.removeItem(CARD_SEARCH_STATE_KEY);
     } catch {}
+  }
+
+  private cleanSearchText(value: unknown): string {
+    return typeof value === 'string' ? value.trim().slice(0, MAX_CARD_SEARCH_LENGTH) : '';
   }
 
   private isCatFilter(value: unknown): value is CatFilter {

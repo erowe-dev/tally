@@ -107,6 +107,31 @@ describe('CardsComponent', () => {
     expect(component.filteredCards().length).toBe(2);
   });
 
+  it('rewrites malformed stored UI state and trims transient search text', () => {
+    localStorage.setItem(UI_KEY, JSON.stringify({
+      activeCat: 'transferable',
+      cardSort: 'bogus',
+      greatOnly: 'yes',
+      showHeldOnly: false,
+      extra: 'ignored',
+    }));
+    sessionStorage.setItem(SEARCH_KEY, `  ${'hyatt'.repeat(30)}  `);
+
+    const component = createComponent();
+
+    expect(component.activeCat()).toBe('transferable');
+    expect(component.cardSort()).toBe('default');
+    expect(component.greatOnly()).toBeFalse();
+    expect(component.showHeldOnly()).toBeFalse();
+    expect(component.searchRaw().length).toBe(80);
+    expect(JSON.parse(localStorage.getItem(UI_KEY) ?? '{}')).toEqual({
+      activeCat: 'transferable',
+      cardSort: 'default',
+      greatOnly: false,
+      showHeldOnly: false,
+    });
+  });
+
   it('includes held zero-balance programs in the Mine filter', () => {
     prefs.preferences.set({ heldProgramIds: ['hyatt'] });
     localStorage.setItem(UI_KEY, JSON.stringify({ showHeldOnly: true }));
