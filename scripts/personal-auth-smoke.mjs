@@ -30,14 +30,17 @@ const checks = [
   {
     name: 'Balance write survives authenticated read',
     run: async () => {
-      await request(`/api/balances/${smokeCardId}`, { method: 'DELETE' });
-      await request(`/api/balances/${smokeCardId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ amount: 12345 }),
-      });
-      const balances = await request('/api/balances');
-      assert(balances[smokeCardId] === 12345, `expected smoke balance, got ${JSON.stringify(balances)}`);
-      await request(`/api/balances/${smokeCardId}`, { method: 'DELETE' });
+      try {
+        await request(`/api/balances/${smokeCardId}`, { method: 'DELETE' });
+        await request(`/api/balances/${smokeCardId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ amount: 12345 }),
+        });
+        const balances = await request('/api/balances');
+        assert(balances[smokeCardId] === 12345, `expected smoke balance, got ${JSON.stringify(balances)}`);
+      } finally {
+        await request(`/api/balances/${smokeCardId}`, { method: 'DELETE' });
+      }
       const afterDelete = await request('/api/balances');
       assert(!(smokeCardId in afterDelete), `expected smoke balance to be deleted, got ${JSON.stringify(afterDelete)}`);
     },
@@ -46,64 +49,75 @@ const checks = [
     name: 'Preferences save/read covers held programs',
     run: async () => {
       const existing = await request('/api/preferences');
-      const updated = await request('/api/preferences', {
-        method: 'PUT',
-        body: JSON.stringify({
-          ...(existing ?? {}),
-          homeAirports: ['ORD'],
-          preferredCabin: 'business',
-          maxStops: 1,
-          preferredPrograms: ['amex_mr'],
-          heldProgramIds: ['amex_mr', 'hyatt', 'hyatt'],
-          hotelChains: ['hyatt'],
-          defaultTravelers: 2,
-          dateFlexibility: 'plus_minus_3',
-          pointValuationCpp: 1.7,
-        }),
-      });
-      assert(
-        JSON.stringify(updated.heldProgramIds) === JSON.stringify(['amex_mr', 'hyatt']),
-        `expected deduped held programs, got ${JSON.stringify(updated)}`,
-      );
+      try {
+        const updated = await request('/api/preferences', {
+          method: 'PUT',
+          body: JSON.stringify({
+            ...(existing ?? {}),
+            homeAirports: ['ORD'],
+            preferredCabin: 'business',
+            maxStops: 1,
+            preferredPrograms: ['amex_mr'],
+            heldProgramIds: ['amex_mr', 'hyatt', 'hyatt'],
+            hotelChains: ['hyatt'],
+            defaultTravelers: 2,
+            dateFlexibility: 'plus_minus_3',
+            pointValuationCpp: 1.7,
+          }),
+        });
+        assert(
+          JSON.stringify(updated.heldProgramIds) === JSON.stringify(['amex_mr', 'hyatt']),
+          `expected deduped held programs, got ${JSON.stringify(updated)}`,
+        );
 
-      const reread = await request('/api/preferences');
-      assert(reread?.preferredCabin === 'business', `expected saved preferences, got ${JSON.stringify(reread)}`);
+        const reread = await request('/api/preferences');
+        assert(reread?.preferredCabin === 'business', `expected saved preferences, got ${JSON.stringify(reread)}`);
+      } finally {
+        await request('/api/preferences', {
+          method: 'PUT',
+          body: JSON.stringify(existing ?? {}),
+        });
+      }
     },
   },
   {
     name: 'Saved searches create/edit/delete survives authenticated reads',
     run: async () => {
-      const created = await request('/api/searches', {
-        method: 'POST',
-        body: JSON.stringify({
-          searchType: 'flight',
-          originAirport: 'ORD',
-          destinationAirport: 'NRT',
-          destinationText: 'Tokyo',
-          dateWindow: {
-            startDate: localDateString(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
-            endDate: localDateString(new Date(Date.now() + 21 * 24 * 60 * 60 * 1000)),
-            flexibility: 'plus_minus_3',
-          },
-          cabin: 'business',
-          passengers: 1,
-          notes: 'created by personal-auth-smoke',
-        }),
-      });
-      assert(typeof created.id === 'string', `expected saved search id, got ${JSON.stringify(created)}`);
+      let createdId = '';
+      try {
+        const created = await request('/api/searches', {
+          method: 'POST',
+          body: JSON.stringify({
+            searchType: 'flight',
+            originAirport: 'ORD',
+            destinationAirport: 'NRT',
+            destinationText: 'Tokyo',
+            dateWindow: {
+              startDate: localDateString(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
+              endDate: localDateString(new Date(Date.now() + 21 * 24 * 60 * 60 * 1000)),
+              flexibility: 'plus_minus_3',
+            },
+            cabin: 'business',
+            passengers: 1,
+            notes: 'created by personal-auth-smoke',
+          }),
+        });
+        assert(typeof created.id === 'string', `expected saved search id, got ${JSON.stringify(created)}`);
+        createdId = created.id;
 
-      const updatedNotes = `updated ${Date.now()}`;
-      await request(`/api/searches/${created.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ notes: updatedNotes, lastRunAt: new Date().toISOString() }),
-      });
-      const searchesAfterPatch = await request('/api/searches');
-      const patched = searchesAfterPatch.find(search => search.id === created.id);
-      assert(patched?.notes === updatedNotes, `expected patched saved search, got ${JSON.stringify(searchesAfterPatch)}`);
-
-      await request(`/api/searches/${created.id}`, { method: 'DELETE' });
+        const updatedNotes = `updated ${Date.now()}`;
+        await request(`/api/searches/${createdId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ notes: updatedNotes, lastRunAt: new Date().toISOString() }),
+        });
+        const searchesAfterPatch = await request('/api/searches');
+        const patched = searchesAfterPatch.find(search => search.id === createdId);
+        assert(patched?.notes === updatedNotes, `expected patched saved search, got ${JSON.stringify(searchesAfterPatch)}`);
+      } finally {
+        if (createdId) await request(`/api/searches/${createdId}`, { method: 'DELETE' });
+      }
       const searchesAfterDelete = await request('/api/searches');
-      assert(!searchesAfterDelete.some(search => search.id === created.id), 'expected smoke saved search to be deleted');
+      assert(!searchesAfterDelete.some(search => search.id === createdId), 'expected smoke saved search to be deleted');
     },
   },
   {
@@ -132,13 +146,16 @@ const checks = [
     name: 'Expiry write/delete survives authenticated reads',
     run: async () => {
       const today = localDateString();
-      await request(`/api/expiry/${smokeCardId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ lastActivityDate: today }),
-      });
-      const records = await request('/api/expiry');
-      assert(records[smokeCardId]?.lastActivityDate === today, `expected smoke expiry, got ${JSON.stringify(records)}`);
-      await request(`/api/expiry/${smokeCardId}`, { method: 'DELETE' });
+      try {
+        await request(`/api/expiry/${smokeCardId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ lastActivityDate: today }),
+        });
+        const records = await request('/api/expiry');
+        assert(records[smokeCardId]?.lastActivityDate === today, `expected smoke expiry, got ${JSON.stringify(records)}`);
+      } finally {
+        await request(`/api/expiry/${smokeCardId}`, { method: 'DELETE' });
+      }
       const afterDelete = await request('/api/expiry');
       assert(!afterDelete[smokeCardId], `expected smoke expiry to be deleted, got ${JSON.stringify(afterDelete)}`);
     },
@@ -146,33 +163,37 @@ const checks = [
   {
     name: 'Trip create/edit/delete survives authenticated reads',
     run: async () => {
-      const created = await request('/api/trips', {
-        method: 'POST',
-        body: JSON.stringify({
-          tripType: 'flight',
-          origin: 'ORD',
-          destination: 'NRT',
-          cabin: 'business',
-          passengers: 1,
-          programName: 'Codex Smoke Trip',
-          ptsRequired: 75000,
-          notes: 'created by personal-auth-smoke',
-        }),
-      });
-      assert(typeof created.id === 'string', `expected created trip id, got ${JSON.stringify(created)}`);
+      let createdId = '';
+      try {
+        const created = await request('/api/trips', {
+          method: 'POST',
+          body: JSON.stringify({
+            tripType: 'flight',
+            origin: 'ORD',
+            destination: 'NRT',
+            cabin: 'business',
+            passengers: 1,
+            programName: 'Codex Smoke Trip',
+            ptsRequired: 75000,
+            notes: 'created by personal-auth-smoke',
+          }),
+        });
+        assert(typeof created.id === 'string', `expected created trip id, got ${JSON.stringify(created)}`);
+        createdId = created.id;
 
-      const updatedNotes = `updated ${Date.now()}`;
-      await request(`/api/trips/${created.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ notes: updatedNotes }),
-      });
-      const tripsAfterPatch = await request('/api/trips');
-      const patched = tripsAfterPatch.find(trip => trip.id === created.id);
-      assert(patched?.notes === updatedNotes, `expected patched trip, got ${JSON.stringify(tripsAfterPatch)}`);
-
-      await request(`/api/trips/${created.id}`, { method: 'DELETE' });
+        const updatedNotes = `updated ${Date.now()}`;
+        await request(`/api/trips/${createdId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ notes: updatedNotes }),
+        });
+        const tripsAfterPatch = await request('/api/trips');
+        const patched = tripsAfterPatch.find(trip => trip.id === createdId);
+        assert(patched?.notes === updatedNotes, `expected patched trip, got ${JSON.stringify(tripsAfterPatch)}`);
+      } finally {
+        if (createdId) await request(`/api/trips/${createdId}`, { method: 'DELETE' });
+      }
       const tripsAfterDelete = await request('/api/trips');
-      assert(!tripsAfterDelete.some(trip => trip.id === created.id), 'expected smoke trip to be deleted');
+      assert(!tripsAfterDelete.some(trip => trip.id === createdId), 'expected smoke trip to be deleted');
     },
   },
 ];
