@@ -7,6 +7,7 @@ const USER_DATA_KEYS = [
   'tally_expiry_pending_v1',
   'tally_expiry_v1',
   'tally_home_airport_v1',
+  'tally_preferences_pending_v1',
   'tally_preferences_v1',
   'tally_route_history_v1',
   'tally_route_templates_v1',
