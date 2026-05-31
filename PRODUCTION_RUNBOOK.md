@@ -60,13 +60,13 @@ TALLY_APP_URL=https://<app-host> TALLY_API_URL=https://<api-host> npm run smoke:
 Use Vercel for both the Angular app and the API:
 
 - Angular app: production project currently prepares the Angular output into `tally/landing/browser`, output `browser`, production app URL currently `https://tally-theta-two.vercel.app`.
-- Root fallback: committed `vercel.json`, `tally/vercel.json`, and `tally/landing/vercel.json` mirror routing/header rules so Vercel serves the prepared `browser` output from the configured project root.
+- Root fallback: committed `vercel.json` mirrors `tally/vercel.json` so Vercel serves the prepared `browser` output from the configured project root.
 - API: root directory `api/`, Vercel Functions, production API URL `https://tally-api-theta.vercel.app`.
 
 Dashboard setup:
 
 1. Open Vercel team `erowe-dev's projects`.
-2. Confirm project `tally` has Output Directory `browser`; if Root Directory is `tally/landing`, keep `tally/landing/vercel.json` in sync with the app/root Vercel configs.
+2. Confirm project `tally` has Output Directory `browser`; if Root Directory or build-command behavior changes, rerun `npm run smoke:release` before sharing the app URL.
 3. Confirm project `tally-api` has Root Directory `api`.
 4. Confirm the API project uses the committed `api/vercel.json` function routing.
 5. Add the API environment variables below before the first API deploy.

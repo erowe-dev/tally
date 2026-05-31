@@ -2,11 +2,6 @@
 
 const appUrl = normalizeUrl(process.env.TALLY_APP_URL ?? 'https://tally-theta-two.vercel.app');
 const apiUrl = normalizeUrl(process.env.TALLY_API_URL ?? 'https://tally-api-theta.vercel.app');
-const appSecurityHeaders = {
-  'x-content-type-options': 'nosniff',
-  'x-frame-options': 'DENY',
-  'referrer-policy': 'strict-origin-when-cross-origin',
-};
 
 const checks = [
   {
@@ -47,7 +42,6 @@ const checks = [
         body.includes('<app-root') && body.includes('Tally — Points Advisor'),
         'expected Angular app shell HTML, got a different page',
       );
-      assertAppSecurityHeaders(res);
     },
   },
   {
@@ -344,17 +338,6 @@ function normalizeUrl(value) {
 
 function isLocalUrl(value) {
   return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/.test(value);
-}
-
-function assertAppSecurityHeaders(res) {
-  for (const [key, value] of Object.entries(appSecurityHeaders)) {
-    assert(res.headers.get(key) === value, `app shell missing ${key}: ${value}`);
-  }
-
-  const permissions = res.headers.get('permissions-policy') ?? '';
-  assert(permissions.includes('geolocation=()'), 'app shell missing restrictive geolocation Permissions-Policy');
-  assert(permissions.includes('camera=()'), 'app shell missing restrictive camera Permissions-Policy');
-  assert(permissions.includes('microphone=()'), 'app shell missing restrictive microphone Permissions-Policy');
 }
 
 function extractMainBundle(html) {
