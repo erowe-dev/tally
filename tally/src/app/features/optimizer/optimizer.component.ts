@@ -781,7 +781,8 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
               <li *ngFor="let step of getHowToSteps(rec.program)">{{ step }}</li>
             </ol>
             <a *ngIf="getBookingUrl(rec.program) as url"
-              class="howto-link" [href]="'https://' + url" target="_blank" rel="noopener">
+              class="howto-link" [href]="'https://' + url" target="_blank" rel="noopener noreferrer"
+              [attr.aria-label]="'Open booking guidance for ' + rec.program">
               🌐 {{ url }}
             </a>
           </div>

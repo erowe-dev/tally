@@ -278,5 +278,9 @@ describe('OptimizerComponent', () => {
     expect(howToButton.getAttribute('aria-controls')).toBe(howToId);
     expect(howToButton.getAttribute('aria-expanded')).toBe('true');
     expect(fixture.nativeElement.querySelector(`#${howToId}`)).not.toBeNull();
+
+    const bookingLink = fixture.nativeElement.querySelector('.howto-link') as HTMLAnchorElement;
+    expect(bookingLink.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(bookingLink.getAttribute('aria-label')).toBe('Open booking guidance for Air Canada Aeroplan');
   });
 });

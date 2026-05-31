@@ -36,6 +36,7 @@ const checks = [
   { label: 'No unused Angular starter shell files', run: checkNoStarterShellFiles },
   { label: 'No HostListener/HostBinding decorators in shell/shared components', run: checkNoHostListenerDecorator },
   { label: 'Reduced motion disables continuous UI animation', run: checkReducedMotionGuard },
+  { label: 'External app links use noreferrer with accessible labels', run: checkExternalLinkSafety },
   { label: 'Initial bundle stays under 800 kB when stats are available', run: checkBundleBudget },
 ];
 
@@ -520,6 +521,30 @@ function checkReducedMotionGuard() {
   assert(styles.includes('animation: none !important'), 'reduced-motion guard must disable continuous shared animations');
   assert(styles.includes('transition-duration: 0.01ms !important'), 'reduced-motion guard must shorten transitions');
   assert(styles.includes('.shimmer-skeleton'), 'reduced-motion guard must cover shimmer skeletons');
+}
+
+function checkExternalLinkSafety() {
+  const files = [
+    'tally/src/app/features/expiry/expiry.component.ts',
+    'tally/src/app/features/optimizer/optimizer.component.ts',
+    'tally/src/app/features/sweetspots/sweetspots.component.ts',
+  ];
+
+  const offenders = [];
+  for (const file of files) {
+    const source = read(file);
+    const anchors = [...source.matchAll(/<a\b[\s\S]*?target="_blank"[\s\S]*?>/g)];
+    for (const anchor of anchors) {
+      const tag = anchor[0];
+      const hasSafeRel = /rel="[^"]*\bnoopener\b[^"]*\bnoreferrer\b[^"]*"/.test(tag);
+      const hasLabel = /\baria-label=|\[attr\.aria-label\]=/.test(tag);
+      if (!hasSafeRel || !hasLabel) {
+        offenders.push(`${file}: ${tag.replace(/\s+/g, ' ').trim()}`);
+      }
+    }
+  }
+
+  assert(offenders.length === 0, `unsafe external links found:\n${offenders.join('\n')}`);
 }
 
 function checkBundleBudget() {
