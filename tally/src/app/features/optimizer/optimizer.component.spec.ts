@@ -21,6 +21,7 @@ class MockOptimizerService {
 class MockWalletService {
   hasAnyPoints = signal(false);
   canCover(): boolean { return false; }
+  getCombinedBalance(): number { return 0; }
   getBalance(): number { return 0; }
 }
 

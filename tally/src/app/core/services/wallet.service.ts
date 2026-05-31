@@ -164,9 +164,13 @@ export class WalletService {
     return this._balances()[cardId] ?? 0;
   }
 
+  getCombinedBalance(cardIds: string[]): number {
+    return cardIds.reduce((sum, id) => sum + (this._balances()[id] ?? 0), 0);
+  }
+
   canCover(cardIds: string[], ptsRequired: number): boolean {
     if (!this.hasAnyPoints()) return false;
-    return cardIds.some(id => (this._balances()[id] ?? 0) >= ptsRequired);
+    return this.getCombinedBalance(cardIds) >= ptsRequired;
   }
 
   private _pushLocalToApi(balances: Record<string, number>, clearOnSuccess: boolean): void {

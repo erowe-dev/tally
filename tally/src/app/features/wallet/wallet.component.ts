@@ -164,9 +164,12 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
                   type="button"
                   class="goal-toggle held-toggle"
                   [class.active]="isHeldProgram(card.id)"
+                  [class.balance-backed]="hasBalance(card.id)"
                   [attr.aria-pressed]="isHeldProgram(card.id)"
+                  [attr.aria-label]="heldToggleLabel(card.id, card.name)"
+                  [title]="heldToggleLabel(card.id, card.name)"
                   (click)="toggleHeldProgram(card.id); $event.stopPropagation()">
-                  {{ isHeldProgram(card.id) ? 'Have' : 'I have this' }}
+                  {{ heldToggleText(card.id) }}
                 </button>
                 <div class="input-wrap" (click)="toggleExpand(card.id)">
                   <input
@@ -636,6 +639,10 @@ type WalletProgramFilter = 'all' | 'held' | 'balance';
     }
     .program-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
     .held-toggle { background: var(--surface); }
+    .held-toggle.balance-backed {
+      cursor: default;
+      border-style: dashed;
+    }
     .row-value {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--tally-green-mid); letter-spacing: 0.04em;
@@ -1154,10 +1161,27 @@ export class WalletComponent {
     return this.isExplicitHeldProgram(cardId) || this.wallet.getBalance(cardId) > 0;
   }
 
+  hasBalance(cardId: string): boolean {
+    return this.wallet.getBalance(cardId) > 0;
+  }
+
+  heldToggleText(cardId: string): string {
+    if (this.hasBalance(cardId)) return 'Balance saved';
+    return this.isExplicitHeldProgram(cardId) ? 'Saved' : 'I have this';
+  }
+
+  heldToggleLabel(cardId: string, cardName: string): string {
+    if (this.hasBalance(cardId)) return `${cardName} is counted as yours because it has a saved balance`;
+    return this.isExplicitHeldProgram(cardId)
+      ? `Remove ${cardName} from your programs`
+      : `Save ${cardName} as a program you have`;
+  }
+
   toggleHeldProgram(cardId: string): void {
+    if (this.wallet.getBalance(cardId) > 0) return;
     const current = this.prefs.preferences().heldProgramIds ?? [];
     const next = new Set(current);
-    if (next.has(cardId) || this.wallet.getBalance(cardId) > 0) {
+    if (next.has(cardId)) {
       next.delete(cardId);
     } else {
       next.add(cardId);

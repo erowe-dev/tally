@@ -695,7 +695,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             <div class="rc-left">
               <div class="rc-program">
                 {{ rec.program }}
-                <span class="covered-badge" *ngIf="wallet.canCover(rec.cards, rec.ptsRequired ?? 0)">✓</span>
+                <span class="covered-badge" *ngIf="wallet.canCover(rec.cards, rec.ptsRequired ?? rec.ptsBase)">✓</span>
                 <span class="already-saved-badge" *ngIf="isAlreadySaved(rec.program)">★ Saved</span>
               </div>
               <div class="rc-partner">{{ rec.partner }}</div>
@@ -723,7 +723,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
               </div>
             </div>
             <span class="rc-cov-label"
-              [class.covered]="wallet.canCover(rec.cards, rec.ptsRequired ?? 0)">
+              [class.covered]="wallet.canCover(rec.cards, rec.ptsRequired ?? rec.ptsBase)">
               {{ getBestBalance(rec) | number }}
               <span class="rc-cov-sep">/</span>
               {{ (rec.ptsRequired ?? rec.ptsBase) | number }} pts
@@ -1785,9 +1785,9 @@ export class OptimizerComponent implements OnChanges {
     return Math.round((rec.cpp / this.maxCpp()) * 100);
   }
 
-  /** Best balance the user holds across the recommendation's eligible cards */
+  /** Combined balance the user holds across the recommendation's eligible programs */
   getBestBalance(rec: Recommendation): number {
-    return Math.max(0, ...rec.cards.map(id => this.wallet.getBalance(id)));
+    return this.wallet.getCombinedBalance(rec.cards);
   }
 
   /** Estimated cash value of the redemption */

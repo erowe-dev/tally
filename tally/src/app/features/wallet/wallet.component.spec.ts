@@ -133,6 +133,18 @@ describe('WalletComponent', () => {
     expect(wallet.setBalance).not.toHaveBeenCalled();
   });
 
+  it('does not remove held state implied by a saved balance', () => {
+    const prefs = TestBed.inject(PreferencesService) as unknown as MockPreferencesService;
+    const wallet = TestBed.inject(WalletService) as unknown as MockWalletService;
+    wallet.getBalance.and.callFake(cardId => cardId === 'hyatt' ? 10000 : 0);
+    const component = createComponent();
+
+    component.toggleHeldProgram('hyatt');
+
+    expect(prefs.updatePreferences).not.toHaveBeenCalled();
+    expect(component.heldToggleText('hyatt')).toBe('Balance saved');
+  });
+
   it('marks a program held when a positive balance is entered', () => {
     const prefs = TestBed.inject(PreferencesService) as unknown as MockPreferencesService;
     const wallet = TestBed.inject(WalletService) as unknown as MockWalletService;

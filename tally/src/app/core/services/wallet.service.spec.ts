@@ -185,4 +185,15 @@ describe('WalletService', () => {
     expect(api.setBalance).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalledWith('Unknown program balance was not saved');
   });
+
+  it('combines eligible balances when checking recommendation coverage', () => {
+    const service = createService();
+
+    service.setBalance('amex_mr', 30000);
+    service.setBalance('chase_ur', 25000);
+
+    expect(service.getCombinedBalance(['amex_mr', 'chase_ur'])).toBe(55000);
+    expect(service.canCover(['amex_mr', 'chase_ur'], 50000)).toBeTrue();
+    expect(service.canCover(['amex_mr', 'chase_ur'], 60000)).toBeFalse();
+  });
 });

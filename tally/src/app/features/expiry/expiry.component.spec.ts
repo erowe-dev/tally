@@ -181,6 +181,32 @@ describe('ExpiryComponent', () => {
     tick(3000);
   }));
 
+  it('derives alert and export counts from the Mine-filtered statuses', () => {
+    expiry.statuses.set([
+      ...statuses,
+      {
+        cardId: 'aa_aadvantage',
+        programName: 'American AAdvantage',
+        daysRemaining: 12,
+        urgency: 'critical',
+        expiryDate: new Date(2026, 7, 17),
+        note: 'Activity extends expiry.',
+        actionNeeded: 'Add activity before expiry.',
+        quickActions: ['Shop through portal'],
+      },
+    ]);
+    const component = createComponent();
+
+    expect(component.visibleCriticalCount()).toBe(1);
+    expect(component.calExportCount()).toBe(2);
+
+    component.setHeldOnly(true);
+
+    expect(component.visibleStatuses().map(s => s.cardId)).toEqual(['united_mp']);
+    expect(component.visibleCriticalCount()).toBe(0);
+    expect(component.calExportCount()).toBe(1);
+  });
+
   it('includes held zero-balance programs in Mine', () => {
     prefs.preferences.set({ heldProgramIds: ['amex_mr'] });
     const component = createComponent();

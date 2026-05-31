@@ -66,25 +66,25 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
       <ng-container *ngIf="expiry.syncState() !== 'loading'">
 
       <!-- Critical alert banner -->
-      <div class="alert-banner critical" *ngIf="expiry.criticalCount() > 0" aria-live="polite">
+      <div class="alert-banner critical" *ngIf="visibleCriticalCount() > 0" aria-live="polite">
         <span class="alert-icon">⚠️</span>
         <div>
-          <div class="alert-title">{{ expiry.criticalCount() }} program{{ expiry.criticalCount() > 1 ? 's' : '' }} need immediate attention</div>
+          <div class="alert-title">{{ visibleCriticalCount() }} program{{ visibleCriticalCount() > 1 ? 's' : '' }} need immediate attention</div>
           <div class="alert-sub">Points may expire within 30 days. Act now.</div>
         </div>
       </div>
 
       <!-- Warning banner (when no critical but have warnings) -->
-      <div class="alert-banner warning" *ngIf="expiry.criticalCount() === 0 && expiry.warningCount() > 0" aria-live="polite">
+      <div class="alert-banner warning" *ngIf="visibleCriticalCount() === 0 && visibleWarningCount() > 0" aria-live="polite">
         <span class="alert-icon">🔔</span>
         <div>
-          <div class="alert-title">{{ expiry.warningCount() }} program{{ expiry.warningCount() > 1 ? 's' : '' }} need expiry review</div>
+          <div class="alert-title">{{ visibleWarningCount() }} program{{ visibleWarningCount() > 1 ? 's' : '' }} need expiry review</div>
           <div class="alert-sub">Set missing dates or plan qualifying activity for programs expiring within 90 days.</div>
         </div>
       </div>
 
       <!-- All-safe banner -->
-      <div class="alert-banner safe" *ngIf="expiry.criticalCount() === 0 && expiry.warningCount() === 0 && !expiry.hasWarnings()" aria-live="polite">
+      <div class="alert-banner safe" *ngIf="visibleStatuses().length > 0 && visibleCriticalCount() === 0 && visibleWarningCount() === 0 && !visibleHasWarnings()" aria-live="polite">
         <span class="alert-icon">✅</span>
         <div>
           <div class="alert-title">All programs are in good shape</div>
@@ -206,7 +206,7 @@ const EXPIRY_UI_STATE_KEY = 'tally_expiry_ui_session_v1';
 
       <div class="filtered-empty" *ngIf="visibleStatuses().length === 0">
         <div class="filtered-empty-icon">☆</div>
-        <div class="filtered-empty-title">No tracked balances yet</div>
+        <div class="filtered-empty-title">No saved programs match</div>
         <p>Save programs in Wallet or turn off Mine to review every program.</p>
         <button class="filtered-empty-action" type="button" (click)="setHeldOnly(false)">
           Show all programs
@@ -584,6 +584,18 @@ export class ExpiryComponent implements OnDestroy {
     return statuses.filter(s => this.isHeldProgram(s.cardId));
   });
 
+  readonly visibleCriticalCount = computed(() =>
+    this.visibleStatuses().filter(status => status.urgency === 'critical' || status.urgency === 'expired').length
+  );
+
+  readonly visibleWarningCount = computed(() =>
+    this.visibleStatuses().filter(status => status.urgency === 'warning').length
+  );
+
+  readonly visibleHasWarnings = computed(() =>
+    this.visibleStatuses().some(status => status.urgency === 'warning' || status.urgency === 'critical' || status.urgency === 'expired')
+  );
+
   readonly bulkMarkableCount = computed(() =>
     this.visibleStatuses().filter(status => status.urgency !== 'never').length
   );
@@ -746,7 +758,7 @@ export class ExpiryComponent implements OnDestroy {
 
   /** Count of statuses that have a computed expiry date (for calendar export button) */
   readonly calExportCount = computed(() =>
-    this.expiry.statuses().filter(s => s.expiryDate !== null && s.urgency !== 'never').length
+    this.visibleStatuses().filter(s => s.expiryDate !== null && s.urgency !== 'never').length
   );
 
   /** Summary stats for the activity stats bar */
@@ -791,7 +803,7 @@ export class ExpiryComponent implements OnDestroy {
 
     const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
-    for (const s of this.expiry.statuses()) {
+    for (const s of this.visibleStatuses()) {
       if (!s.expiryDate || s.urgency === 'never') continue;
 
       // 30-day warning event

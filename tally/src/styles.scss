@@ -64,8 +64,6 @@ input, select, textarea { min-height: 44px; }
 
 .page-content {
   width: 100%;
-  max-width: 1440px;
-  margin-inline: auto;
   padding: 24px 20px 0;
 }
 
@@ -126,6 +124,10 @@ input, select, textarea { min-height: 44px; }
 
 @media (min-width: 1280px) {
   .page-content { padding-inline: 48px; }
+}
+
+@media (min-width: 1600px) {
+  .page-content { padding-inline: 64px; }
 }
 
 @media (min-width: 1024px) {

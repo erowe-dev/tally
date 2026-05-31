@@ -240,6 +240,9 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
               <div class="cc-balance" *ngIf="wallet.getBalance(card.id) > 0">
                 {{ wallet.getBalance(card.id) | number }} pts
               </div>
+              <div class="cc-saved-pill" *ngIf="wallet.getBalance(card.id) <= 0 && heldProgramIdSet().has(card.id)">
+                Saved in wallet
+              </div>
               <!-- Active transfer bonus pill -->
               <div class="cc-bonus-pill" *ngIf="hasActiveBonus(card.id)">
                 ⚡ Active bonus
@@ -526,6 +529,13 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
     .cc-balance {
       font-family: 'Geist Mono', monospace; font-size: 9px;
       color: var(--tally-green); letter-spacing: 0.04em; margin-top: 2px;
+    }
+    .cc-saved-pill {
+      display: inline-block; margin-top: 3px;
+      background: var(--tally-green-light); border: 1px solid rgba(26,122,74,0.24);
+      border-radius: 20px; padding: 1px 7px;
+      font-family: 'Geist Mono', monospace; font-size: 8px;
+      letter-spacing: 0.06em; color: var(--tally-green);
     }
     .cc-bonus-pill {
       display: inline-block; margin-top: 3px;

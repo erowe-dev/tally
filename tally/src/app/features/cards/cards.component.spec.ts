@@ -112,6 +112,16 @@ describe('CardsComponent', () => {
     expect(component.filteredCards().map(card => card.id)).toEqual(['hyatt']);
   });
 
+  it('labels zero-balance held programs in the card list', () => {
+    prefs.preferences.set({ heldProgramIds: ['hyatt'] });
+
+    createComponent();
+
+    const savedPills = Array.from(fixture.nativeElement.querySelectorAll('.cc-saved-pill') as NodeListOf<HTMLElement>)
+      .map(node => node.textContent?.trim());
+    expect(savedPills).toContain('Saved in wallet');
+  });
+
   it('writes filter state durably and removes empty session search', () => {
     const component = createComponent();
 
