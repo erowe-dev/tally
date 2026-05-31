@@ -263,14 +263,16 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       <h2 class="section-title">Find the <em>best use</em><br>of your points</h2>
 
       <div class="toggle-row">
-        <div class="type-toggle" role="group" aria-label="Trip search type">
+        <div class="type-toggle" role="radiogroup" aria-label="Trip search type">
           <button type="button" class="toggle-btn" [class.active]="tripType() === 'flight'"
-            [attr.aria-pressed]="tripType() === 'flight'"
+            role="radio"
+            [attr.aria-checked]="tripType() === 'flight'"
             (click)="tripType.set('flight')">
             ✈ Flights
           </button>
           <button type="button" class="toggle-btn" [class.active]="tripType() === 'hotel'"
-            [attr.aria-pressed]="tripType() === 'hotel'"
+            role="radio"
+            [attr.aria-checked]="tripType() === 'hotel'"
             (click)="tripType.set('hotel')">
             🏨 Hotels
           </button>

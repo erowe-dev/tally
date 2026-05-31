@@ -105,18 +105,24 @@ describe('OptimizerComponent', () => {
   });
 
   it('exposes trip type toggle state to assistive tech', () => {
+    const group = fixture.nativeElement.querySelector('.type-toggle') as HTMLElement;
     const [flightButton, hotelButton] = Array.from(
       fixture.nativeElement.querySelectorAll('.type-toggle .toggle-btn'),
     ) as HTMLButtonElement[];
 
-    expect(flightButton.getAttribute('aria-pressed')).toBe('true');
-    expect(hotelButton.getAttribute('aria-pressed')).toBe('false');
+    expect(group.getAttribute('role')).toBe('radiogroup');
+    expect(group.getAttribute('aria-label')).toBe('Trip search type');
+    expect(flightButton.getAttribute('role')).toBe('radio');
+    expect(hotelButton.getAttribute('role')).toBe('radio');
+    expect(flightButton.getAttribute('aria-checked')).toBe('true');
+    expect(hotelButton.getAttribute('aria-checked')).toBe('false');
+    expect(flightButton.hasAttribute('aria-pressed')).toBeFalse();
 
     hotelButton.click();
     fixture.detectChanges();
 
-    expect(flightButton.getAttribute('aria-pressed')).toBe('false');
-    expect(hotelButton.getAttribute('aria-pressed')).toBe('true');
+    expect(flightButton.getAttribute('aria-checked')).toBe('false');
+    expect(hotelButton.getAttribute('aria-checked')).toBe('true');
   });
 
   it('ignores hidden Can afford filter when wallet has no points', () => {
