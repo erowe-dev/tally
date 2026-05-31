@@ -872,7 +872,7 @@ const EARN_RATES: Partial<Record<string, Partial<Record<SpendCat, number>>>> = {
       .reach-list,
       .calc-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        grid-template-columns: minmax(0, 1fr);
       }
       .tf-results {
         display: grid;

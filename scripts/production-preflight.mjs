@@ -90,6 +90,12 @@ function checkRunbookHealthContract() {
   const runbook = read('PRODUCTION_RUNBOOK.md');
   assert(runbook.includes('schema: "ok"'), 'runbook must document schema-aware health readiness');
   assert(runbook.includes('version'), 'runbook must document health version metadata');
+  assert(runbook.includes('project root directory is `tally`'), 'runbook must document the Vercel app root directory');
+  assert(!runbook.includes('tally/landing/browser'), 'runbook must not reference the obsolete app output path');
+  assert(
+    runbook.includes('prefer running `vercel --prod --yes` from the repository root'),
+    'runbook must document root CLI deploys with .vercelignore protection',
+  );
   assert(
     !/health`?\s+(?:must\s+)?(?:return|returns)[^\n]*database: "ok"`?\./.test(runbook),
     'runbook must not describe health readiness as database-only',
