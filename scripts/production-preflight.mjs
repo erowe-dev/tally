@@ -15,6 +15,7 @@ const appSecurityHeaders = {
 const checks = [
   { label: 'No legacy Render production references', run: checkNoLegacyRenderRefs },
   { label: 'Production environment targets Vercel API', run: checkProductionApiUrl },
+  { label: 'Runbook documents schema-aware health', run: checkRunbookHealthContract },
   { label: 'Service worker does not cache authenticated API reads', run: checkServiceWorkerApiCache },
   { label: 'Vercel app routing serves Angular shell at root', run: checkVercelAppConfig },
   { label: 'Landing page remains invite-only', run: checkLandingInviteOnly },
@@ -76,6 +77,23 @@ function checkProductionApiUrl() {
   const text = read('tally/src/environments/environment.production.ts');
   assert(text.includes("apiUrl: 'https://tally-api-theta.vercel.app'"), 'production apiUrl must point to Vercel API');
   assert(!text.includes('TODO_'), 'production environment still contains TODO placeholder');
+}
+
+function checkRunbookHealthContract() {
+  const runbook = read('PRODUCTION_RUNBOOK.md');
+  assert(runbook.includes('schema: "ok"'), 'runbook must document schema-aware health readiness');
+  assert(runbook.includes('version'), 'runbook must document health version metadata');
+  assert(
+    !/health`?\s+(?:must\s+)?(?:return|returns)[^\n]*database: "ok"`?\./.test(runbook),
+    'runbook must not describe health readiness as database-only',
+  );
+
+  const readme = read('tally/README.md');
+  assert(readme.includes('schema: "ok"'), 'README production checks must mention schema-aware health readiness');
+  assert(
+    !readme.includes('provider endpoint disabled until configured'),
+    'README must not claim telemetry provider endpoint is disabled',
+  );
 }
 
 function checkServiceWorkerApiCache() {

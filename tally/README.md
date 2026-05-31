@@ -172,7 +172,7 @@ $env:TALLY_AUTH_EMAIL="<your Auth0 email>"
 npm run smoke:auth
 ```
 
-Production API responses include `X-Request-Id`; use that value to correlate browser failures with Vercel function logs.
+Production API responses include `X-Request-Id`; use that value to correlate browser failures with Vercel function logs. The production health endpoint must report both `database: "ok"` and `schema: "ok"`.
 
 Wallet and Expiry API reads also keep a one-hour localStorage read-through cache (`tally_cache_balances`, `tally_cache_expiry`) so first authenticated loads can fall back cleanly if the cross-origin API is temporarily unavailable.
 
@@ -204,7 +204,7 @@ Wallet and Expiry writes keep pending-sync queues (`tally_wallet_pending_v1`, `t
 - [x] Auth — Auth0 SPA
 - [x] Cloud sync — wallet, expiry, and saved trips across devices
 - [x] Saved trips feature
-- [x] Analytics event call sites — provider endpoint disabled until configured
+- [x] Analytics event call sites — privacy-scoped telemetry endpoint enabled
 - [x] Optimizer → Sweet Spots deep link
 - [x] HOW_TO_BOOK coverage for Avianca, Aeroplan, Korean Air, and Aeromexico
 - [ ] Push notifications (web push API)

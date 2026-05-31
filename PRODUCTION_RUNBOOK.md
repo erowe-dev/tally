@@ -8,7 +8,7 @@ Before deploying, make sure the release branch contains one coherent production-
 
 Known open gates right now:
 
-- `https://tally-api-theta.vercel.app/health` must return `status: "ok"` and `database: "ok"`.
+- `https://tally-api-theta.vercel.app/health` must return `status: "ok"`, `database: "ok"`, and `schema: "ok"`.
 - `https://tally-theta-two.vercel.app` must serve the Angular PWA shell at `/`, with the waitlist landing page preserved at `/landing/`.
 - The Angular app has production dependency audit findings tied mostly to Angular 18; accept that risk only for private alpha, not public beta.
 
@@ -164,8 +164,8 @@ npm run db:migrate
 
 Block the alpha invite until all of these pass in production:
 
-- `GET https://tally-api-theta.vercel.app/health` returns `{ "status": "ok" }`.
-- `/health` includes `X-Request-Id`, `service: "tally-api"`, and `database: "ok"`.
+- `GET https://tally-api-theta.vercel.app/health` returns `{ "status": "ok", "database": "ok", "schema": "ok" }`.
+- `/health` includes `X-Request-Id`, `service: "tally-api"`, `version`, `database: "ok"`, and `schema: "ok"`.
 - Signed-out users can open public tabs.
 - Protected tabs show sign-in prompts.
 - Auth0 login returns to the app and provisions the user through `POST /api/users/me`.
