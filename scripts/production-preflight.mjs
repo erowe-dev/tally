@@ -94,11 +94,7 @@ function checkVercelAppConfig() {
   );
   assert(config.outputDirectory === 'browser', 'tally/vercel.json must serve the prepared browser output');
   assert(
-    config.routes?.some(route => route.handle === 'filesystem'),
-    'tally/vercel.json must serve filesystem assets before SPA fallback',
-  );
-  assert(
-    config.routes?.some(route => route.dest === '/index.html'),
+    config.rewrites?.some(rewrite => rewrite.source === '/(.*)' && rewrite.destination === '/index.html'),
     'tally/vercel.json must fall back to /index.html for the Angular app shell',
   );
   assertAppVercelHeaders(config, configPath);
@@ -118,7 +114,7 @@ function checkVercelAppConfig() {
   );
   assert(rootConfig.outputDirectory === 'browser', 'repo-root vercel.json must serve the prepared browser output');
   assert(
-    rootConfig.routes?.some(route => route.dest === '/index.html'),
+    rootConfig.rewrites?.some(rewrite => rewrite.source === '/(.*)' && rewrite.destination === '/index.html'),
     'repo-root vercel.json must fall back to /index.html for the Angular app shell',
   );
   assertAppVercelHeaders(rootConfig, rootConfigPath);
