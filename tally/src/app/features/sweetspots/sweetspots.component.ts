@@ -799,14 +799,28 @@ export class SweetspotsComponent {
   private loadFavs(): Set<string> {
     try {
       const raw = localStorage.getItem(FAV_KEY);
-      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
-    } catch { return new Set(); }
+      if (!raw) return new Set();
+      const favs = this.sanitizeFavs(JSON.parse(raw) as unknown);
+      this.saveFavs(favs);
+      return favs;
+    } catch {
+      return new Set();
+    }
   }
 
   private saveFavs(favs: Set<string>): void {
     try {
-      localStorage.setItem(FAV_KEY, JSON.stringify([...favs]));
+      localStorage.setItem(FAV_KEY, JSON.stringify([...this.sanitizeFavs([...favs])]));
     } catch {}
+  }
+
+  private sanitizeFavs(value: unknown): Set<string> {
+    if (!Array.isArray(value)) return new Set();
+    const validKeys = new Set(this.data.sweetSpots.map(s => this.spotKey(s)));
+    const clean = value
+      .filter((key): key is string => typeof key === 'string' && validKeys.has(key))
+      .slice(0, this.data.sweetSpots.length);
+    return new Set(clean);
   }
 
   /** Only show bonuses that haven't expired yet */

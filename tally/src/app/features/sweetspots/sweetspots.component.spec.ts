@@ -19,6 +19,7 @@ class MockNavigationService {
 }
 
 describe('SweetspotsComponent', () => {
+  const FAV_KEY = 'tally_sweetspot_favs_v1';
   const UI_KEY = 'tally_sweetspots_ui_v1';
   const FILTER_KEY = 'tally_sweetspots_filter_v1';
   const SEARCH_KEY = 'tally_sweetspots_search_session_v1';
@@ -96,6 +97,23 @@ describe('SweetspotsComponent', () => {
 
     expect(component.activeFilter()).toBe('flight');
     expect(localStorage.getItem(FILTER_KEY)).toBeNull();
+  });
+
+  it('sanitizes saved sweet spot favorites from localStorage', () => {
+    const validKey = ['flight', 'US -> Europe', 'Business class', '50,000', 'Air France/KLM Flying Blue'].join('|');
+    localStorage.setItem(FAV_KEY, JSON.stringify([
+      validKey,
+      validKey,
+      'unknown|spot',
+      42,
+      null,
+    ]));
+
+    const component = createComponent();
+
+    expect(component.favCount()).toBe(1);
+    expect(component.isFav(validKey)).toBeTrue();
+    expect(JSON.parse(localStorage.getItem(FAV_KEY) ?? '[]')).toEqual([validKey]);
   });
 
   it('clears non-search filters from an empty state recovery action', () => {
