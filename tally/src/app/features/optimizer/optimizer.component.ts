@@ -2316,18 +2316,29 @@ export class OptimizerComponent implements OnChanges {
 
   // ── Home airport ────────────────────────────────────────────────────────────
   private _loadHomeAirport(): string {
-    try { return localStorage.getItem(HOME_AIRPORT_KEY) ?? ''; } catch { return ''; }
+    try {
+      const code = this.cleanAirportCode(localStorage.getItem(HOME_AIRPORT_KEY));
+      if (code) localStorage.setItem(HOME_AIRPORT_KEY, code);
+      else localStorage.removeItem(HOME_AIRPORT_KEY);
+      return code;
+    } catch { return ''; }
   }
 
   setHomeAirport(): void {
-    const code = this.fromCity.trim();
-    if (code.length !== 3) return;
+    const code = this.cleanAirportCode(this.fromCity);
+    if (!code) return;
     try { localStorage.setItem(HOME_AIRPORT_KEY, code); } catch {}
     this._homeAirport.set(code);
   }
 
   useHomeAirport(): void {
     this.fromCity = this._homeAirport();
+  }
+
+  private cleanAirportCode(value: unknown): string {
+    if (typeof value !== 'string') return '';
+    const code = value.trim().toUpperCase();
+    return this.airportSearch.findByCode(code) ? code : '';
   }
 
   copyTopResult(rec: Recommendation): void {

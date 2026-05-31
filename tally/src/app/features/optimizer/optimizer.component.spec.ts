@@ -60,7 +60,10 @@ class MockSearchesService {
 
 class MockAirportSearchService {
   airports(): [] { return []; }
-  findByCode(): null { return null; }
+  findByCode(code: string): { code: string } | null {
+    const normalized = code.trim().toUpperCase();
+    return ['OMA', 'LHR'].includes(normalized) ? { code: normalized } : null;
+  }
   search(): [] { return []; }
   rememberAirport = jasmine.createSpy('rememberAirport');
 }
@@ -105,6 +108,21 @@ describe('OptimizerComponent', () => {
     expect(component.earliestDeparture).toBe('2026-06-10');
     expect(component.latestReturn).toBe('2026-06-11');
     expect(component.minLatestReturnDate()).toBe('2026-06-11');
+  });
+
+  it('stores home airport as a validated uppercase airport code', () => {
+    component.fromCity = ' oma ';
+
+    component.setHomeAirport();
+
+    expect(component.homeAirport()).toBe('OMA');
+    expect(localStorage.getItem('tally_home_airport_v1')).toBe('OMA');
+
+    component.fromCity = 'zzz';
+    component.setHomeAirport();
+
+    expect(component.homeAirport()).toBe('OMA');
+    expect(localStorage.getItem('tally_home_airport_v1')).toBe('OMA');
   });
 
   it('exposes trip type toggle state to assistive tech', () => {

@@ -5,6 +5,9 @@ import { AirportOption } from '../models';
 const RECENT_KEY = 'tally_recent_airports_v1';
 const TEMPLATE_KEY = 'tally_route_templates_v1';
 const MAX_RECENT = 8;
+const MAX_TEMPLATES = 12;
+const MAX_TEMPLATE_LABEL_LENGTH = 80;
+const MAX_TEMPLATE_DESTINATION_LENGTH = 80;
 const DEFAULT_LIMIT = 8;
 
 export interface RouteTemplate {
@@ -83,16 +86,26 @@ export class AirportSearchService {
       const raw = localStorage.getItem(RECENT_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter((code): code is string => typeof code === 'string');
+      const codes = this.sanitizeRecentCodes(parsed);
+      this.saveRecentCodes(codes);
+      return codes;
     } catch {
       return [];
     }
   }
 
+  private sanitizeRecentCodes(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value
+      .filter((code): code is string => typeof code === 'string')
+      .map(code => code.trim().toUpperCase())
+      .filter(code => this.findByCode(code) !== undefined))]
+      .slice(0, MAX_RECENT);
+  }
+
   private saveRecentCodes(codes: string[]): void {
     try {
-      localStorage.setItem(RECENT_KEY, JSON.stringify(codes));
+      localStorage.setItem(RECENT_KEY, JSON.stringify(this.sanitizeRecentCodes(codes)));
     } catch {}
   }
 
@@ -101,16 +114,54 @@ export class AirportSearchService {
       const raw = localStorage.getItem(TEMPLATE_KEY);
       if (!raw) return [];
       const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter(isRouteTemplate);
+      const templates = this.sanitizeRouteTemplates(parsed);
+      this.saveRouteTemplates(templates);
+      return templates;
     } catch {
       return [];
     }
   }
 
+  private sanitizeRouteTemplates(value: unknown): RouteTemplate[] {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set<string>();
+    const templates: RouteTemplate[] = [];
+    for (const candidate of value) {
+      const template = this.sanitizeRouteTemplate(candidate);
+      if (!template || seen.has(template.id)) continue;
+      seen.add(template.id);
+      templates.push(template);
+      if (templates.length >= MAX_TEMPLATES) break;
+    }
+    return templates;
+  }
+
+  private sanitizeRouteTemplate(value: unknown): RouteTemplate | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const candidate = value as RouteTemplate;
+    const id = cleanTemplateText(candidate.id, 60);
+    const label = cleanTemplateText(candidate.label, MAX_TEMPLATE_LABEL_LENGTH);
+    const originAirport = cleanAirportCode(candidate.originAirport);
+    const destination = cleanTemplateText(candidate.destination, MAX_TEMPLATE_DESTINATION_LENGTH);
+    const destinationAirport = cleanAirportCode(candidate.destinationAirport);
+    const createdAt = cleanIsoDate(candidate.createdAt);
+
+    if (!id || !label || !originAirport || !destination || !createdAt || !this.findByCode(originAirport)) return null;
+    if (destinationAirport && !this.findByCode(destinationAirport)) return null;
+
+    return {
+      id,
+      label,
+      originAirport,
+      destination,
+      ...(destinationAirport ? { destinationAirport } : {}),
+      createdAt,
+    };
+  }
+
   private saveRouteTemplates(templates: RouteTemplate[]): void {
     try {
-      localStorage.setItem(TEMPLATE_KEY, JSON.stringify(templates));
+      localStorage.setItem(TEMPLATE_KEY, JSON.stringify(this.sanitizeRouteTemplates(templates)));
     } catch {}
   }
 }
@@ -137,15 +188,16 @@ function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ');
 }
 
-function isRouteTemplate(value: unknown): value is RouteTemplate {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const candidate = value as RouteTemplate;
-  return (
-    typeof candidate.id === 'string' &&
-    typeof candidate.label === 'string' &&
-    typeof candidate.originAirport === 'string' &&
-    typeof candidate.destination === 'string' &&
-    typeof candidate.createdAt === 'string' &&
-    (candidate.destinationAirport === undefined || typeof candidate.destinationAirport === 'string')
-  );
+function cleanTemplateText(value: unknown, maxLength: number): string {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
+function cleanAirportCode(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toUpperCase().slice(0, 3) : '';
+}
+
+function cleanIsoDate(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 }
