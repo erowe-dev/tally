@@ -22,6 +22,7 @@ const checks = [
   { label: 'Observability config is explicit', run: checkObservabilityConfig },
   { label: 'Program ID allowlists match app data', run: checkProgramIds },
   { label: 'Production readiness workflow enforces release gates', run: checkProductionReadinessWorkflow },
+  { label: 'Saved search cap is concurrency-safe', run: checkSavedSearchConcurrencyGuard },
   { label: 'No unused Angular starter shell files', run: checkNoStarterShellFiles },
   { label: 'No HostListener/HostBinding decorators in shell/shared components', run: checkNoHostListenerDecorator },
   { label: 'Initial bundle stays under 800 kB when stats are available', run: checkBundleBudget },
@@ -249,6 +250,20 @@ function checkProductionReadinessWorkflow() {
   assert(workflow.includes('secrets.TALLY_AUTH_TOKEN'), 'production smoke must source TALLY_AUTH_TOKEN from secrets');
   assert(workflow.includes('secrets.TALLY_AUTH_EMAIL'), 'production smoke must source TALLY_AUTH_EMAIL from secrets');
   assert(/production-smoke:\s*[\s\S]*?npm run smoke:release/.test(workflow), 'production smoke job must run release smoke');
+}
+
+function checkSavedSearchConcurrencyGuard() {
+  const route = read('api/src/routes/searches.ts');
+  assert(route.includes('createSavedSearchWithinLimit'), 'saved-search creation must use the limit helper');
+  assert(
+    route.includes('Prisma.TransactionIsolationLevel.Serializable'),
+    'saved-search limit helper must use serializable transactions',
+  );
+  assert(route.includes("error.code === 'P2034'"), 'saved-search limit helper must retry Prisma serialization conflicts');
+  assert(
+    !/const\s+savedSearchCount\s*=\s*await\s+prisma\.savedSearch\.count[\s\S]*?prisma\.savedSearch\.create/.test(route),
+    'saved-search route must not use top-level count-then-create limit enforcement',
+  );
 }
 
 function extractProgramIds(source) {

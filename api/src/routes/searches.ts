@@ -50,15 +50,11 @@ router.post(
       return;
     }
 
-    const savedSearchCount = await prisma.savedSearch.count({ where: { userId: user.id } });
-    if (savedSearchCount >= MAX_SAVED_SEARCHES) {
+    const search = await createSavedSearchWithinLimit(user.id, createData.data);
+    if (!search) {
       sendError(res, 409, `Saved search limit is ${MAX_SAVED_SEARCHES}`);
       return;
     }
-
-    const search = await prisma.savedSearch.create({
-      data: { userId: user.id, ...createData.data },
-    });
 
     res.status(201).json(toSavedSearchDto(search));
   }),
@@ -133,6 +129,18 @@ router.delete(
 export default router;
 
 type ParseResult<T> = { data: T } | { error: string };
+type SavedSearchCreateFields = {
+  searchType: string;
+  originAirport?: string | null;
+  destinationAirport?: string | null;
+  destinationText: string;
+  dateWindow: Prisma.InputJsonValue;
+  cabin?: string | null;
+  passengers?: number;
+  hotelIntent?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
+  notes?: string | null;
+  lastRunAt?: Date | null;
+};
 type ParsedSavedSearch = {
   searchType?: string;
   originAirport?: string | null;
@@ -237,18 +245,30 @@ function toSavedSearchDto(search: SavedSearch) {
   };
 }
 
-function toCreateData(data: ParsedSavedSearch): ParseResult<{
-  searchType: string;
-  originAirport?: string | null;
-  destinationAirport?: string | null;
-  destinationText: string;
-  dateWindow: Prisma.InputJsonValue;
-  cabin?: string | null;
-  passengers?: number;
-  hotelIntent?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
-  notes?: string | null;
-  lastRunAt?: Date | null;
-}> {
+async function createSavedSearchWithinLimit(userId: string, data: SavedSearchCreateFields): Promise<SavedSearch | null> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await prisma.$transaction(
+        async tx => {
+          const savedSearchCount = await tx.savedSearch.count({ where: { userId } });
+          if (savedSearchCount >= MAX_SAVED_SEARCHES) return null;
+          return tx.savedSearch.create({ data: { userId, ...data } });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (!isSerializableWriteConflict(error) || attempt === 2) throw error;
+    }
+  }
+
+  return null;
+}
+
+function isSerializableWriteConflict(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034';
+}
+
+function toCreateData(data: ParsedSavedSearch): ParseResult<SavedSearchCreateFields> {
   if (!data.searchType) return { error: "searchType must be 'flight' or 'hotel'" };
   if (!data.destinationText) return { error: 'destinationText is required' };
   if (!data.dateWindow) return { error: 'dateWindow is required' };
