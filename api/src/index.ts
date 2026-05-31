@@ -91,22 +91,27 @@ app.use(express.json({ limit: '32kb' }));
 app.get('/health', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
+    await assertRequiredSchema();
     res.json({
       status: 'ok',
       service: 'tally-api',
       version: serviceVersion,
       startedAt,
       database: 'ok',
+      schema: 'ok',
     });
-  } catch {
+  } catch (error) {
     const requestId = responseRequestId(res);
+    const schemaError = error instanceof SchemaReadinessError ? error : null;
     res.status(503).json({
       status: 'error',
       service: 'tally-api',
       version: serviceVersion,
       startedAt,
-      database: 'unreachable',
-      reason: 'db_unreachable',
+      database: schemaError !== null ? 'ok' : 'unreachable',
+      schema: schemaError !== null ? 'incomplete' : undefined,
+      reason: schemaError !== null ? 'db_schema_incomplete' : 'db_unreachable',
+      missing: schemaError?.missing,
       requestId,
     });
   }
@@ -161,4 +166,56 @@ function getServiceVersion(): string {
     .map(candidate => candidate?.trim())
     .find((candidate): candidate is string => Boolean(candidate));
   return version ? version.slice(0, 12) : 'local';
+}
+
+const REQUIRED_TABLES = [
+  'users',
+  'balances',
+  'expiry_records',
+  'trips',
+  'user_preferences',
+  'saved_searches',
+  'provider_cache',
+];
+
+const REQUIRED_COLUMNS = [
+  'user_preferences.homeAirports',
+  'user_preferences.preferredPrograms',
+  'user_preferences.heldProgramIds',
+  'saved_searches.dateWindow',
+  'saved_searches.hotelIntent',
+  'provider_cache.cacheKey',
+  'provider_cache.normalizedRequest',
+  'provider_cache.response',
+  'provider_cache.expiresAt',
+];
+
+class SchemaReadinessError extends Error {
+  constructor(readonly missing: string[]) {
+    super(`Missing required schema: ${missing.join(', ')}`);
+  }
+}
+
+async function assertRequiredSchema(): Promise<void> {
+  const [tables, columns] = await Promise.all([
+    prisma.$queryRaw<Array<{ table_name: string }>>`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+    `,
+    prisma.$queryRaw<Array<{ table_name: string; column_name: string }>>`
+      SELECT table_name, column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+    `,
+  ]);
+
+  const presentTables = new Set(tables.map(row => row.table_name));
+  const presentColumns = new Set(columns.map(row => `${row.table_name}.${row.column_name}`));
+  const missing = [
+    ...REQUIRED_TABLES.filter(table => !presentTables.has(table)).map(table => `table:${table}`),
+    ...REQUIRED_COLUMNS.filter(column => !presentColumns.has(column)).map(column => `column:${column}`),
+  ];
+
+  if (missing.length > 0) throw new SchemaReadinessError(missing);
 }

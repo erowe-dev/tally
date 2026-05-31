@@ -19,6 +19,7 @@ const checks = [
         assert(json.version !== 'local', `production health version must not fall back to local: ${body}`);
       }
       assert(json.database === 'ok', `expected database ok, got ${body}`);
+      assert(json.schema === 'ok', `expected schema ok, got ${body}`);
       assert(!res.headers.has('x-powered-by'), 'API must not expose X-Powered-By');
       assert(res.headers.get('x-content-type-options') === 'nosniff', 'missing X-Content-Type-Options nosniff');
       assert(res.headers.get('x-frame-options') === 'DENY', 'missing X-Frame-Options DENY');
