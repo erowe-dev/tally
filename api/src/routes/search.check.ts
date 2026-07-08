@@ -1,6 +1,9 @@
 process.env['AUTH0_DOMAIN'] = process.env['AUTH0_DOMAIN'] ?? 'dev-2iqdjh6lgnv6pnz5.us.auth0.com';
 process.env['AUTH0_AUDIENCE'] = process.env['AUTH0_AUDIENCE'] ?? 'https://api.tally.app';
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 export {};
 
 main().catch(error => {
@@ -9,7 +12,7 @@ main().catch(error => {
 });
 
 async function main(): Promise<void> {
-  const { buildAwardSignal, normalizeAwardRequest, normalizeHotelRequest } = await import('./search');
+  const { normalizeAwardRequest, normalizeHotelRequest } = await import('./search');
 
   const validAward = {
     originAirport: 'ORD',
@@ -20,7 +23,7 @@ async function main(): Promise<void> {
   assertData(
     normalizeAwardRequest(validAward),
     'award search should default passengers when absent',
-    data => data['passengers'] === 1,
+    data => data.passengers === 1,
   );
   assertError(
     normalizeAwardRequest({ ...validAward, passengers: 1.5 }),
@@ -37,24 +40,21 @@ async function main(): Promise<void> {
     'passengers must be an integer from 1 to 9',
     'award search should reject string passengers',
   );
-  assertJson(
-    buildAwardSignal({
-      originAirport: 'ORD',
-      destinationAirport: 'CDG',
-      cabin: 'business',
-      passengers: 1,
-      dateWindow: { startDate: futureDate(30), endDate: futureDate(37), flexibility: 'plus_minus_7' },
-      programs: [],
-    }),
-    'award planning signal should not masquerade as live availability',
-    data => {
-      const first = Array.isArray(data['results']) ? data['results'][0] as Record<string, unknown> : null;
-      return !!first &&
-        first['provider'] === 'tally_planning_estimate' &&
-        first['availabilitySource'] === 'estimated_not_live' &&
-        first['isLive'] === false &&
-        !('seatsAvailable' in first);
-    },
+
+  const searchSource = readFileSync(join(__dirname, 'search.ts'), 'utf8');
+  assert(
+    searchSource.includes("verificationStatus: 'verified_live'") &&
+      searchSource.includes("isLive: true") &&
+      !searchSource.includes('estimatedSeatCount') &&
+      !searchSource.includes('buildAwardSignal') &&
+      searchSource.includes('createConfiguredHttpProvider') &&
+      searchSource.includes('/discover') &&
+      searchSource.includes('/verify') &&
+      searchSource.includes('createSeatsAeroProvider') &&
+      searchSource.includes('Partner-Authorization') &&
+      searchSource.includes('/search') &&
+      searchSource.includes('/live'),
+    'award search should only expose verified live results, never deterministic price estimates',
   );
 
   const validHotel = { destination: 'Paris' };
@@ -102,6 +102,10 @@ async function main(): Promise<void> {
 
 type ParseResult<T> = { data: T } | { error: string };
 
+function assert(condition: boolean, message: string): void {
+  if (!condition) throw new Error(message);
+}
+
 function assertData<T>(result: ParseResult<T>, message: string, predicate: (data: T) => boolean): void {
   if ('error' in result) throw new Error(`${message}: ${result.error}`);
   if (!predicate(result.data)) throw new Error(message);
@@ -112,14 +116,6 @@ function assertError(result: ParseResult<unknown>, expectedError: string, messag
   if (result.error !== expectedError) {
     throw new Error(`${message}: expected "${expectedError}", got "${result.error}"`);
   }
-}
-
-function assertJson(
-  result: Record<string, unknown>,
-  message: string,
-  predicate: (data: Record<string, unknown>) => boolean,
-): void {
-  if (!predicate(result)) throw new Error(message);
 }
 
 function futureDate(daysFromToday: number): string {

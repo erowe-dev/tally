@@ -5,6 +5,7 @@ import { Observable, catchError, of, switchMap, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   AwardAvailabilityResult,
+  AwardSearchResponse,
   CabinClass,
   DateWindow,
   HotelFitRequest,
@@ -244,9 +245,9 @@ export class ApiService {
 
   // ── Provider-backed search ─────────────────────────────────────────────────
 
-  searchAwardAvailability(request: AwardAvailabilityRequest): Observable<ProviderSearchResponse<AwardAvailabilityResult>> {
+  searchAwardAvailability(request: AwardAvailabilityRequest): Observable<AwardSearchResponse> {
     return this.withProvisionedAuth(headers =>
-      this.http.post<ProviderSearchResponse<AwardAvailabilityResult>>(
+      this.http.post<AwardSearchResponse>(
         `${environment.apiUrl}/api/search/award-availability`,
         request,
         { headers },

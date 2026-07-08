@@ -10,7 +10,8 @@ import { AnalyticsService } from '../../core/services/analytics.service';
 import { NavigationService } from '../../core/services/navigation.service';
 import { SearchesService } from '../../core/services/searches.service';
 import { AirportSearchService } from '../../core/services/airport-search.service';
-import { Recommendation, CabinClass, HotelCategory, SavedSearch, DateFlexibility, SavedTrip } from '../../core/models';
+import { ApiService } from '../../core/services/api.service';
+import { AwardAvailabilityResult, Recommendation, CabinClass, HotelCategory, SavedSearch, DateFlexibility, SavedTrip } from '../../core/models';
 import { SavedTripsComponent } from './saved-trips.component';
 
 interface RouteHistoryEntry {
@@ -46,6 +47,8 @@ interface OptimizerSavedSearch {
   hotelTravelers: number;
   hotelRooms: number;
 }
+
+type LiveSearchState = 'idle' | 'needs_date' | 'loading' | 'searching' | 'live_results' | 'no_live_results' | 'source_unavailable' | 'rate_limited' | 'stale_discovery_only' | 'error';
 
 const ROUTE_HISTORY_KEY = 'tally_route_history_v1';
 const MAX_ROUTE_HISTORY = 5;
@@ -631,10 +634,50 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
       </div>
 
       <!-- Results -->
+      <section class="live-results" *ngIf="analyzed() && tripType() === 'flight'" aria-labelledby="live-results-title">
+        <div class="live-head">
+          <div>
+            <span class="section-eyebrow" id="live-results-title">Live Award Results</span>
+            <h3>{{ getLiveSearchTitle() }}</h3>
+          </div>
+          <span class="live-status" [class.live]="liveSearchState() === 'live_results'">
+            {{ getLiveSearchStatusLabel() }}
+          </span>
+        </div>
+
+        <div class="live-message" *ngIf="liveSearchState() !== 'live_results'" aria-live="polite">
+          {{ getLiveSearchMessage() }}
+        </div>
+
+        <div class="live-card" *ngFor="let award of liveAwardResults()">
+          <div class="live-main">
+            <div>
+              <div class="live-program">{{ award.program }}</div>
+              <div class="live-route">
+                {{ award.originAirport }}→{{ award.destinationAirport }} · {{ award.cabin }} · {{ formatDateLabel(award.departureDate) }}
+              </div>
+            </div>
+            <div class="live-price">
+              {{ award.points | number }}
+              <small>pts verified</small>
+            </div>
+          </div>
+          <div class="live-meta">
+            <span>{{ award.source }}</span>
+            <span *ngIf="award.seatCount">{{ award.seatCount }} seat{{ award.seatCount === 1 ? '' : 's' }}</span>
+            <span>Checked {{ formatCheckedAt(award.checkedAt) }}</span>
+          </div>
+          <a *ngIf="award.bookingUrl" class="live-book" [href]="award.bookingUrl" target="_blank" rel="noopener noreferrer"
+            [attr.aria-label]="'Open booking site for ' + award.program">
+            Open booking site
+          </a>
+        </div>
+      </section>
+
       <div class="results" *ngIf="results().length">
         <div class="results-header">
           <div>
-            <span class="section-eyebrow">{{ filteredResults().length }} of {{ results().length }} Options</span>
+            <span class="section-eyebrow">{{ filteredResults().length }} of {{ results().length }} Strategy Options</span>
             <span class="route-label" *ngIf="routeLabel()">{{ routeLabel() }}</span>
             <span class="route-unrecognized" *ngIf="showUnrecognizedNote()">
               ℹ Airport codes not in our database — showing worldwide recommendations
@@ -656,7 +699,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
               <strong>{{ strategySummary().route }}</strong>
             </div>
             <div class="strategy-item">
-              <span>Expected points</span>
+              <span>Typical points</span>
               <strong>{{ strategySummary().pointsBand }}</strong>
             </div>
             <div class="strategy-item">
@@ -710,7 +753,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
             </div>
             <div class="rc-pts">
               {{ (rec.ptsRequired ?? rec.ptsBase) | number }}
-              <small>pts needed</small>
+              <small>typical pts</small>
               <div class="rc-cash">~\${{ getCashValue(rec) | number }}</div>
             </div>
           </div>
@@ -791,7 +834,7 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
         </div>
 
         <p class="disclaimer">
-          ¢/pt values are estimates. Actual value varies by route and availability.
+          Strategy options are planning guidance, not live award prices. Use verified live results before transferring points.
           Add balances in Wallet for coverage indicators.
         </p>
 
@@ -1032,6 +1075,95 @@ const HOW_TO_BOOK: Record<string, { steps: string[]; url: string }> = {
     .results-header {
       display: flex; justify-content: space-between; align-items: center;
       margin-top: 24px; margin-bottom: 12px; gap: 10px; flex-wrap: wrap;
+    }
+    .live-results {
+      margin: 24px 0 16px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 8px;
+    }
+    .live-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 12px; margin-bottom: 12px;
+    }
+    .live-head h3 {
+      margin: 4px 0 0;
+      font-family: 'Instrument Serif', serif;
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--text);
+    }
+    .live-status {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--text3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 7px;
+      white-space: nowrap;
+    }
+    .live-status.live {
+      color: var(--tally-green);
+      background: var(--tally-green-light);
+      border-color: color-mix(in srgb, var(--tally-green) 25%, var(--border));
+    }
+    .live-message {
+      color: var(--text2);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .live-card {
+      background: var(--off);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .live-card + .live-card { margin-top: 10px; }
+    .live-main {
+      display: flex; justify-content: space-between; gap: 12px;
+    }
+    .live-program {
+      font-weight: 650;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .live-route {
+      margin-top: 3px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+    .live-price {
+      font-family: 'Geist Mono', monospace;
+      color: var(--tally-green);
+      text-align: right;
+      font-size: 18px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .live-price small {
+      display: block;
+      color: var(--text3);
+      font-size: 9px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+    .live-meta {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-top: 10px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      color: var(--text3);
+      text-transform: uppercase;
+    }
+    .live-book {
+      display: inline-flex;
+      margin-top: 10px;
+      color: var(--tally-green);
+      font-size: 12px;
+      font-weight: 650;
+      text-decoration: none;
     }
     .related-spots-btn {
       border: 1px solid var(--border); border-radius: 999px;
@@ -1369,6 +1501,7 @@ export class OptimizerComponent implements OnChanges {
   private nav = inject(NavigationService);
   searches = inject(SearchesService);
   private airportSearch = inject(AirportSearchService);
+  private api = inject(ApiService);
 
   tripType = signal<'flight' | 'hotel'>('flight');
   fromCity = '';
@@ -1390,6 +1523,9 @@ export class OptimizerComponent implements OnChanges {
   hotelRooms = 1;
 
   results = signal<Recommendation[]>([]);
+  liveAwardResults = signal<AwardAvailabilityResult[]>([]);
+  liveSearchState = signal<LiveSearchState>('idle');
+  liveSearchMessage = signal('');
   analyzed = signal(false);
   validationError = signal<string | null>(null);
   maxCpp = signal(1);
@@ -1409,6 +1545,7 @@ export class OptimizerComponent implements OnChanges {
   private _allRecs = this.optimizer.getAllRecs();
   // Route history
   private _routeHistory = signal<RouteHistoryEntry[]>(this.loadRouteHistory());
+  private liveSearchRequestSeq = 0;
   readonly recentRoutes = this._routeHistory.asReadonly();
   readonly savedSearches = computed<OptimizerSavedSearch[]>(() =>
     this.searches.searches().slice(0, MAX_SAVED_SEARCHES).map(search => this.toOptimizerSavedSearch(search)),
@@ -1492,6 +1629,9 @@ export class OptimizerComponent implements OnChanges {
     this.validationError.set(error);
     if (error) {
       this.results.set([]);
+      this.liveAwardResults.set([]);
+      this.liveSearchState.set('idle');
+      this.liveSearchMessage.set('');
       this.analyzed.set(false);
       queueMicrotask(() => this.focusInvalidField(error));
       return;
@@ -1512,6 +1652,7 @@ export class OptimizerComponent implements OnChanges {
     this.maxCpp.set(recs[0]?.cpp ?? 1);
     this.results.set(recs);
     this.analyzed.set(true);
+    this.runLiveAwardSearch();
     this.pushToHistory();
     try { localStorage.setItem('tally_optimizer_used', '1'); } catch {}
     this.analytics.track('optimizer_search', {
@@ -1532,6 +1673,105 @@ export class OptimizerComponent implements OnChanges {
 
   clearValidation(): void {
     if (this.validationError()) this.validationError.set(null);
+  }
+
+  private runLiveAwardSearch(): void {
+    this.liveSearchRequestSeq += 1;
+    const requestSeq = this.liveSearchRequestSeq;
+    this.liveAwardResults.set([]);
+    this.liveSearchMessage.set('');
+
+    if (this.tripType() !== 'flight') {
+      this.liveSearchState.set('idle');
+      return;
+    }
+
+    if (!this.earliestDeparture) {
+      this.liveSearchState.set('needs_date');
+      this.liveSearchMessage.set('Add a departure date to check current bookable award prices. Strategy guidance can still help you plan before dates are firm.');
+      return;
+    }
+
+    this.liveSearchState.set('loading');
+    this.api.searchAwardAvailability({
+      originAirport: this.normalizeAirportInput(this.fromCity),
+      destinationAirport: this.normalizeAirportInput(this.toCity),
+      startDate: this.earliestDeparture,
+      endDate: this.tripDirection === 'roundtrip' ? this.latestReturn : '',
+      cabin: this.cabin,
+      passengers: this.passengers,
+    }).subscribe({
+      next: response => {
+        if (requestSeq !== this.liveSearchRequestSeq) return;
+        const liveResults = response.results.filter(result => result.isLive && result.verificationStatus === 'verified_live');
+        this.liveAwardResults.set(liveResults);
+        this.liveSearchState.set(liveResults.length > 0 ? 'live_results' : response.status);
+        this.liveSearchMessage.set(response.message || response.notice || '');
+      },
+      error: error => {
+        if (requestSeq !== this.liveSearchRequestSeq) return;
+        const status = error?.status === 429 ? 'rate_limited' : 'error';
+        this.liveSearchState.set(status);
+        this.liveSearchMessage.set(status === 'rate_limited'
+          ? 'Live search is rate limited. Wait a minute and try again.'
+          : 'Live award search is unavailable right now. Strategy guidance is still shown below.');
+      },
+    });
+  }
+
+  getLiveSearchTitle(): string {
+    return this.liveSearchState() === 'live_results'
+      ? 'Verified bookable prices'
+      : 'Current availability check';
+  }
+
+  getLiveSearchStatusLabel(): string {
+    switch (this.liveSearchState()) {
+      case 'loading': return 'Searching';
+      case 'live_results': return 'Verified';
+      case 'needs_date': return 'Needs dates';
+      case 'source_unavailable': return 'No source';
+      case 'rate_limited': return 'Limited';
+      case 'stale_discovery_only': return 'Stale only';
+      case 'no_live_results': return 'No live seats';
+      case 'error': return 'Unavailable';
+      default: return 'Ready';
+    }
+  }
+
+  getLiveSearchMessage(): string {
+    if (this.liveSearchMessage()) return this.liveSearchMessage();
+    switch (this.liveSearchState()) {
+      case 'loading':
+        return 'Checking configured compliant award sources and verifying candidates before showing prices.';
+      case 'source_unavailable':
+        return 'No compliant live award data source is configured yet, so Tally is not showing bookable prices.';
+      case 'no_live_results':
+        return 'No currently verified bookable award availability was found for this route and date.';
+      case 'stale_discovery_only':
+        return 'Tally found discovery data but could not verify it live, so it is hidden from bookable results.';
+      case 'needs_date':
+        return 'Add a departure date to check current bookable award prices.';
+      case 'rate_limited':
+        return 'Live search is rate limited. Wait a minute and try again.';
+      case 'error':
+        return 'Live award search is unavailable right now. Strategy guidance is still shown below.';
+      default:
+        return '';
+    }
+  }
+
+  formatCheckedAt(value: string): string {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return 'just now';
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  formatDateLabel(value: string): string {
+    if (!value) return 'flexible dates';
+    const date = this.localDateValue(value);
+    if (!date) return value;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
   onEarliestDepartureChange(value: string): void {

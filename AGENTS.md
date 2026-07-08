@@ -221,6 +221,29 @@ npx prisma migrate dev --name your_migration_name   # creates + applies locally
 | `WAITLIST_WEBHOOK_URL` | n8n waitlist webhook URL, optional locally |
 | `PORT` | `3000` |
 
+Optional compliant award-search provider variables:
+
+| Var | Value |
+|---|---|
+| `TALLY_SEATS_AERO_ENABLED` | `1` to enable Seats.aero cached discovery |
+| `TALLY_SEATS_AERO_LIVE_ENABLED` | `1` to enable Seats.aero commercial Live Search verification |
+| `TALLY_SEATS_AERO_BASE_URL` | Optional; defaults to `https://seats.aero/partnerapi` |
+| `TALLY_SEATS_AERO_API_KEY` | Seats.aero API key, sent with `Partner-Authorization` |
+| `TALLY_FLYING_BLUE_ENABLED` | `1` to enable a contracted Flying Blue-compatible source |
+| `TALLY_FLYING_BLUE_BASE_URL` | HTTPS endpoint root; API calls POST `/discover` and `/verify` |
+| `TALLY_FLYING_BLUE_API_KEY` | Provider API key |
+| `TALLY_AEROPLAN_ENABLED` | `1` to enable a contracted Aeroplan-compatible source |
+| `TALLY_AEROPLAN_BASE_URL` | HTTPS endpoint root; API calls POST `/discover` and `/verify` |
+| `TALLY_AEROPLAN_API_KEY` | Provider API key |
+| `TALLY_VIRGIN_ATLANTIC_ENABLED` | `1` to enable a contracted Virgin Atlantic-compatible source |
+| `TALLY_VIRGIN_ATLANTIC_BASE_URL` | HTTPS endpoint root; API calls POST `/discover` and `/verify` |
+| `TALLY_VIRGIN_ATLANTIC_API_KEY` | Provider API key |
+| `TALLY_UNITED_ENABLED` | `1` to enable a contracted United-compatible source |
+| `TALLY_UNITED_BASE_URL` | HTTPS endpoint root; API calls POST `/discover` and `/verify` |
+| `TALLY_UNITED_API_KEY` | Provider API key |
+
+Provider responses must return JSON `{ "results": [...] }`. Results are shown as bookable only when `/verify` returns `isLive: true`, `verificationStatus: "verified_live"`, a positive integer `points`, and a valid `departureDate`.
+
 ### Vercel API environment variables (set in dashboard)
 Same vars as above. Also set `NODE_ENV=production` and `APP_ORIGINS` for the production Angular and landing-page origins.
 

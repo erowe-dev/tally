@@ -121,6 +121,30 @@ PORT=3000
 `DATABASE_URL_POOLED` is required in production so Prisma uses Supabase pooling.
 `WAITLIST_WEBHOOK_URL` is reserved for a later waitlist reopening. For this private-alpha milestone, signup is deliberately closed and the API returns a 410 response with the manual contact email.
 
+Optional award-search provider variables are configured per contracted source:
+
+```text
+TALLY_SEATS_AERO_ENABLED=1
+TALLY_SEATS_AERO_LIVE_ENABLED=1
+TALLY_SEATS_AERO_API_KEY=<secret>
+TALLY_SEATS_AERO_BASE_URL=https://seats.aero/partnerapi
+
+TALLY_FLYING_BLUE_ENABLED=1
+TALLY_FLYING_BLUE_BASE_URL=https://<contracted-provider>/flying-blue
+TALLY_FLYING_BLUE_API_KEY=<secret>
+TALLY_AEROPLAN_ENABLED=1
+TALLY_AEROPLAN_BASE_URL=https://<contracted-provider>/aeroplan
+TALLY_AEROPLAN_API_KEY=<secret>
+TALLY_VIRGIN_ATLANTIC_ENABLED=1
+TALLY_VIRGIN_ATLANTIC_BASE_URL=https://<contracted-provider>/virgin-atlantic
+TALLY_VIRGIN_ATLANTIC_API_KEY=<secret>
+TALLY_UNITED_ENABLED=1
+TALLY_UNITED_BASE_URL=https://<contracted-provider>/united
+TALLY_UNITED_API_KEY=<secret>
+```
+
+Each provider base URL must support `POST /discover` and `POST /verify`. Tally only displays verified bookable prices from `/verify` results where `isLive=true`, `verificationStatus=verified_live`, `points` is a positive integer, and the departure date is valid.
+
 ## Observability
 
 The API emits `X-Request-Id` on every response, includes service/version/database metadata in `/health`, and logs structured warning/error lines for failed requests. When investigating a production issue, copy the `X-Request-Id` from the browser Network tab and search Vercel function logs for the same value.

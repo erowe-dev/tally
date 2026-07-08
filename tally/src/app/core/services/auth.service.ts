@@ -122,7 +122,6 @@ export class AuthService {
       error: _err => {
         this._isProvisioning.set(false);
         this.scheduleProvisionRetry();
-        this.toast.error('Could not connect to server — data saves locally only');
         // Keep isProvisioned=false. A timed retry lets the session recover from
         // transient server/auth failures without waiting for a network event.
       },

@@ -80,6 +80,13 @@ export type NavTab = 'optimizer' | 'wallet' | 'cards' | 'sweetspots' | 'expiry';
 export type DateFlexibility = 'exact' | 'plus_minus_3' | 'plus_minus_7' | 'month' | 'next_60_days';
 export type SearchType = 'flight' | 'hotel';
 export type ProviderCacheStatus = 'fresh' | 'stale' | 'miss' | 'disabled' | 'error';
+export type AwardSearchStatus =
+  | 'searching'
+  | 'live_results'
+  | 'no_live_results'
+  | 'source_unavailable'
+  | 'rate_limited'
+  | 'stale_discovery_only';
 
 export interface AirportOption {
   code: string;
@@ -173,15 +180,26 @@ export interface AwardAvailabilityResult {
   program: string;
   points: number;
   taxesUsd?: number;
-  estimatedSeatCount?: number;
+  seatCount?: number;
   confidence: 'low' | 'medium' | 'high';
   bookingUrl?: string;
-  dataMode: 'planning_estimate';
-  availabilitySource: 'estimated_not_live';
-  isLive: false;
-  notice: string;
+  isLive: true;
+  verificationStatus: 'verified_live';
+  checkedAt: string;
+  expiresAt: string;
+  raw?: Record<string, unknown>;
+}
+
+export interface AwardSearchResponse {
+  provider: string;
+  source: string;
+  status: AwardSearchStatus;
+  isLive: boolean;
+  checkedAt: string;
   lastChecked: string;
   expiresAt: string;
-  cacheStatus: ProviderCacheStatus;
-  stale: boolean;
+  sourcesAttempted: string[];
+  message: string;
+  notice: string;
+  results: AwardAvailabilityResult[];
 }

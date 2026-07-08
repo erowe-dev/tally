@@ -154,7 +154,7 @@ const checks = [
     },
   },
   {
-    name: 'Provider-backed search returns clearly labeled planning estimates',
+    name: 'Award search fails closed without verified live source',
     run: async () => {
       const { data: response, headers } = await requestWithMeta('/api/search/award-availability', {
         method: 'POST',
@@ -171,11 +171,11 @@ const checks = [
           programs: ['amex_mr', 'chase_ur'],
         }),
       });
-      assert(response.provider === 'tally_planning_estimate', `expected planning provider, got ${JSON.stringify(response)}`);
-      assert(response.dataMode === 'planning_estimate', `expected planning data mode, got ${JSON.stringify(response)}`);
-      assert(response.isLive === false, `expected non-live provider response, got ${JSON.stringify(response)}`);
-      assert(Array.isArray(response.results) && response.results.length > 0, `expected provider results, got ${JSON.stringify(response)}`);
-      assert(response.results.every(result => result.isLive === false && !('seatsAvailable' in result)), `expected non-live planning results, got ${JSON.stringify(response)}`);
+      assert(response.provider === 'tally_hybrid_award_search', `expected hybrid provider, got ${JSON.stringify(response)}`);
+      assert(['source_unavailable', 'no_live_results', 'live_results', 'stale_discovery_only'].includes(response.status), `expected award search status, got ${JSON.stringify(response)}`);
+      assert(response.status !== 'live_results' || response.isLive === true, `expected live flag only for live results, got ${JSON.stringify(response)}`);
+      assert(Array.isArray(response.results), `expected provider results array, got ${JSON.stringify(response)}`);
+      assert(response.results.every(result => result.isLive === true && result.verificationStatus === 'verified_live' && !('estimatedSeatCount' in result)), `expected only verified live results, got ${JSON.stringify(response)}`);
       assert(headers.get('x-ratelimit-limit') === '30', 'expected provider search rate limit header');
       assert(headers.get('x-ratelimit-remaining'), 'expected provider search remaining rate limit header');
       await expectHttpError('/api/search/award-availability', {

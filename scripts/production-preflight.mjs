@@ -426,13 +426,18 @@ function checkProviderSearchPlanningLabel() {
   const route = read('api/src/routes/search.ts');
   assert(!route.includes("const PROVIDER = 'tally_stub'"), 'provider search must not expose stub provider naming');
   assert(!route.includes('seatsAvailable'), 'provider search must not expose estimated seats as live availability');
-  assert(route.includes("const DATA_MODE = 'planning_estimate'"), 'provider search must label planning estimate data mode');
-  assert(route.includes("const AVAILABILITY_SOURCE = 'estimated_not_live'"), 'provider search must label non-live availability source');
-  assert(route.includes('isLive: false'), 'provider search responses must explicitly say they are not live');
+  assert(!route.includes('buildAwardSignal'), 'award search must not generate deterministic award prices');
+  assert(route.includes("verificationStatus: 'verified_live'"), 'award search must require verified live results');
+  assert(route.includes("status: 'source_unavailable'"), 'award search must fail closed when no compliant source is configured');
+  assert(route.includes('createConfiguredHttpProvider'), 'award search must use configurable provider adapters instead of embedded estimates');
+  assert(route.includes('/discover') && route.includes('/verify'), 'award search adapters must support discovery plus live verification endpoints');
+  assert(route.includes('createSeatsAeroProvider'), 'award search must include the Seats.aero adapter');
+  assert(route.includes('Partner-Authorization'), 'Seats.aero adapter must use Partner-Authorization authentication');
+  assert(route.includes('/search') && route.includes('/live'), 'Seats.aero adapter must support cached search and live verification');
 
   const models = read('tally/src/app/core/models/index.ts');
-  assert(models.includes("dataMode: 'planning_estimate'"), 'app provider models must expose planning data mode');
-  assert(models.includes("availabilitySource: 'estimated_not_live'"), 'app provider models must expose non-live availability source');
+  assert(models.includes("verificationStatus: 'verified_live'"), 'app provider models must expose live verification status');
+  assert(models.includes("status: AwardSearchStatus"), 'app provider response must expose search status');
   assert(!models.includes('seatsAvailable'), 'app provider models must not expose estimated seats as live availability');
 }
 

@@ -1,7 +1,9 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { AnalyticsService } from '../../core/services/analytics.service';
 import { AirportSearchService } from '../../core/services/airport-search.service';
+import { ApiService } from '../../core/services/api.service';
 import { DataService } from '../../core/services/data.service';
 import { ExpiryService } from '../../core/services/expiry.service';
 import { NavigationService } from '../../core/services/navigation.service';
@@ -68,6 +70,22 @@ class MockAirportSearchService {
   rememberAirport = jasmine.createSpy('rememberAirport');
 }
 
+class MockApiService {
+  searchAwardAvailability = jasmine.createSpy('searchAwardAvailability').and.returnValue(of({
+    provider: 'tally_hybrid_award_search',
+    source: 'owned_compliant_provider_adapter',
+    status: 'source_unavailable',
+    isLive: false,
+    checkedAt: '2026-06-01T00:00:00.000Z',
+    lastChecked: '2026-06-01T00:00:00.000Z',
+    expiresAt: '2026-06-01T00:00:00.000Z',
+    sourcesAttempted: [],
+    message: 'No compliant live award data source is configured yet.',
+    notice: '',
+    results: [],
+  }));
+}
+
 describe('OptimizerComponent', () => {
   let fixture: ComponentFixture<OptimizerComponent>;
   let component: OptimizerComponent;
@@ -90,6 +108,7 @@ describe('OptimizerComponent', () => {
         { provide: NavigationService, useClass: MockNavigationService },
         { provide: SearchesService, useClass: MockSearchesService },
         { provide: AirportSearchService, useClass: MockAirportSearchService },
+        { provide: ApiService, useClass: MockApiService },
       ],
     }).compileComponents();
 

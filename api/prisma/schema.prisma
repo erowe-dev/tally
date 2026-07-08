@@ -20,6 +20,7 @@ model User {
   trips         Trip[]
   preferences   UserPreference?
   savedSearches SavedSearch[]
+  awardSearchRuns AwardSearchRun[]
 
   @@map("users")
 }
@@ -132,4 +133,84 @@ model ProviderCache {
   @@index([provider, searchType])
   @@index([expiresAt])
   @@map("provider_cache")
+}
+
+model AwardSearchRun {
+  id                 String   @id @default(cuid())
+  userId             String
+  originAirport      String
+  destinationAirport String
+  cabin              String
+  passengers         Int
+  dateWindow         Json
+  status             String
+  sourcesAttempted   Json     @default("[]")
+  message            String?
+  createdAt          DateTime @default(now())
+
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  candidates    AwardSearchCandidate[]
+  verifications AwardLiveVerification[]
+
+  @@index([userId, createdAt])
+  @@index([originAirport, destinationAirport, cabin])
+  @@map("award_search_runs")
+}
+
+model AwardSearchCandidate {
+  id                 String   @id @default(cuid())
+  runId              String
+  source             String
+  sourceKey          String?
+  originAirport      String
+  destinationAirport String
+  departureDate      String
+  returnDate         String?
+  cabin              String
+  program            String
+  points             Int?
+  taxesUsd           Float?
+  seatCount          Int?
+  bookingUrl         String?
+  raw                Json
+  discoveredAt       DateTime @default(now())
+  expiresAt          DateTime?
+
+  run           AwardSearchRun         @relation(fields: [runId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  verifications AwardLiveVerification[]
+
+  @@index([runId])
+  @@index([source, sourceKey])
+  @@index([originAirport, destinationAirport, departureDate])
+  @@map("award_search_candidates")
+}
+
+model AwardLiveVerification {
+  id                 String   @id @default(cuid())
+  runId              String
+  candidateId        String?
+  source             String
+  verificationStatus String
+  originAirport      String
+  destinationAirport String
+  departureDate      String
+  returnDate         String?
+  cabin              String
+  program            String
+  points             Int?
+  taxesUsd           Float?
+  seatCount          Int?
+  bookingUrl         String?
+  raw                Json
+  checkedAt          DateTime @default(now())
+  expiresAt          DateTime
+
+  run       AwardSearchRun        @relation(fields: [runId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  candidate AwardSearchCandidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([runId])
+  @@index([candidateId])
+  @@index([verificationStatus, expiresAt])
+  @@index([originAirport, destinationAirport, departureDate])
+  @@map("award_live_verifications")
 }
